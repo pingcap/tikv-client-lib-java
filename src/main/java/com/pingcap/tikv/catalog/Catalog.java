@@ -21,7 +21,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.ImmutableList;
 import com.google.protobuf.ByteString;
 import com.pingcap.tikv.Snapshot;
-import com.pingcap.tikv.TiClientInternalException;
+import com.pingcap.tikv.exception.TiClientInternalException;
 import com.pingcap.tikv.codec.KeyUtils;
 import com.pingcap.tikv.meta.TiDBInfo;
 import com.pingcap.tikv.meta.TiTableInfo;
@@ -38,6 +38,7 @@ public class Catalog {
     private static ByteString KEY_TABLE = ByteString.copyFromUtf8("Table");
 
     private static String DB_PREFIX = "DB";
+    private static String TBL_PREFIX = "Table";
 
     private CatalogTrasaction trx;
 
@@ -54,11 +55,11 @@ public class Catalog {
     }
 
     public TiDBInfo getDatabase(long id) {
-        return getDatabase(encodeId(id));
+        return getDatabase(encodeDatabaseId(id));
     }
 
     public List<TiTableInfo> listTables(TiDBInfo db) {
-        ByteString dbKey = encodeId(db.getId());
+        ByteString dbKey = encodeDatabaseId(db.getId());
         if (databaseExists(dbKey)) {
             throw new TiClientInternalException("Database not exists: " + db.getName());
         }
@@ -71,9 +72,12 @@ public class Catalog {
         return ImmutableList.copyOf(iter);
     }
 
-    public TiDBInfo getDatabase(ByteString dbKey) {
+    private TiDBInfo getDatabase(ByteString dbKey) {
         try {
             ByteString json = trx.hashGet(KEY_DB, dbKey);
+            if (json == null) {
+                return null;
+            }
             return parseFromJson(json, TiDBInfo.class);
         } catch (Exception e) {
             // TODO: Handle key not exists and let loose others
@@ -81,9 +85,25 @@ public class Catalog {
         }
     }
 
-    private static ByteString encodeId(long id) {
+    public TiTableInfo getTable(TiDBInfo database, long tableId) {
+        ByteString dbKey = encodeDatabaseId(database.getId());
+        if (!databaseExists(dbKey)) {
+            return null;
+        }
+        ByteString tableKey = encodeTableId(tableId);
+        ByteString json = trx.hashGet(dbKey, tableKey);
+        return parseFromJson(json, TiTableInfo.class);
+    }
+
+    private static ByteString encodeDatabaseId(long id) {
         return ByteString.copyFrom(String
                 .format("%s:%d", DB_PREFIX, id)
+                .getBytes());
+    }
+
+    private static ByteString encodeTableId(long id) {
+        return ByteString.copyFrom(String
+                .format("%s:%d", TBL_PREFIX, id)
                 .getBytes());
     }
 

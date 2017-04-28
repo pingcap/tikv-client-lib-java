@@ -17,7 +17,7 @@ package com.pingcap.tikv.type;
 
 
 import com.google.common.collect.ImmutableList;
-import com.pingcap.tikv.TiClientInternalException;
+import com.pingcap.tikv.exception.TiClientInternalException;
 import com.pingcap.tikv.codec.CodecDataInput;
 import com.pingcap.tikv.meta.Collation;
 import com.pingcap.tikv.meta.Row;

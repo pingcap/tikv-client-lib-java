@@ -13,14 +13,10 @@
  * limitations under the License.
  */
 
-package com.pingcap.tikv;
+package com.pingcap.tikv.exception;
 
-public class TiClientInternalException extends RuntimeException {
-    public TiClientInternalException(String msg) {
-        super(msg);
-    }
-
-    public TiClientInternalException(String msg, Throwable t) {
-        super(msg, t);
+public class GrpcException extends RuntimeException {
+    public GrpcException(Exception e) {
+        super(e);
     }
 }

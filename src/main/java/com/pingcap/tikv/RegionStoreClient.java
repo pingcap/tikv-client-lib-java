@@ -20,18 +20,14 @@ import com.google.common.collect.Iterables;
 import com.google.common.net.HostAndPort;
 import com.google.protobuf.ByteString;
 import com.google.protobuf.InvalidProtocolBufferException;
-import com.pingcap.tidb.tipb.Select;
 import com.pingcap.tidb.tipb.SelectRequest;
 import com.pingcap.tidb.tipb.SelectResponse;
+import com.pingcap.tikv.exception.KeyException;
+import com.pingcap.tikv.exception.RegionException;
+import com.pingcap.tikv.exception.SelectException;
+import com.pingcap.tikv.exception.TiClientInternalException;
 import com.pingcap.tikv.grpc.Coprocessor;
-import com.pingcap.tikv.grpc.Kvrpcpb.Context;
-import com.pingcap.tikv.grpc.Kvrpcpb.GetRequest;
-import com.pingcap.tikv.grpc.Kvrpcpb.GetResponse;
-import com.pingcap.tikv.grpc.Kvrpcpb.BatchGetResponse;
-import com.pingcap.tikv.grpc.Kvrpcpb.BatchGetRequest;
-import com.pingcap.tikv.grpc.Kvrpcpb.ScanResponse;
-import com.pingcap.tikv.grpc.Kvrpcpb.ScanRequest;
-import com.pingcap.tikv.grpc.Kvrpcpb.KvPair;
+import com.pingcap.tikv.grpc.Kvrpcpb.*;
 import com.pingcap.tikv.grpc.Metapb.Region;
 import com.pingcap.tikv.grpc.Metapb.Store;
 import com.pingcap.tikv.grpc.TiKVGrpc;
@@ -45,6 +41,9 @@ import io.grpc.ManagedChannelBuilder;
 import java.util.List;
 import java.util.concurrent.Future;
 
+import static com.google.common.base.Preconditions.checkArgument;
+import static com.google.common.base.Preconditions.checkNotNull;
+
 public class RegionStoreClient extends AbstractGrpcClient<TiKVBlockingStub, TiKVStub> {
     private final Context                   context;
     private final TiKVBlockingStub          blockingStub;
@@ -53,7 +52,6 @@ public class RegionStoreClient extends AbstractGrpcClient<TiKVBlockingStub, TiKV
 
     private final int ReqTypeSelect = 101;
     private final int ReqTypeIndex = 102;
-    private final int ReqTypeDAG = 103;
 
     public ByteString get(ByteString key, long version) {
         GetRequest request = GetRequest.newBuilder()
@@ -62,12 +60,12 @@ public class RegionStoreClient extends AbstractGrpcClient<TiKVBlockingStub, TiKV
                 .setVersion(version)
                 .build();
         GetResponse resp = callWithRetry(TiKVGrpc.METHOD_KV_GET, request);
-        return resp.getValue();
+        return getHelper(resp);
     }
 
     public Future<ByteString> getAsync(ByteString key, long version) {
         FutureObserver<ByteString, GetResponse> responseObserver =
-                new FutureObserver<>((GetResponse resp) -> resp.getValue());
+                new FutureObserver<>((GetResponse resp) -> getHelper(resp));
         GetRequest request = GetRequest.newBuilder()
                 .setContext(context)
                 .setKey(key)
@@ -78,6 +76,16 @@ public class RegionStoreClient extends AbstractGrpcClient<TiKVBlockingStub, TiKV
         return responseObserver.getFuture();
     }
 
+    private ByteString getHelper(GetResponse resp) {
+        if (resp.hasError()) {
+            throw new KeyException(resp.getError());
+        }
+        if (resp.hasRegionError()) {
+            throw new RegionException(resp.getRegionError());
+        }
+        return resp.getValue();
+    }
+
     public List<KvPair> batchGet(Iterable<ByteString> keys, long version) {
         BatchGetRequest request = BatchGetRequest.newBuilder()
                 .setContext(context)
@@ -85,12 +93,12 @@ public class RegionStoreClient extends AbstractGrpcClient<TiKVBlockingStub, TiKV
                 .setVersion(version)
                 .build();
         BatchGetResponse resp = callWithRetry(TiKVGrpc.METHOD_KV_BATCH_GET, request);
-        return resp.getPairsList();
+        return batchGetHelper(resp);
     }
 
     public Future<List<KvPair>> batchGetAsync(Iterable<ByteString> keys, long version) {
         FutureObserver<List<KvPair>, BatchGetResponse> responseObserver =
-                new FutureObserver<>((BatchGetResponse resp) -> resp.getPairsList());
+                new FutureObserver<>((BatchGetResponse resp) -> batchGetHelper(resp));
 
         BatchGetRequest request = BatchGetRequest.newBuilder()
                 .setContext(context)
@@ -100,6 +108,13 @@ public class RegionStoreClient extends AbstractGrpcClient<TiKVBlockingStub, TiKV
 
         callAsyncWithRetry(TiKVGrpc.METHOD_KV_BATCH_GET, request, responseObserver);
         return responseObserver.getFuture();
+    }
+
+    private List<KvPair> batchGetHelper(BatchGetResponse resp) {
+        if (resp.hasRegionError()) {
+            throw new RegionException(resp.getRegionError());
+        }
+        return resp.getPairsList();
     }
 
     public List<KvPair> scan(ByteString startKey, long version) {
@@ -119,12 +134,12 @@ public class RegionStoreClient extends AbstractGrpcClient<TiKVBlockingStub, TiKV
                 .setLimit(getConf().getScanBatchSize())
                 .build();
         ScanResponse resp = callWithRetry(TiKVGrpc.METHOD_KV_SCAN, request);
-        return resp.getPairsList();
+        return scanHelper(resp);
     }
 
     public Future<List<KvPair>> scanAsync(ByteString startKey, long version, boolean keyOnly) {
         FutureObserver<List<KvPair>, ScanResponse> responseObserver =
-                new FutureObserver<>((ScanResponse resp) -> resp.getPairsList());
+                new FutureObserver<>((ScanResponse resp) -> scanHelper(resp));
 
         ScanRequest request = ScanRequest.newBuilder()
                 .setContext(context)
@@ -135,6 +150,13 @@ public class RegionStoreClient extends AbstractGrpcClient<TiKVBlockingStub, TiKV
 
         callAsyncWithRetry(TiKVGrpc.METHOD_KV_SCAN, request, responseObserver);
         return responseObserver.getFuture();
+    }
+
+    private List<KvPair> scanHelper(ScanResponse resp) {
+        if (resp.hasRegionError()) {
+            throw new RegionException(resp.getRegionError());
+        }
+        return resp.getPairsList();
     }
 
     private static Coprocessor.KeyRange rangeToProto(TiRange<ByteString> range) {
@@ -152,8 +174,32 @@ public class RegionStoreClient extends AbstractGrpcClient<TiKVBlockingStub, TiKV
                 .addAllRanges(Iterables.transform(ranges, r -> rangeToProto(r)))
                 .build();
         Coprocessor.Response resp = callWithRetry(TiKVGrpc.METHOD_COPROCESSOR, reqToSend);
+        return coprocessorHelper(resp);
+    }
+
+    public Future<SelectResponse> coprocessAsync(SelectRequest req, List<TiRange<ByteString>> ranges) {
+        FutureObserver<SelectResponse, Coprocessor.Response> responseObserver =
+                new FutureObserver<>((Coprocessor.Response resp) -> coprocessorHelper(resp));
+        Coprocessor.Request reqToSend = Coprocessor.Request.newBuilder()
+                .setContext(context)
+                .setTp(req.hasIndexInfo() ? ReqTypeIndex : ReqTypeSelect)
+                .setData(req.toByteString())
+                .addAllRanges(Iterables.transform(ranges, r -> rangeToProto(r)))
+                .build();
+        callAsyncWithRetry(TiKVGrpc.METHOD_COPROCESSOR, reqToSend, responseObserver);
+        return responseObserver.getFuture();
+    }
+
+    private SelectResponse coprocessorHelper(Coprocessor.Response resp) {
         try {
-            return SelectResponse.parseFrom(resp.getData());
+            if (resp.hasRegionError()) {
+                throw new RegionException(resp.getRegionError());
+            }
+            SelectResponse selectResp = SelectResponse.parseFrom(resp.getData());
+            if (selectResp.hasError()) {
+                throw new SelectException(selectResp.getError());
+            }
+            return selectResp;
         } catch (InvalidProtocolBufferException e) {
             throw new TiClientInternalException("Error parsing protobuf for coprocessor response.", e);
         }
@@ -182,6 +228,7 @@ public class RegionStoreClient extends AbstractGrpcClient<TiKVBlockingStub, TiKV
                 } catch (Exception ignore) {
                 }
             }
+            throw e;
         }
         return client;
     }
@@ -191,6 +238,8 @@ public class RegionStoreClient extends AbstractGrpcClient<TiKVBlockingStub, TiKV
                               TiKVBlockingStub blockingStub,
                               TiKVStub asyncStub) {
         super(session);
+        checkNotNull(region, "Region is empty");
+        checkArgument(region.getPeersCount() > 0, "Peer is empty");
         this.channel = channel;
         this.blockingStub = blockingStub;
         this.asyncStub = asyncStub;

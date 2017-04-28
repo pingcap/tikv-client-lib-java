@@ -23,6 +23,7 @@ import com.google.common.collect.Range;
 import com.google.protobuf.ByteString;
 import com.pingcap.tidb.tipb.SelectRequest;
 import com.pingcap.tikv.codec.CodecUtil;
+import com.pingcap.tikv.exception.TiClientInternalException;
 import com.pingcap.tikv.grpc.Kvrpcpb.KvPair;
 import com.pingcap.tikv.grpc.Metapb.Region;
 import com.pingcap.tikv.grpc.Metapb.Store;
@@ -131,8 +132,8 @@ public class Snapshot {
         return result;
     }
 
-    public SelectBuilder newSelect() {
-        return new SelectBuilder(this);
+    public SelectBuilder newSelect(TiTableInfo table) {
+        return new SelectBuilder(this, table);
     }
 
     public static class SelectBuilder {
@@ -152,10 +153,11 @@ public class Snapshot {
             return getSession().getConf();
         }
 
-        private SelectBuilder(Snapshot snapshot) {
+        private SelectBuilder(Snapshot snapshot, TiTableInfo table) {
             this.snapshot = snapshot;
             this.builder = SelectRequest.newBuilder();
             this.rangeListBuilder = ImmutableList.builder();
+            this.table = table;
 
             long flags = 0;
             if (getConf().isIgnoreTruncate()) {
@@ -172,12 +174,6 @@ public class Snapshot {
 
         public SelectBuilder setTimeZoneOffset(long offset) {
             builder.setTimeZoneOffset(offset);
-            return this;
-        }
-
-        public SelectBuilder setTable(TiTableInfo table) {
-            this.table = table;
-            builder.setTableInfo(table.toProto());
             return this;
         }
 

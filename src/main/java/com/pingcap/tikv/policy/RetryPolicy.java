@@ -16,7 +16,7 @@
 package com.pingcap.tikv.policy;
 
 import com.google.common.collect.ImmutableSet;
-import com.pingcap.tikv.GrpcException;
+import com.pingcap.tikv.exception.GrpcException;
 import io.grpc.Status;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;

@@ -16,10 +16,9 @@
 package com.pingcap.tikv.catalog;
 
 import com.google.common.collect.ImmutableList;
-import com.google.common.collect.Lists;
 import com.google.protobuf.ByteString;
 import com.pingcap.tikv.Snapshot;
-import com.pingcap.tikv.TiClientInternalException;
+import com.pingcap.tikv.exception.TiClientInternalException;
 import com.pingcap.tikv.codec.*;
 import com.pingcap.tikv.util.Pair;
 import com.pingcap.tikv.util.TiFluentIterable;
@@ -100,17 +99,6 @@ public class CatalogTrasaction {
                                 .stopWhen(kv -> !KeyUtils.hasPrefix(kv.getKey(), encodedKey))
                                 .transform(kv -> Pair.create(decodeHashDataKey(kv.getKey()).second, kv.getValue()));
 
-        // Copy to a list just in case since iterator cannot rewind
         return ImmutableList.copyOf(iter);
-    }
-
-    public ByteString getBytesValue(ByteString key) {
-        CodecDataOutput cdo = new CodecDataOutput();
-        encodeStringDataKey(cdo, key.toByteArray(), prefix);
-        return snapshot.get(cdo.toByteString());
-    }
-
-    public long getLongValue(ByteString key) {
-        return Long.parseLong(snapshot.get(key).toString());
     }
 }

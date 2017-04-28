@@ -18,6 +18,7 @@ package com.pingcap.tikv;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.net.HostAndPort;
 import com.google.protobuf.ByteString;
+import com.pingcap.tikv.exception.GrpcException;
 import com.pingcap.tikv.grpc.Metapb;
 import com.pingcap.tikv.grpc.PDGrpc;
 import com.pingcap.tikv.grpc.PDGrpc.PDBlockingStub;

@@ -22,7 +22,7 @@ import com.pingcap.tidb.tipb.SelectRequest;
 import com.pingcap.tidb.tipb.SelectResponse;
 import com.pingcap.tikv.RegionManager;
 import com.pingcap.tikv.RegionStoreClient;
-import com.pingcap.tikv.TiClientInternalException;
+import com.pingcap.tikv.exception.TiClientInternalException;
 import com.pingcap.tikv.TiSession;
 import com.pingcap.tikv.codec.CodecDataInput;
 import com.pingcap.tikv.codec.RowReader;
@@ -57,9 +57,9 @@ public class SelectIterator implements Iterator<Row> {
     protected boolean                               eof = false;
 
     public SelectIterator(SelectRequest req,
-                        List<TiRange<ByteString>> ranges,
-                        TiSession session,
-                        RegionManager rm) {
+                          List<TiRange<ByteString>> ranges,
+                          TiSession session,
+                          RegionManager rm) {
         this.req = req;
         this.session = session;
         this.regionCache = rm;

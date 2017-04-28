@@ -15,7 +15,7 @@
 
 package com.pingcap.tikv.meta;
 
-import com.pingcap.tikv.TiClientInternalException;
+import com.pingcap.tikv.exception.TiClientInternalException;
 
 public enum IndexType {
     IndexTypeBtree(0),
