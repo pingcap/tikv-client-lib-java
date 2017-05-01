@@ -1,6 +1,6 @@
 #ignore idea configuration
 .idea
-.iml
+*.iml
 target
 
 # ignore eclipse configuration 
