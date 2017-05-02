@@ -22,7 +22,7 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Range;
 import com.google.protobuf.ByteString;
 import com.pingcap.tidb.tipb.SelectRequest;
-import com.pingcap.tikv.codec.CodecUtil;
+import com.pingcap.tikv.codec.TableCodec;
 import com.pingcap.tikv.exception.TiClientInternalException;
 import com.pingcap.tikv.grpc.Kvrpcpb.KvPair;
 import com.pingcap.tikv.grpc.Metapb.Region;
@@ -80,10 +80,10 @@ public class Snapshot {
     public Iterator<Row> select(TiTableInfo table, SelectRequest req, List<TiRange<Long>> ranges) {
         ImmutableList.Builder<TiRange<ByteString>> builder = ImmutableList.builder();
         for (TiRange<Long> r : ranges) {
-            ByteString lowKey = CodecUtil.encodeRowKeyWithHandle(table.getId(), r.getLowValue());
-            ByteString highKey = CodecUtil.encodeRowKeyWithHandle(table.getId(),
+            ByteString startKey = TableCodec.encodeRowKeyWithHandle(table.getId(), r.getLowValue());
+            ByteString endKey = TableCodec.encodeRowKeyWithHandle(table.getId(),
                                                                   Math.max(r.getHighValue() + 1, Long.MAX_VALUE));
-            builder.add(TiRange.createByteStringRange(lowKey, highKey));
+            builder.add(TiRange.createByteStringRange(startKey, endKey));
         }
         List<TiRange<ByteString>> keyRanges = builder.build();
         return new SelectIterator(req, keyRanges, getSession(), regionCache);

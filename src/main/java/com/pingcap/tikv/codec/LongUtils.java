@@ -16,6 +16,8 @@
 package com.pingcap.tikv.codec;
 
 
+import java.io.IOException;
+
 public class LongUtils {
     public static final byte INT_FLAG = 3;
     public static final byte UINT_FLAG = 4;
@@ -65,7 +67,7 @@ public class LongUtils {
      * @param lVal The data to encode
      */
     public static void writeLong(CodecDataOutput cdo, long lVal) {
-        cdo.writeLong(CodecUtil.flipSignBit(lVal));
+        cdo.writeLong(TableCodec.flipSignBit(lVal));
     }
 
     /**
@@ -109,7 +111,7 @@ public class LongUtils {
      * @return value decoded
      * @exception InvalidCodecFormatException wrong format of binary encoding encountered
      */
-    public static long readLongFully(CodecDataInput cdi) {
+    public static long readLongFully(CodecDataInput cdi) throws IOException {
         byte flag = cdi.readByte();
 
         switch (flag) {
@@ -128,7 +130,7 @@ public class LongUtils {
      * @return value decoded
      * @exception InvalidCodecFormatException wrong format of binary encoding encountered
      */
-    public static long readULongFully(CodecDataInput cdi) {
+    public static long readULongFully(CodecDataInput cdi) throws IOException {
         byte flag = cdi.readByte();
         switch (flag) {
             case UINT_FLAG:
@@ -146,8 +148,8 @@ public class LongUtils {
      * @param cdi source of data
      * @return decoded signed long value
      */
-    public static long readLong(CodecDataInput cdi) {
-        return CodecUtil.flipSignBit(cdi.readLong());
+    public static long readLong(CodecDataInput cdi) throws IOException {
+        return TableCodec.flipSignBit(cdi.readLong());
     }
 
     /**
@@ -155,7 +157,7 @@ public class LongUtils {
      * @param cdi source of data
      * @return decoded unsigned long value
      */
-    public static long readULong(CodecDataInput cdi) {
+    public static long readULong(CodecDataInput cdi) throws IOException {
         return cdi.readLong();
     }
 
@@ -164,7 +166,7 @@ public class LongUtils {
      * @param cdi source of data
      * @return decoded signed long value
      */
-    public static long readVarLong(CodecDataInput cdi) {
+    public static long readVarLong(CodecDataInput cdi) throws IOException {
         long ux = readUVarLong(cdi);
         long x = ux >>> 1;
         if ((ux & 1) != 0) {
@@ -178,7 +180,7 @@ public class LongUtils {
      * @param cdi source of data
      * @return decoded unsigned long value
      */
-    public static long readUVarLong(CodecDataInput cdi) {
+    public static long readUVarLong(CodecDataInput cdi) throws IOException {
         long x = 0;
         int s = 0;
         for (int i = 0; !cdi.eof(); i++) {
