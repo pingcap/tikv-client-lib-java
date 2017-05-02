@@ -111,7 +111,7 @@ public class LongUtils {
      * @return value decoded
      * @exception InvalidCodecFormatException wrong format of binary encoding encountered
      */
-    public static long readLongFully(CodecDataInput cdi) throws IOException {
+    public static long readLongFully(CodecDataInput cdi) {
         byte flag = cdi.readByte();
 
         switch (flag) {
@@ -130,7 +130,7 @@ public class LongUtils {
      * @return value decoded
      * @exception InvalidCodecFormatException wrong format of binary encoding encountered
      */
-    public static long readULongFully(CodecDataInput cdi) throws IOException {
+    public static long readULongFully(CodecDataInput cdi) {
         byte flag = cdi.readByte();
         switch (flag) {
             case UINT_FLAG:
@@ -148,7 +148,7 @@ public class LongUtils {
      * @param cdi source of data
      * @return decoded signed long value
      */
-    public static long readLong(CodecDataInput cdi) throws IOException {
+    public static long readLong(CodecDataInput cdi) {
         return TableCodec.flipSignBit(cdi.readLong());
     }
 
@@ -157,7 +157,7 @@ public class LongUtils {
      * @param cdi source of data
      * @return decoded unsigned long value
      */
-    public static long readULong(CodecDataInput cdi) throws IOException {
+    public static long readULong(CodecDataInput cdi) {
         return cdi.readLong();
     }
 
@@ -166,7 +166,7 @@ public class LongUtils {
      * @param cdi source of data
      * @return decoded signed long value
      */
-    public static long readVarLong(CodecDataInput cdi) throws IOException {
+    public static long readVarLong(CodecDataInput cdi) {
         long ux = readUVarLong(cdi);
         long x = ux >>> 1;
         if ((ux & 1) != 0) {
@@ -180,7 +180,7 @@ public class LongUtils {
      * @param cdi source of data
      * @return decoded unsigned long value
      */
-    public static long readUVarLong(CodecDataInput cdi) throws IOException {
+    public static long readUVarLong(CodecDataInput cdi) {
         long x = 0;
         int s = 0;
         for (int i = 0; !cdi.eof(); i++) {

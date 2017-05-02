@@ -79,7 +79,7 @@ public class TableCodec {
         return v ^ SIGN_MASK;
     }
 
-    private static boolean consumeAndMatching(CodecDataInput cdi, byte[] prefix) throws IOException {
+    private static boolean consumeAndMatching(CodecDataInput cdi, byte[] prefix) {
         for (byte b : prefix) {
             if (cdi.readByte() != b) {
                 return false;
