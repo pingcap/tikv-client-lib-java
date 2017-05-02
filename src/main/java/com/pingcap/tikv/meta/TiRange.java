@@ -25,15 +25,15 @@ public class TiRange<E> {
     private final boolean rightOpen;
     private Comparator<E> comparator;
 
-    public static <T> TiRange create(T l, T h, boolean lopen, boolean ropen, Comparator<T> c) {
+    public static <T> TiRange<T> create(T l, T h, boolean lopen, boolean ropen, Comparator<T> c) {
         return new TiRange(l, h, lopen, ropen, c);
     }
 
-    public static <T extends Comparable<T>> TiRange create(T l, T h) {
+    public static <T extends Comparable<T>> TiRange<T> create(T l, T h) {
         return new TiRange(l, h, false, true, Comparator.naturalOrder());
     }
 
-    public static <T> TiRange create(T l, T h, Comparator<T> comp) {
+    public static <T> TiRange<T> create(T l, T h, Comparator<T> comp) {
         return new TiRange(l, h, false, true, comp);
     }
 

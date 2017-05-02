@@ -217,8 +217,16 @@
                         <configuration>
                             <relocations>
                                 <relocation>
+                                    <pattern>io.netty</pattern>
+                                    <shadedPattern>io.netty.netty4pingcap</shadedPattern>
+                                </relocation>
+                                <relocation>
                                     <pattern>com.google.protobuf</pattern>
                                     <shadedPattern>com.google.proto4pingcap</shadedPattern>
+                                </relocation>
+                                <relocation>
+                                    <pattern>com.google.common</pattern>
+                                    <shadedPattern>com.google.guava4pingcap</shadedPattern>
                                 </relocation>
                             </relocations>
                             <createSourcesJar>true</createSourcesJar>

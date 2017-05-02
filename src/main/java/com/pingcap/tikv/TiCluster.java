@@ -15,10 +15,18 @@
 
 package com.pingcap.tikv;
 
+import com.google.common.collect.ImmutableList;
 import com.pingcap.tikv.catalog.Catalog;
+import com.pingcap.tikv.meta.Row;
+import com.pingcap.tikv.meta.TiDBInfo;
+import com.pingcap.tikv.meta.TiRange;
+import com.pingcap.tikv.meta.TiTableInfo;
+
+import java.util.Iterator;
+import java.util.List;
 
 // Should be different per session thread
-public class TiCluster {
+public class TiCluster implements AutoCloseable {
     private final TiSession     session;
     private final RegionManager regionManager;
     private final PDClient      client;
@@ -47,5 +55,12 @@ public class TiCluster {
 
     public RegionManager getRegionManager() {
         return regionManager;
+    }
+
+    @Override
+    public void close() throws InterruptedException {
+        if (client != null) {
+            client.close();
+        }
     }
 }

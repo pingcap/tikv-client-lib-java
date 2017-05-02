@@ -170,6 +170,7 @@ public class Snapshot {
             // Set default timezone offset
             TimeZone tz = TimeZone.getDefault();
             builder.setTimeZoneOffset(tz.getOffset(new Date().getTime()) / 1000);
+            builder.setTableInfo(table.toProto());
         }
 
         public SelectBuilder setTimeZoneOffset(long offset) {
