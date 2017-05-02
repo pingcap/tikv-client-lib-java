@@ -85,6 +85,16 @@ public class Catalog {
         }
     }
 
+    // TODO: a naive implementation before meta cache implemented
+    public TiDBInfo getDatabase(String dbName) {
+        for (TiDBInfo db : listDatabases()) {
+            if (db.getName().equalsIgnoreCase(dbName)) {
+                return db;
+            }
+        }
+        return null;
+    }
+
     public TiTableInfo getTable(TiDBInfo database, long tableId) {
         ByteString dbKey = encodeDatabaseId(database.getId());
         if (!databaseExists(dbKey)) {
@@ -93,6 +103,16 @@ public class Catalog {
         ByteString tableKey = encodeTableId(tableId);
         ByteString json = trx.hashGet(dbKey, tableKey);
         return parseFromJson(json, TiTableInfo.class);
+    }
+
+    // TODO: a naive implementation before meta cache implemented
+    public TiTableInfo getTable(TiDBInfo database, String tableName) {
+        for (TiTableInfo tableInfo : listTables(database)) {
+            if (tableInfo.getName().equalsIgnoreCase(tableName)) {
+                return tableInfo;
+            }
+        }
+        return null;
     }
 
     private static ByteString encodeDatabaseId(long id) {
