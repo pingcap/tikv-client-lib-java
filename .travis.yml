@@ -1,0 +1,9 @@
+language: java
+sudo: false
+# skip default install, otherwise travis-ci will use default way to install dependency which cause complaint.
+install: echo "skip"
+script:
+    - mvn install -DskipTests=true -Dmaven.javadoc.skip=true -B -V
+    - mvn test -B
+jdk:
+    - oraclejdk8
