@@ -11,9 +11,24 @@ It suppose to:
 
 ## How to build
 
+The following command can install dependencies for you.
 ```
 mvn package
 ```
+
+this project is designed to hook with `pd` and `tikv` which you can find in `PingCap` github page.
+For the sake of saving your and our time, we submoudle these already. The following command can download them.
+```
+git submodule update --init --recursive
+```
+
+When you work with this project, you have to communicate with `pd` and `tikv`. There is a script taking care of this. By executing the following commands, `pd` and `tikv` can be executed on background.
+```
+cd scripts
+make pd
+make tikv
+```
+
 
 ## How to use for now
 Since it's not quite complete, a usage sample for now can be given is:

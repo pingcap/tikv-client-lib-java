@@ -1,0 +1,6 @@
+[submodule "tikv"]
+	path = tikv
+    url = https://github.com/disksing/tikv
+[submodule "pd"]
+	path = pd
+    url = https://github.com/pingcap/pd
