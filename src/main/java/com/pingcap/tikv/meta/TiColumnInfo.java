@@ -20,6 +20,7 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.google.common.collect.ImmutableMap;
 import com.pingcap.tidb.tipb.ColumnInfo;
+import com.pingcap.tikv.exception.TiClientInternalException;
 import com.pingcap.tikv.type.FieldType;
 import com.pingcap.tikv.type.LongType;
 import com.pingcap.tikv.type.StringType;
@@ -166,8 +167,7 @@ public class TiColumnInfo {
         public FieldType toFieldType() {
             Builder<? extends FieldType> builder = typeBuilder.get(getTp());
             if (builder == null) {
-                // throw new TiClientInternalException("Invalid Field Type code: " + getTp());
-                return null;
+                throw new TiClientInternalException("Invalid Field Type code: " + getTp());
             }
             return builder.build(this);
         }

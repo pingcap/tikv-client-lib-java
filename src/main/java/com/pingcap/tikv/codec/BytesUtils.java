@@ -16,8 +16,6 @@
 package com.pingcap.tikv.codec;
 
 import static com.google.common.base.Preconditions.checkArgument;
-import com.pingcap.tikv.codec.CodecDataInput;
-import com.pingcap.tikv.codec.CodecDataOutput;
 
 import java.util.Arrays;
 
@@ -26,7 +24,10 @@ public class BytesUtils {
     private static final byte [] PADS = new byte[GRP_SIZE];
     private static final int MARKER = 0xFF;
     private static final byte PAD = (byte)0x0;
-    // EncodeBytes guarantees the encoded value is in ascending order for comparison,
+    public static final int BYTES_FLAG = 1;
+    public static final int COMPACT_BYTES_FLAG = 2;
+
+    // writeBytes guarantees the encoded value is in ascending order for comparison,
     // encoding with the following rule:
     //  [group1][marker1]...[groupN][markerN]
     //  group is 8 bytes slice which is padding with 0.
@@ -52,11 +53,46 @@ public class BytesUtils {
         }
     }
 
+    // WriteBytesDesc first encodes bytes using EncodeBytes, then bitwise reverses
+    // encoded value to guarantee the encoded value is in descending order for comparison.
+    public static void writeBytesDesc(CodecDataOutput cdo, byte[] data) {
+        writeBytes(cdo, data);
+        byte[] encodedData = cdo.toBytes();
+        cdo.reset();
+        writeBytes(cdo, reverseBytes(encodedData));
+    }
+
+    private static byte[] reverseBytes(byte[] data) {
+        for(int i = 0; i < data.length; i++) {
+            data[i] ^= data[i];
+        }
+        return data;
+    }
+
+    // readBytes decodes bytes which is encoded by EncodeBytes before,
+    // returns the leftover bytes and decoded value if no error.
     public static byte[] readBytes(CodecDataInput cdi) {
         return readBytes(cdi, false);
     }
 
-    public static byte[] readBytes(CodecDataInput cdi, boolean reverse) {
+    public static byte[] readCompactBytes(CodecDataInput cdi) {
+        int size = (int) LongUtils.readVarLong(cdi);
+        return readCompactBytes(cdi, size);
+    }
+
+    private static byte[] readCompactBytes(CodecDataInput cdi, int size) {
+        byte[] data = new byte[size];
+       for(int i = 0; i < size; i++) {
+           data[i] =  cdi.readByte();
+       }
+       return data;
+    }
+
+    public static byte[] readBytesDesc(CodecDataInput cdi){
+        return readBytes(cdi, true);
+    }
+
+    private static byte[] readBytes(CodecDataInput cdi, boolean reverse) {
         CodecDataOutput cdo = new CodecDataOutput();
         while (true) {
             byte[] groupBytes = new byte[GRP_SIZE + 1];

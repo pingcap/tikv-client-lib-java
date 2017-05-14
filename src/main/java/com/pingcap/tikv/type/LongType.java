@@ -26,8 +26,6 @@ public class LongType extends FieldType {
     private static int UNSIGNED_FLAG = 32;
     public static final int TYPE_CODE = 3;
 
-    public static final LongType DEF_VLONG = new LongType();
-
     public LongType(TiColumnInfo.InternalTypeHolder holder) {
         super(holder);
         this.varLength = true;

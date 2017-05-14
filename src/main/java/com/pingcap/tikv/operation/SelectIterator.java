@@ -15,7 +15,9 @@
 
 package com.pingcap.tikv.operation;
 
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableList;
+import com.google.protobuf.BoolValue;
 import com.google.protobuf.ByteString;
 import com.pingcap.tidb.tipb.Chunk;
 import com.pingcap.tidb.tipb.SelectRequest;
@@ -36,10 +38,11 @@ import com.pingcap.tikv.type.FieldType;
 import com.pingcap.tikv.util.Pair;
 import com.pingcap.tikv.util.TiFluentIterable;
 
-import java.util.Comparator;
 import java.util.Iterator;
 import java.util.List;
 import java.util.NoSuchElementException;
+import java.util.Comparator;
+import java.util.function.Function;
 
 import static com.google.common.base.Preconditions.checkArgument;
 
@@ -55,6 +58,21 @@ public class SelectIterator implements Iterator<Row> {
     protected ChunkIterator                         chunkIterator;
     protected int                                   index = 0;
     protected boolean                               eof = false;
+    private Function<List<Pair<Pair<Region, Store>,
+                              TiRange<ByteString>>>, Boolean>  readNextRegionFn;
+
+    @VisibleForTesting
+    public SelectIterator(List<Chunk> chunks, FieldType[] fieldTypes) {
+         this.req = null;
+        this.session = null;
+        this.regionCache = null;
+        this.fieldTypes = fieldTypes;
+        this.rangeToRegions = null;
+        this.readNextRegionFn = rangeToRegions -> {
+            chunkIterator = new ChunkIterator(chunks);
+            return true;
+        };
+    }
 
     public SelectIterator(SelectRequest req,
                           List<TiRange<ByteString>> ranges,
@@ -67,6 +85,30 @@ public class SelectIterator implements Iterator<Row> {
                 .transform(column -> new TiColumnInfo.InternalTypeHolder(column).toFieldType())
                 .toArray(FieldType.class);
         this.rangeToRegions = splitRangeByRegion(ranges);
+        this.readNextRegionFn  = rangeToRegions -> {
+            if (eof || index >= rangeToRegions.size()) {
+            return false;
+        }
+
+        Pair<Pair<Region, Store>, TiRange<ByteString>> reqPair =
+                rangeToRegions.get(index++);
+            Pair<Region, Store> pair = reqPair.first;
+        TiRange<ByteString> range = reqPair.second;
+        Region region = pair.first;
+        Store store = pair.second;
+        try (RegionStoreClient client = RegionStoreClient.create(region, store, session)) {
+            SelectResponse resp = client.coprocess(req, ImmutableList.of(range));
+            if (resp == null) {
+                eof = true;
+                return false;
+            }
+            chunkIterator = new ChunkIterator(resp.getChunksList());
+        } catch (Exception e) {
+            eof = true;
+            throw new TiClientInternalException("Error Closing Store client.", e);
+        }
+        return true;
+        };
     }
 
     public List<Pair<Pair<Region, Store>, TiRange<ByteString>>>
@@ -103,28 +145,10 @@ public class SelectIterator implements Iterator<Row> {
     }
 
     private boolean readNextRegion() {
-        if (eof || index >= rangeToRegions.size()) {
-            return false;
-        }
 
-        Pair<Pair<Region, Store>, TiRange<ByteString>> reqPair =
-                rangeToRegions.get(index++);
-        Pair<Region, Store> pair = reqPair.first;
-        TiRange<ByteString> range = reqPair.second;
-        Region region = pair.first;
-        Store store = pair.second;
-        try (RegionStoreClient client = RegionStoreClient.create(region, store, session)) {
-            SelectResponse resp = client.coprocess(req, ImmutableList.of(range));
-            if (resp == null) {
-                eof = true;
-                return false;
-            }
-            chunkIterator = new ChunkIterator(resp.getChunksList());
-        } catch (Exception e) {
-            eof = true;
-            throw new TiClientInternalException("Error Closing Store client.", e);
-        }
-        return true;
+
+        return this.readNextRegionFn.apply(rangeToRegions);
+
     }
 
     @Override

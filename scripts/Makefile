@@ -10,19 +10,18 @@ reminder:
 
 tikv: kv_build
 	@echo "starting tikv as daemon"
-	../tikv/bin/tikv-server --pd="127.0.0.1:2379" --store=tikv -C ../tikv/etc/config-template.toml&
+	../tikv/bin/tikv-server --pd="127.0.0.1:2379" --store=tikv -C ../tikv/etc/config-template.toml >/dev/null 2>&1&
 
 pd: pd_build
 	@echo "starting pd as deamon"
-	../pd/bin/pd-server&
+	../pd/bin/pd-server  --data-dir=pd >/dev/null 2>&1&
 
 
 pd_build: 
-	rm -rf $(PD_PATH) && ln -s $(PWD)/../pd $(PD_PATH)
-	cd $(PD_PATH) && (make > /dev/null  2>&1)
+	which ../pd/bin/pd-server > /dev/null || (rm -rf $(PD_PATH) && ln -s $(PWD)/../pd $(PD_PATH) && cd $(PD_PATH) && (make >/dev/null 2>&1))
 
 kv_build: rust_nightly
-	which ../tikv/bin/tikv-server > /dev/null || cd tikv && make
+	which ../tikv/bin/tikv-server > /dev/null || cd ../tikv && make
 
 rust_nightly:
 	@echo "rust nightly installation takes a lot of time. Leave it for yourself. "

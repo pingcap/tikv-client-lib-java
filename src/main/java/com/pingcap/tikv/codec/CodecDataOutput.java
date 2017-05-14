@@ -165,4 +165,8 @@ public class CodecDataOutput implements DataOutput {
     public ByteString toByteString() {
         return ByteString.copyFrom(byteArray.toByteArray());
     }
+
+    public void reset() {
+        this.byteArray.reset();
+    }
 }
