@@ -16,6 +16,12 @@ The following command can install dependencies for you.
 mvn package
 ```
 
+Alternatively, you can use bazel for much faster build.
+```
+bazel build //src/...
+bazel run //src/main/java/com/pingcap/tikv:tikv-runner
+bazel test //src/...
+```
 this project is designed to hook with `pd` and `tikv` which you can find in `PingCap` github page.
 For the sake of saving your and our time, we submoudle these already. The following command can download them.
 ```
