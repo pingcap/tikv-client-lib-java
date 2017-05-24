@@ -16,14 +16,18 @@
 package com.pingcap.tikv.meta;
 import com.google.protobuf.ByteString;
 
+import java.io.Serializable;
 import java.util.Comparator;
 
-public class TiRange<E> {
+public class TiRange<E> implements Serializable {
     private final E lowVal;
     private final E highVal;
     private final boolean leftOpen;
     private final boolean rightOpen;
-    private Comparator<E> comparator;
+    // This is almost a hack for tiSpark
+    // In reality comparator needs to be deseraialized as well
+    // but in case of TiSpark, we don't do any compare anymore
+    transient private Comparator<E> comparator;
 
     public static <T> TiRange<T> create(T l, T h, boolean lopen, boolean ropen, Comparator<T> c) {
         return new TiRange(l, h, lopen, ropen, c);

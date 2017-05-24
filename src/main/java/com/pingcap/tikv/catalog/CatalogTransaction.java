@@ -28,7 +28,7 @@ import java.util.List;
 import static com.google.common.base.Preconditions.checkArgument;
 
 
-public class CatalogTrasaction {
+public class CatalogTransaction {
     private final Snapshot      snapshot;
     private final byte[]        prefix;
 
@@ -39,7 +39,7 @@ public class CatalogTrasaction {
     private static final byte STR_META_FLAG = 'S';
     private static final byte STR_DATA_FLAG = 's';
 
-    public CatalogTrasaction(Snapshot snapshot) {
+    public CatalogTransaction(Snapshot snapshot) {
         this.snapshot = snapshot;
         this.prefix = META_PREFIX;
     }

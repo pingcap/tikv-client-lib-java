@@ -40,10 +40,10 @@ public class Catalog {
     private static String DB_PREFIX = "DB";
     private static String TBL_PREFIX = "Table";
 
-    private CatalogTrasaction trx;
+    private CatalogTransaction trx;
 
     public Catalog(Snapshot snapshot) {
-        trx = new CatalogTrasaction(snapshot);
+        trx = new CatalogTransaction(snapshot);
     }
 
     public List<TiDBInfo> listDatabases() {

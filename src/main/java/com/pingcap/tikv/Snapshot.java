@@ -33,6 +33,7 @@ import com.pingcap.tikv.meta.TiTableInfo;
 import com.pingcap.tikv.operation.ScanIterator;
 import com.pingcap.tikv.operation.SelectIterator;
 import com.pingcap.tikv.util.Pair;
+import com.pingcap.tikv.util.RangeSplitter;
 
 import java.nio.ByteBuffer;
 import java.util.*;
@@ -77,16 +78,35 @@ public class Snapshot {
         return client.get(key, version.getVersion());
     }
 
-    public Iterator<Row> select(TiTableInfo table, SelectRequest req, List<TiRange<Long>> ranges) {
+    static public List<TiRange<ByteString>> convertHandleRangeToKeyRange(TiTableInfo table,
+                                                                   List<TiRange<Long>> ranges) {
         ImmutableList.Builder<TiRange<ByteString>> builder = ImmutableList.builder();
         for (TiRange<Long> r : ranges) {
             ByteString startKey = TableCodec.encodeRowKeyWithHandle(table.getId(), r.getLowValue());
             ByteString endKey = TableCodec.encodeRowKeyWithHandle(table.getId(),
-                                                                  Math.max(r.getHighValue() + 1, Long.MAX_VALUE));
+                    Math.max(r.getHighValue() + 1, Long.MAX_VALUE));
             builder.add(TiRange.createByteStringRange(startKey, endKey));
         }
-        List<TiRange<ByteString>> keyRanges = builder.build();
-        return new SelectIterator(req, keyRanges, getSession(), regionCache);
+        return builder.build();
+    }
+
+    public Iterator<Row> select(TiTableInfo table, SelectRequest req, List<TiRange<Long>> ranges) {
+        return new SelectIterator(req, convertHandleRangeToKeyRange(table, ranges), getSession(), regionCache);
+    }
+
+    /*
+     * Below method is lower level interface for distributed environment
+     * which avoids calling PD on slave nodes
+     */
+    public Iterator<Row> select(SelectRequest req,
+                                Region region,
+                                Store store,
+                                TiRange<ByteString> range) {
+        Pair<Region, Store> regionStorePair = Pair.create(region, store);
+        Pair<Pair<Region, Store>,
+             TiRange<ByteString>> regionToRangePair = Pair.create(regionStorePair, range);
+
+        return new SelectIterator(req, ImmutableList.of(regionToRangePair), getSession());
     }
 
     public Iterator<KvPair> scan(ByteString startKey) {
@@ -188,6 +208,10 @@ public class Snapshot {
             List<TiRange<Long>> ranges = rangeListBuilder.build();
             checkArgument(ranges.size() > 0);
             return snapshot.select(table, builder.build(), ranges);
+        }
+
+        public SelectRequest buildSelectRequest() {
+            return builder.build();
         }
     }
 

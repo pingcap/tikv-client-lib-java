@@ -36,6 +36,7 @@ import com.pingcap.tikv.meta.TiColumnInfo;
 import com.pingcap.tikv.meta.TiRange;
 import com.pingcap.tikv.type.FieldType;
 import com.pingcap.tikv.util.Pair;
+import com.pingcap.tikv.util.RangeSplitter;
 import com.pingcap.tikv.util.TiFluentIterable;
 
 import java.util.Iterator;
@@ -49,7 +50,6 @@ import static com.google.common.base.Preconditions.checkArgument;
 public class SelectIterator implements Iterator<Row> {
     protected final SelectRequest                               req;
     protected final TiSession                                   session;
-    protected final RegionManager                               regionCache;
     protected final List<Pair<Pair<Region, Store>,
                               TiRange<ByteString>>>             rangeToRegions;
     protected final FieldType[]                                 fieldTypes;
@@ -63,9 +63,8 @@ public class SelectIterator implements Iterator<Row> {
 
     @VisibleForTesting
     public SelectIterator(List<Chunk> chunks, FieldType[] fieldTypes) {
-         this.req = null;
+        this.req = null;
         this.session = null;
-        this.regionCache = null;
         this.fieldTypes = fieldTypes;
         this.rangeToRegions = null;
         this.readNextRegionFn = rangeToRegions -> {
@@ -75,80 +74,50 @@ public class SelectIterator implements Iterator<Row> {
     }
 
     public SelectIterator(SelectRequest req,
-                          List<TiRange<ByteString>> ranges,
-                          TiSession session,
-                          RegionManager rm) {
+                          List<Pair<Pair<Region, Store>,
+                               TiRange<ByteString>>> rangeToRegionsIn,
+                          TiSession session) {
         this.req = req;
+        this.rangeToRegions = rangeToRegionsIn;
         this.session = session;
-        this.regionCache = rm;
-        fieldTypes = TiFluentIterable.from(req.getTableInfo().getColumnsList())
+        this.fieldTypes = TiFluentIterable.from(req.getTableInfo().getColumnsList())
                 .transform(column -> new TiColumnInfo.InternalTypeHolder(column).toFieldType())
                 .toArray(FieldType.class);
-        this.rangeToRegions = splitRangeByRegion(ranges);
-        this.readNextRegionFn  = rangeToRegions -> {
+        this.readNextRegionFn  = (rangeToRegions) -> {
             if (eof || index >= rangeToRegions.size()) {
-            return false;
-        }
-
-        Pair<Pair<Region, Store>, TiRange<ByteString>> reqPair =
-                rangeToRegions.get(index++);
-            Pair<Region, Store> pair = reqPair.first;
-        TiRange<ByteString> range = reqPair.second;
-        Region region = pair.first;
-        Store store = pair.second;
-        try (RegionStoreClient client = RegionStoreClient.create(region, store, session)) {
-            SelectResponse resp = client.coprocess(req, ImmutableList.of(range));
-            if (resp == null) {
-                eof = true;
                 return false;
             }
-            chunkIterator = new ChunkIterator(resp.getChunksList());
-        } catch (Exception e) {
-            eof = true;
-            throw new TiClientInternalException("Error Closing Store client.", e);
-        }
-        return true;
+
+            Pair<Pair<Region, Store>, TiRange<ByteString>> reqPair =
+                    rangeToRegions.get(index++);
+            Pair<Region, Store> pair = reqPair.first;
+            TiRange<ByteString> range = reqPair.second;
+            Region region = pair.first;
+            Store store = pair.second;
+            try (RegionStoreClient client = RegionStoreClient.create(region, store, session)) {
+                SelectResponse resp = client.coprocess(req, ImmutableList.of(range));
+                if (resp == null) {
+                    eof = true;
+                    return false;
+                }
+                chunkIterator = new ChunkIterator(resp.getChunksList());
+            } catch (Exception e) {
+                eof = true;
+                throw new TiClientInternalException("Error Closing Store client.", e);
+            }
+            return true;
         };
     }
 
-    public List<Pair<Pair<Region, Store>, TiRange<ByteString>>>
-    splitRangeByRegion(List<TiRange<ByteString>> keyRanges) {
-        checkArgument(keyRanges != null && keyRanges.size() != 0);
-        int i = 0;
-        TiRange<ByteString> range = keyRanges.get(i++);
-        Comparator<ByteString> comp = range.getComparator();
-        ImmutableList.Builder<Pair<Pair<Region, Store>, TiRange<ByteString>>> resultBuilder = ImmutableList.builder();
-        while (true) {
-            Pair<Region, Store> pair = regionCache.getRegionStorePairByKey(range.getLowValue());
-            Region region = pair.first;
-            ByteString startKey = range.getLowValue();
-
-            // TODO: Deal with open close range more carefully
-            if (region.getEndKey().size() != 0 &&
-                comp.compare(range.getHighValue(), region.getEndKey()) >= 0) {
-                // Current Range not ended
-                TiRange<ByteString> mappedRange =
-                        TiRange.createByteStringRange(startKey, region.getEndKey(), range.isLeftOpen(), true);
-                resultBuilder.add(Pair.create(pair, mappedRange));
-                range = TiRange.createByteStringRange(region.getEndKey(), range.getHighValue(), false, range.isRightOpen());
-            } else {
-                TiRange<ByteString> mappedRange =
-                        TiRange.createByteStringRange(startKey, range.getHighValue(), range.isLeftOpen(), range.isRightOpen());
-                resultBuilder.add(Pair.create(pair, mappedRange));
-                if (i >= keyRanges.size()) {
-                    break;
-                }
-                range = keyRanges.get(i++);
-            }
-        }
-        return resultBuilder.build();
+    public SelectIterator(SelectRequest req,
+                          List<TiRange<ByteString>> ranges,
+                          TiSession session,
+                          RegionManager rm) {
+        this(req, RangeSplitter.newSplitter(rm).splitRangeByRegion(ranges), session);
     }
 
     private boolean readNextRegion() {
-
-
         return this.readNextRegionFn.apply(rangeToRegions);
-
     }
 
     @Override
