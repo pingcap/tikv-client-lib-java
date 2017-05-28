@@ -174,5 +174,5 @@ public class CodecDataInput implements DataInput {
     public boolean eof() {
         return backingStream.available() == 0;
     }
-    public int size() { return backingBuffer.length;}
+    public int size() { return backingStream.available();}
 }

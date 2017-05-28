@@ -8,3 +8,11 @@ filegroup(
         "//src/test/java/com/pingcap/tikv:srcs",
     ],
 )
+
+java_binary(
+    name = "tikv-java-client",
+    main_class = "com.pingcap.tikv.Main",
+    runtime_deps = [
+        "//src/main/java/com/pingcap/tikv:tikv-java-client-lib",
+    ],
+)

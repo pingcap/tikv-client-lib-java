@@ -40,6 +40,19 @@ public class ObjectRowImpl implements Row {
         return values[pos] == null;
     }
 
+
+    @Override
+    public void setDecimal(int pos, double v) {
+        values[pos] = v;
+    }
+
+    @Override
+    public double getDecimal(int pos) {
+        // Null should be handled by client code with isNull
+        // below all get method behave the same
+        return (double)values[pos];
+    }
+    
     @Override
     public void setLong(int pos, long v) {
         values[pos] = v;
