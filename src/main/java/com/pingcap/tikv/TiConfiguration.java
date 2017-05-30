@@ -24,13 +24,14 @@ import com.google.common.net.HostAndPort;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 public class TiConfiguration {
-    public static final int                     DEF_TIMEOUT = 3;
-    public static final TimeUnit                DEF_TIMEOUT_UNIT = TimeUnit.SECONDS;
-    public static final int                     DEF_SCAN_BATCH_SIZE = 100;
-    public static final boolean                 DEF_IGNORE_TRUNCATE = true;
-    public static final boolean                 DEF_TRUNCATE_AS_WARNING = false;
+    private static final int                     DEF_TIMEOUT = 3;
+    private static final TimeUnit                DEF_TIMEOUT_UNIT = TimeUnit.SECONDS;
+    private static final int                     DEF_SCAN_BATCH_SIZE = 100;
+    private static final boolean                 DEF_IGNORE_TRUNCATE = true;
+    private static final boolean                 DEF_TRUNCATE_AS_WARNING = false;
 
     private int                                 timeout = DEF_TIMEOUT;
     private TimeUnit                            timeoutUnit = DEF_TIMEOUT_UNIT;
@@ -41,8 +42,11 @@ public class TiConfiguration {
 
     public static TiConfiguration createDefault(List<String> pdAddrs) {
         TiConfiguration conf = new TiConfiguration();
-        conf.pdAddrs = ImmutableList.copyOf(Iterables.transform(ImmutableSet.copyOf(pdAddrs).asList(),
-                addStr -> HostAndPort.fromString(addStr)));
+        conf.pdAddrs = ImmutableList.copyOf(ImmutableSet.copyOf(pdAddrs)
+                .asList()
+                .stream()
+                .map(HostAndPort::fromString)
+                .collect(Collectors.toList()));
         return conf;
     }
 

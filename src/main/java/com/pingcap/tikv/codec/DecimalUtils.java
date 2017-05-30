@@ -33,11 +33,11 @@ public class DecimalUtils {
         if (cdi.size() < 3) {
             throw new IllegalArgumentException("insufficient bytes to read value");
         }
-        int precision = cdi.readChar();
-        int frac = cdi.readChar();
+        int precision = cdi.readUnsignedByte();
+        int frac = cdi.readUnsignedByte();
         List<Integer> data = new ArrayList<>();
         for(;!cdi.eof();) {
-            data.add((int) cdi.readChar());
+            data.add(cdi.readUnsignedByte());
         }
 
         MyDecimal dec = new MyDecimal();
@@ -50,14 +50,13 @@ public class DecimalUtils {
      * @param lvalue is decimal value that will be written into cdo.
      * */
     public static void writeDecimalFully(CodecDataOutput cdo, double lvalue) {
-        String value = Double.toString(lvalue);
         MyDecimal dec = new MyDecimal();
-        dec.fromString(value);
+        dec.fromDecimal(lvalue);
         int[] data = dec.toBin(dec.precision(), dec.frac());
-        cdo.writeChar(dec.precision());
-        cdo.writeChar(dec.frac());
+        cdo.writeByte(dec.precision());
+        cdo.writeByte(dec.frac());
         for (int aData : data) {
-            cdo.writeChar(aData);
+            cdo.writeByte(aData & 0xFF);
         }
     }
 }

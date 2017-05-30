@@ -20,12 +20,12 @@ import com.google.common.net.HostAndPort;
 import com.google.protobuf.ByteString;
 import com.pingcap.tikv.exception.GrpcException;
 import com.pingcap.tikv.grpc.Metapb;
+import com.pingcap.tikv.grpc.Metapb.Region;
+import com.pingcap.tikv.grpc.Metapb.Store;
 import com.pingcap.tikv.grpc.PDGrpc;
 import com.pingcap.tikv.grpc.PDGrpc.PDBlockingStub;
 import com.pingcap.tikv.grpc.PDGrpc.PDStub;
 import com.pingcap.tikv.grpc.Pdpb.*;
-import com.pingcap.tikv.grpc.Metapb.Region;
-import com.pingcap.tikv.grpc.Metapb.Store;
 import com.pingcap.tikv.meta.TiTimestamp;
 import com.pingcap.tikv.util.FutureObserver;
 import io.grpc.ManagedChannel;
@@ -329,6 +329,7 @@ public class PDClient extends AbstractGrpcClient<PDBlockingStub, PDStub> impleme
                 }
             }
         }
+
         return client;
     }
 }

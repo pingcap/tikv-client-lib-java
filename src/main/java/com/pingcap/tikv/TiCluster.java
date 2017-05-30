@@ -21,6 +21,7 @@ import com.pingcap.tikv.meta.Row;
 import com.pingcap.tikv.meta.TiDBInfo;
 import com.pingcap.tikv.meta.TiRange;
 import com.pingcap.tikv.meta.TiTableInfo;
+import com.pingcap.tikv.grpc.Pdpb.RequestHeader;
 
 import java.util.Iterator;
 import java.util.List;
@@ -34,6 +35,7 @@ public class TiCluster implements AutoCloseable {
     private TiCluster(TiConfiguration conf) {
         this.session = TiSession.create(conf);
         this.client = PDClient.createRaw(session);
+        RequestHeader header = this.client.getHeader();
         this.regionManager = new RegionManager(client);
     }
 
@@ -58,7 +60,7 @@ public class TiCluster implements AutoCloseable {
     }
 
     @Override
-    public void close() throws InterruptedException {
+    public void close() throws Exception {
         if (client != null) {
             client.close();
         }

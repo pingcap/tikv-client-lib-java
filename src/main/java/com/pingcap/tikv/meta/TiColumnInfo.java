@@ -24,6 +24,7 @@ import com.pingcap.tikv.exception.TiClientInternalException;
 import com.pingcap.tikv.type.FieldType;
 import com.pingcap.tikv.type.LongType;
 import com.pingcap.tikv.type.StringType;
+import com.pingcap.tikv.type.DecimalType;
 
 import java.util.List;
 import java.util.Map;
@@ -106,6 +107,7 @@ public class TiColumnInfo {
             typeBuilder = ImmutableMap.<Integer, Builder<? extends FieldType>>builder()
                     .put(LongType.TYPE_CODE, holder -> new LongType(holder))
                     .put(StringType.TYPE_CODE, holder -> new StringType(holder))
+                    .put(DecimalType.TYPE_CODE, holder -> new DecimalType(holder))
                     .build();
         }
 

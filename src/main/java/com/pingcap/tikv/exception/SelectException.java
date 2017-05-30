@@ -23,6 +23,12 @@ public class SelectException extends RuntimeException {
         this.err = err;
     }
 
+    //TODO: improve this
+    public SelectException(String msg) {
+        super(msg);
+        this.err = null;
+    }
+
     public Error getError() {
         return err;
     }

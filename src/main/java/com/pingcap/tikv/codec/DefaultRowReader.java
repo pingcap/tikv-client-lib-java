@@ -32,6 +32,7 @@ public class DefaultRowReader implements RowReader {
 
     @Override
     public Row readRow(FieldType[] fieldTypes) {
+        byte[] rowData = cdi.toByteArray();
         Row row = ObjectRowImpl.create(fieldTypes.length);
         for (int i = 0; i < fieldTypes.length; i++) {
             fieldTypes[i].decodeValueToRow(cdi, row, i);

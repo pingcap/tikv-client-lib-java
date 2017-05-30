@@ -15,7 +15,6 @@
 
 package com.pingcap.tikv.meta;
 
-
 import com.pingcap.tikv.type.FieldType;
 
 // TODO: Mapping unsigned and other types

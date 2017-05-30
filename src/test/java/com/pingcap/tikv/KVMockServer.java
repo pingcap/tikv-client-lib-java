@@ -36,7 +36,7 @@ import java.net.ServerSocket;
 import java.util.*;
 
 
-public class KVMockServer extends TiKVGrpc.TiKVImplBase {
+public class KVMockServer extends TikvGrpc.TikvImplBase {
 
     public int port;
     public Server server;

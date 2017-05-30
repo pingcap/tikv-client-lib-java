@@ -15,9 +15,6 @@
 
 package com.pingcap.tikv;
 
-
-import static com.google.common.base.Preconditions.checkNotNull;
-import static com.google.common.base.Preconditions.checkArgument;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Range;
 import com.google.protobuf.ByteString;
@@ -36,13 +33,15 @@ import com.pingcap.tikv.util.Pair;
 import com.pingcap.tikv.util.RangeSplitter;
 
 import java.nio.ByteBuffer;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.List;
 
 public class Snapshot {
     private final Version version;
     private final RegionManager regionCache;
     private final TiSession session;
-    private final static int EPOCH_SHIFT_BITS = 18;
+    private static final int EPOCH_SHIFT_BITS = 18;
     private final TiConfiguration conf;
 
     public Snapshot(Version version, RegionManager regionCache, TiSession session) {
@@ -72,8 +71,7 @@ public class Snapshot {
 
     public ByteString get(ByteString key) {
         Pair<Region, Store> pair = regionCache.getRegionStorePairByKey(key);
-        RegionStoreClient client = RegionStoreClient
-                .create(pair.first, pair.second, getSession());
+        RegionStoreClient client = RegionStoreClient.create(pair.first, pair.second, getSession());
         // TODO: Need to deal with lock error after grpc stable
         return client.get(key, version.getVersion());
     }
@@ -110,12 +108,8 @@ public class Snapshot {
     }
 
     public Iterator<KvPair> scan(ByteString startKey) {
-        return new ScanIterator(startKey,
-                conf.getScanBatchSize(),
-                null,
-                session,
-                regionCache,
-                version.getVersion());
+        return new ScanIterator(
+                startKey, conf.getScanBatchSize(), null, session, regionCache, version.getVersion());
     }
 
     // TODO: Need faster implementation, say concurrent version
@@ -131,21 +125,19 @@ public class Snapshot {
                 Pair<Region, Store> pair = regionCache.getRegionStorePairByKey(key);
                 lastPair = pair;
                 curRegion = pair.first;
-                curKeyRange = Range.closedOpen(curRegion.getStartKey().asReadOnlyByteBuffer(),
-                                               curRegion.getEndKey().asReadOnlyByteBuffer());
-                if (lastPair != null) {
-                    try (RegionStoreClient client = RegionStoreClient
-                            .create(lastPair.first, lastPair.second, getSession())) {
-                        List<KvPair> partialResult = client.batchGet(keyBuffer, version.getVersion());
-                        for (KvPair kv : partialResult) {
-                            // TODO: Add lock check
-                            result.add(kv);
-                        }
-                    } catch (Exception e) {
-                        throw new TiClientInternalException("Error Closing Store client.", e);
+                curKeyRange = Range.closedOpen(
+                        curRegion.getStartKey().asReadOnlyByteBuffer(),
+                        curRegion.getEndKey().asReadOnlyByteBuffer());
+                try (RegionStoreClient client = RegionStoreClient.create(lastPair.first, lastPair.second, getSession())) {
+                    List<KvPair> partialResult = client.batchGet(keyBuffer, version.getVersion());
+                    for (KvPair kv : partialResult) {
+                        // TODO: Add lock check
+                        result.add(kv);
                     }
-                    keyBuffer = new ArrayList<>();
+                } catch (Exception e) {
+                    throw new TiClientInternalException("Error Closing Store client.", e);
                 }
+                keyBuffer = new ArrayList<>();
                 keyBuffer.add(key);
             }
         }
@@ -153,66 +145,7 @@ public class Snapshot {
     }
 
     public SelectBuilder newSelect(TiTableInfo table) {
-        return new SelectBuilder(this, table);
-    }
-
-    public static class SelectBuilder {
-        private static long MASK_IGNORE_TRUNCATE     = 0x1;
-        private static long MASK_TRUNC_AS_WARNING    = 0x2;
-
-        private final Snapshot snapshot;
-        private final SelectRequest.Builder builder;
-        private final ImmutableList.Builder<TiRange<Long>> rangeListBuilder;
-        private TiTableInfo table;
-
-        private TiSession getSession() {
-            return snapshot.getSession();
-        }
-
-        private TiConfiguration getConf() {
-            return getSession().getConf();
-        }
-
-        private SelectBuilder(Snapshot snapshot, TiTableInfo table) {
-            this.snapshot = snapshot;
-            this.builder = SelectRequest.newBuilder();
-            this.rangeListBuilder = ImmutableList.builder();
-            this.table = table;
-
-            long flags = 0;
-            if (getConf().isIgnoreTruncate()) {
-                flags |= MASK_IGNORE_TRUNCATE;
-            } else if (getConf().isTruncateAsWarning()) {
-                flags |= MASK_TRUNC_AS_WARNING;
-            }
-            builder.setFlags(flags);
-            builder.setStartTs(snapshot.getVersion());
-            // Set default timezone offset
-            TimeZone tz = TimeZone.getDefault();
-            builder.setTimeZoneOffset(tz.getOffset(new Date().getTime()) / 1000);
-            builder.setTableInfo(table.toProto());
-        }
-
-        public SelectBuilder setTimeZoneOffset(long offset) {
-            builder.setTimeZoneOffset(offset);
-            return this;
-        }
-
-        public SelectBuilder addRange(TiRange<Long> keyRange) {
-            rangeListBuilder.add(keyRange);
-            return this;
-        }
-
-        public Iterator<Row> doSelect() {
-            checkNotNull(table);
-            List<TiRange<Long>> ranges = rangeListBuilder.build();
-            checkArgument(ranges.size() > 0);
-            return snapshot.select(table, builder.build(), ranges);
-        }
-
-        public SelectRequest buildSelectRequest() {
-            return builder.build();
-        }
+        return SelectBuilder.newBuilder(this, table);
     }
 
     public static class Version {
@@ -222,6 +155,7 @@ public class Snapshot {
         }
 
         private final long version;
+
         private Version(long ts) {
             version = ts;
         }

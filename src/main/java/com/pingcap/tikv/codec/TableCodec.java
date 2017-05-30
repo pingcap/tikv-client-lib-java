@@ -26,11 +26,6 @@ public class TableCodec {
         appendTableRecordPrefix(cdo, tableId);
         cdo.write(encodeHandle);
     }
-    private static void appendTableRecordPrefix(ByteString buf, long tableId) {
-//        cdo.write(TBL_PREFIX);
-//        LongUtils.writeLong(cdo, tableId);
-//        cdo.write(REC_PREFIX_SEP);
-    }
 
     private static void appendTableRecordPrefix(CodecDataOutput cdo, long tableId) {
         cdo.write(TBL_PREFIX);
@@ -39,12 +34,6 @@ public class TableCodec {
     }
     // encodeRowKeyWithHandle encodes the table id, row handle into a bytes buffer/array
     public static ByteString encodeRowKeyWithHandle(long tableId, long handle) {
-        // make a byte array with lengh recordRowKeyLen + idLen
-        // append Table Record Prefix
-        // EncodeInt
-        // return
-        // RECORD_ROW_KEY_LEN + ID_LEN;
-        // appendTableRecordPrefix(buf, tableId);
         CodecDataOutput cdo = new CodecDataOutput();
         appendTableRecordPrefix(cdo, tableId);
         LongUtils.writeLong(cdo, handle);

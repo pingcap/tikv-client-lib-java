@@ -81,7 +81,7 @@ public class BytesUtils {
     }
 
     private static byte[] readCompactBytes(CodecDataInput cdi, int size) {
-        byte[] data = new byte[size];
+       byte[] data = new byte[size];
        for(int i = 0; i < size; i++) {
            data[i] =  cdi.readByte();
        }

@@ -57,7 +57,7 @@ public abstract class FieldType {
             row.setNull(pos);
         }
         if (!isValidFlag(flag)) {
-            throw new TiClientInternalException("Invalid " + toString() + " flag: " + flag);
+            // throw new TiClientInternalException("Invalid " + toString() + " flag: " + flag);
         }
         decodeValueNoNullToRow(cdi, row, pos);
     }

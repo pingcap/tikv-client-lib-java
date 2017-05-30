@@ -30,9 +30,9 @@ import com.pingcap.tikv.grpc.Coprocessor;
 import com.pingcap.tikv.grpc.Kvrpcpb.*;
 import com.pingcap.tikv.grpc.Metapb.Region;
 import com.pingcap.tikv.grpc.Metapb.Store;
-import com.pingcap.tikv.grpc.TiKVGrpc;
-import com.pingcap.tikv.grpc.TiKVGrpc.TiKVBlockingStub;
-import com.pingcap.tikv.grpc.TiKVGrpc.TiKVStub;
+import com.pingcap.tikv.grpc.TikvGrpc;
+import com.pingcap.tikv.grpc.TikvGrpc.TikvBlockingStub;
+import com.pingcap.tikv.grpc.TikvGrpc.TikvStub;
 import com.pingcap.tikv.meta.TiRange;
 import com.pingcap.tikv.util.FutureObserver;
 import io.grpc.ManagedChannel;
@@ -44,10 +44,10 @@ import java.util.concurrent.Future;
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
 
-public class RegionStoreClient extends AbstractGrpcClient<TiKVBlockingStub, TiKVStub> {
+public class RegionStoreClient extends AbstractGrpcClient<TikvBlockingStub, TikvStub> {
     private final Context                   context;
-    private final TiKVBlockingStub          blockingStub;
-    private final TiKVStub                  asyncStub;
+    private final TikvBlockingStub          blockingStub;
+    private final TikvStub                  asyncStub;
     private final ManagedChannel            channel;
 
     private final int ReqTypeSelect = 101;
@@ -59,7 +59,7 @@ public class RegionStoreClient extends AbstractGrpcClient<TiKVBlockingStub, TiKV
                 .setKey(key)
                 .setVersion(version)
                 .build();
-        GetResponse resp = callWithRetry(TiKVGrpc.METHOD_KV_GET, request);
+        GetResponse resp = callWithRetry(TikvGrpc.METHOD_KV_GET, request);
         return getHelper(resp);
     }
 
@@ -72,7 +72,7 @@ public class RegionStoreClient extends AbstractGrpcClient<TiKVBlockingStub, TiKV
                 .setVersion(version)
                 .build();
 
-        callAsyncWithRetry(TiKVGrpc.METHOD_KV_GET, request, responseObserver);
+        callAsyncWithRetry(TikvGrpc.METHOD_KV_GET, request, responseObserver);
         return responseObserver.getFuture();
     }
 
@@ -92,7 +92,7 @@ public class RegionStoreClient extends AbstractGrpcClient<TiKVBlockingStub, TiKV
                 .addAllKeys(keys)
                 .setVersion(version)
                 .build();
-        BatchGetResponse resp = callWithRetry(TiKVGrpc.METHOD_KV_BATCH_GET, request);
+        BatchGetResponse resp = callWithRetry(TikvGrpc.METHOD_KV_BATCH_GET, request);
         return batchGetHelper(resp);
     }
 
@@ -106,7 +106,7 @@ public class RegionStoreClient extends AbstractGrpcClient<TiKVBlockingStub, TiKV
                 .setVersion(version)
                 .build();
 
-        callAsyncWithRetry(TiKVGrpc.METHOD_KV_BATCH_GET, request, responseObserver);
+        callAsyncWithRetry(TikvGrpc.METHOD_KV_BATCH_GET, request, responseObserver);
         return responseObserver.getFuture();
     }
 
@@ -133,7 +133,7 @@ public class RegionStoreClient extends AbstractGrpcClient<TiKVBlockingStub, TiKV
                 .setKeyOnly(keyOnly)
                 .setLimit(getConf().getScanBatchSize())
                 .build();
-        ScanResponse resp = callWithRetry(TiKVGrpc.METHOD_KV_SCAN, request);
+        ScanResponse resp = callWithRetry(TikvGrpc.METHOD_KV_SCAN, request);
         return scanHelper(resp);
     }
 
@@ -148,7 +148,7 @@ public class RegionStoreClient extends AbstractGrpcClient<TiKVBlockingStub, TiKV
                 .setKeyOnly(keyOnly)
                 .build();
 
-        callAsyncWithRetry(TiKVGrpc.METHOD_KV_SCAN, request, responseObserver);
+        callAsyncWithRetry(TikvGrpc.METHOD_KV_SCAN, request, responseObserver);
         return responseObserver.getFuture();
     }
 
@@ -173,7 +173,7 @@ public class RegionStoreClient extends AbstractGrpcClient<TiKVBlockingStub, TiKV
                 .setData(req.toByteString())
                 .addAllRanges(Iterables.transform(ranges, r -> rangeToProto(r)))
                 .build();
-        Coprocessor.Response resp = callWithRetry(TiKVGrpc.METHOD_COPROCESSOR, reqToSend);
+        Coprocessor.Response resp = callWithRetry(TikvGrpc.METHOD_COPROCESSOR, reqToSend);
         return coprocessorHelper(resp);
     }
 
@@ -186,7 +186,7 @@ public class RegionStoreClient extends AbstractGrpcClient<TiKVBlockingStub, TiKV
                 .setData(req.toByteString())
                 .addAllRanges(Iterables.transform(ranges, r -> rangeToProto(r)))
                 .build();
-        callAsyncWithRetry(TiKVGrpc.METHOD_COPROCESSOR, reqToSend, responseObserver);
+        callAsyncWithRetry(TikvGrpc.METHOD_COPROCESSOR, reqToSend, responseObserver);
         return responseObserver.getFuture();
     }
 
@@ -218,8 +218,8 @@ public class RegionStoreClient extends AbstractGrpcClient<TiKVBlockingStub, TiKV
                     .forAddress(address.getHostText(), address.getPort())
                     .usePlaintext(true)
                     .build();
-            TiKVBlockingStub blockingStub = TiKVGrpc.newBlockingStub(channel);
-            TiKVStub asyncStub = TiKVGrpc.newStub(channel);
+            TikvBlockingStub blockingStub = TikvGrpc.newBlockingStub(channel);
+            TikvStub asyncStub = TikvGrpc.newStub(channel);
             client = new RegionStoreClient(region, session, channel, blockingStub, asyncStub);
         } catch (Exception e) {
             if (client != null) {
@@ -235,8 +235,8 @@ public class RegionStoreClient extends AbstractGrpcClient<TiKVBlockingStub, TiKV
 
     private RegionStoreClient(Region region, TiSession session,
                               ManagedChannel channel,
-                              TiKVBlockingStub blockingStub,
-                              TiKVStub asyncStub) {
+                              TikvBlockingStub blockingStub,
+                              TikvStub asyncStub) {
         super(session);
         checkNotNull(region, "Region is empty");
         checkArgument(region.getPeersCount() > 0, "Peer is empty");
@@ -251,13 +251,13 @@ public class RegionStoreClient extends AbstractGrpcClient<TiKVBlockingStub, TiKV
     }
 
     @Override
-    protected TiKVBlockingStub getBlockingStub() {
+    protected TikvBlockingStub getBlockingStub() {
         return blockingStub.withDeadlineAfter(getConf().getTimeout(),
                 getConf().getTimeoutUnit());
     }
 
     @Override
-    protected TiKVStub getAsyncStub() {
+    protected TikvStub getAsyncStub() {
         return asyncStub.withDeadlineAfter(getConf().getTimeout(),
                 getConf().getTimeoutUnit());
     }
