@@ -1,13 +1,11 @@
 ## Ti-Client in Java [Under Construction]
 
-NOTES: For now it works with only TiKV branch disksing/grpc instead of official release.
-
-A Java client for [TiDB](https://github.com/pingcap/tidb)/[TiKV](https://github.com/pingcap/tikv). 
-It suppose to:
+A Java client for [TiDB](https://github.com/pingcap/tidb)/[TiKV](https://github.com/pingcap/tikv).
+It is supposed to:
 + Communicate via [gRPC](http://www.grpc.io/)
 + Talk to Placement Driver searching for a region
-+ Talk to TiKV reading / writing data the format/encoding as a real TiDB.
-+ Talk Coprocessor for calculation pushdown
++ Talk to TiKV for reading/writing data and the resulted data is encoded/decoded just like what we do in TiDB.
++ Talk to Coprocessor for calculation pushdown
 
 ## How to build
 
@@ -16,17 +14,23 @@ The following command can install dependencies for you.
 mvn package
 ```
 
-Alternatively, you can use bazel for much faster build.
+Alternatively, you can use `bazel` for much faster build. When you try this approach, you should run `git submodule update --init --recursive` before you build project.
+
+Making a uber jar:
 ```
-bazel build //src/...
-bazel run //src/main/java/com/pingcap/tikv:tikv-runner
-bazel test //src/...
+make uber_jar
 ```
+run Main class:
+```
+make run
+```
+
+run test cases:
+```
+make test
+```
+
 this project is designed to hook with `pd` and `tikv` which you can find in `PingCap` github page.
-For the sake of saving your and our time, we submoudle these already. The following command can download them.
-```
-git submodule update --init --recursive
-```
 
 When you work with this project, you have to communicate with `pd` and `tikv`. There is a script taking care of this. By executing the following commands, `pd` and `tikv` can be executed on background.
 ```
@@ -34,7 +38,6 @@ cd scripts
 make pd
 make tikv
 ```
-
 
 ## How to use for now
 Since it's not quite complete, a usage sample for now can be given is:

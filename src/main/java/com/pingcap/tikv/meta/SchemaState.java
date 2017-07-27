@@ -15,32 +15,32 @@
 
 package com.pingcap.tikv.meta;
 
-
 import com.pingcap.tikv.exception.TiClientInternalException;
 
 public enum SchemaState {
-    StateNone(0),
-    StateDeleteOnly(1),
-    StateWriteOnly(2),
-    StateWriteReorganization(3),
-    StateDeleteReorganization(4),
-    StatePublic(5);
+  StateNone(0),
+  StateDeleteOnly(1),
+  StateWriteOnly(2),
+  StateWriteReorganization(3),
+  StateDeleteReorganization(4),
+  StatePublic(5);
 
-    private final int state;
-    SchemaState(int state) {
-        this.state = state;
-    }
+  private final int state;
 
-    public static SchemaState fromValue(int b) {
-        for (SchemaState e : SchemaState.values()) {
-            if (e.state == b) {
-                return e;
-            }
-        }
-        throw new TiClientInternalException("Invalid SchemaState code: " + b);
-    }
+  SchemaState(int state) {
+    this.state = state;
+  }
 
-    public int getStateCode() {
-        return state;
+  public static SchemaState fromValue(int b) {
+    for (SchemaState e : SchemaState.values()) {
+      if (e.state == b) {
+        return e;
+      }
     }
+    throw new TiClientInternalException("Invalid SchemaState code: " + b);
+  }
+
+  public int getStateCode() {
+    return state;
+  }
 }

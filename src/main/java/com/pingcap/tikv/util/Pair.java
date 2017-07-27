@@ -15,16 +15,18 @@
 
 package com.pingcap.tikv.util;
 
+import java.io.Serializable;
 
-public class Pair<F, S> {
-    public final F first;
-    public final S second;
-    public Pair(F f, S s) {
-        first = f;
-        second = s;
-    }
+public class Pair<F, S> implements Serializable {
+  public final F first;
+  public final S second;
 
-    public static <F, S> Pair<F, S> create(F f, S s) {
-        return new Pair(f, s);
-    }
+  public Pair(F f, S s) {
+    first = f;
+    second = s;
+  }
+
+  public static <F, S> Pair<F, S> create(F f, S s) {
+    return new Pair<>(f, s);
+  }
 }

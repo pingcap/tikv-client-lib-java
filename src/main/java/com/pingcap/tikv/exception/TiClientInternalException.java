@@ -16,11 +16,11 @@
 package com.pingcap.tikv.exception;
 
 public class TiClientInternalException extends RuntimeException {
-    public TiClientInternalException(String msg) {
-        super(msg);
-    }
+  public TiClientInternalException(String msg) {
+    super(msg);
+  }
 
-    public TiClientInternalException(String msg, Throwable t) {
-        super(msg, t);
-    }
+  public TiClientInternalException(String msg, Throwable t) {
+    super(msg, t);
+  }
 }

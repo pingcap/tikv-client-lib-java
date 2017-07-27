@@ -15,22 +15,22 @@
 
 package com.pingcap.tikv.meta;
 
+import static org.junit.Assert.*;
+
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.Test;
 
-import static org.junit.Assert.*;
-
-
 public class DBInfoTest {
-    @Test
-    public void testSerialize() throws Exception {
-        ObjectMapper mapper = new ObjectMapper();
-        String json = "{\"id\":1,\"db_name\":{\"O\":\"test\",\"L\":\"test\"},\"charset\":\"utf8\",\"collate\":\"utf8_bin\",\"state\":5}";
-        TiDBInfo dbInfo = mapper.readValue(json, TiDBInfo.class);
-        assertEquals(dbInfo.getId(), 1);
-        assertEquals(dbInfo.getName(), "test");
-        assertEquals(dbInfo.getCharset(), "utf8");
-        assertEquals(dbInfo.getCollate(), "utf8_bin");
-        assertEquals(dbInfo.getSchemaState(), SchemaState.StatePublic);
-    }
+  @Test
+  public void testSerialize() throws Exception {
+    ObjectMapper mapper = new ObjectMapper();
+    String json =
+        "{\"id\":1,\"db_name\":{\"O\":\"test\",\"L\":\"test\"},\"charset\":\"utf8\",\"collate\":\"utf8_bin\",\"state\":5}";
+    TiDBInfo dbInfo = mapper.readValue(json, TiDBInfo.class);
+    assertEquals(dbInfo.getId(), 1);
+    assertEquals(dbInfo.getName(), "test");
+    assertEquals(dbInfo.getCharset(), "utf8");
+    assertEquals(dbInfo.getCollate(), "utf8_bin");
+    assertEquals(dbInfo.getSchemaState(), SchemaState.StatePublic);
+  }
 }

@@ -15,158 +15,157 @@
 
 package com.pingcap.tikv.codec;
 
-
 import com.google.protobuf.ByteString;
-
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutput;
 import java.io.DataOutputStream;
 
 // A trivial implementation supposed to be replaced
 public class CodecDataOutput implements DataOutput {
-    private DataOutputStream s;
-    // TODO: Switch to ByteBuffer if possible, or a chain of ByteBuffer
-    private ByteArrayOutputStream byteArray;
-    public CodecDataOutput() {
-        byteArray = new ByteArrayOutputStream();
-        s = new DataOutputStream(byteArray);
-    }
+  private DataOutputStream s;
+  // TODO: Switch to ByteBuffer if possible, or a chain of ByteBuffer
+  private ByteArrayOutputStream byteArray;
 
-    @Override
-    public void write(int b) {
-        try {
-            s.write(b);
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
-    }
+  public CodecDataOutput() {
+    byteArray = new ByteArrayOutputStream();
+    s = new DataOutputStream(byteArray);
+  }
 
-    @Override
-    public void write(byte b[]) {
-        try {
-            s.write(b);
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
+  @Override
+  public void write(int b) {
+    try {
+      s.write(b);
+    } catch (Exception e) {
+      throw new RuntimeException(e);
     }
+  }
 
-    @Override
-    public void write(byte[] b, int off, int len) {
-        try {
-            s.write(b, off, len);
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
+  @Override
+  public void write(byte b[]) {
+    try {
+      s.write(b);
+    } catch (Exception e) {
+      throw new RuntimeException(e);
     }
+  }
 
-    @Override
-    public void writeBoolean(boolean v) {
-        try {
-            s.writeBoolean(v);
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
+  @Override
+  public void write(byte[] b, int off, int len) {
+    try {
+      s.write(b, off, len);
+    } catch (Exception e) {
+      throw new RuntimeException(e);
     }
+  }
 
-    @Override
-    public void writeByte(int v) {
-        try {
-            s.writeByte(v);
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
+  @Override
+  public void writeBoolean(boolean v) {
+    try {
+      s.writeBoolean(v);
+    } catch (Exception e) {
+      throw new RuntimeException(e);
     }
+  }
 
-    @Override
-    public void writeShort(int v) {
-        try {
-            s.writeShort(v);
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
+  @Override
+  public void writeByte(int v) {
+    try {
+      s.writeByte(v);
+    } catch (Exception e) {
+      throw new RuntimeException(e);
     }
+  }
 
-    @Override
-    public void writeChar(int v) {
-        try {
-            s.writeChar(v);
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
+  @Override
+  public void writeShort(int v) {
+    try {
+      s.writeShort(v);
+    } catch (Exception e) {
+      throw new RuntimeException(e);
     }
+  }
 
-    @Override
-    public void writeInt(int v) {
-        try {
-            s.writeInt(v);
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
+  @Override
+  public void writeChar(int v) {
+    try {
+      s.writeChar(v);
+    } catch (Exception e) {
+      throw new RuntimeException(e);
     }
+  }
 
-    @Override
-    public void writeLong(long v) {
-        try {
-            s.writeLong(v);
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
+  @Override
+  public void writeInt(int v) {
+    try {
+      s.writeInt(v);
+    } catch (Exception e) {
+      throw new RuntimeException(e);
     }
+  }
 
-    @Override
-    public void writeFloat(float v) {
-        try {
-            s.writeFloat(v);
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
+  @Override
+  public void writeLong(long v) {
+    try {
+      s.writeLong(v);
+    } catch (Exception e) {
+      throw new RuntimeException(e);
     }
+  }
 
-    @Override
-    public void writeDouble(double v) {
-        try {
-            s.writeDouble(v);
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
+  @Override
+  public void writeFloat(float v) {
+    try {
+      s.writeFloat(v);
+    } catch (Exception e) {
+      throw new RuntimeException(e);
     }
+  }
 
-    @Override
-    public void writeBytes(String v) {
-        try {
-            s.writeBytes(v);
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
+  @Override
+  public void writeDouble(double v) {
+    try {
+      s.writeDouble(v);
+    } catch (Exception e) {
+      throw new RuntimeException(e);
     }
+  }
 
-    @Override
-    public void writeChars(String v) {
-        try {
-            s.writeChars(v);
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
+  @Override
+  public void writeBytes(String v) {
+    try {
+      s.writeBytes(v);
+    } catch (Exception e) {
+      throw new RuntimeException(e);
     }
+  }
 
-    @Override
-    public void writeUTF(String v) {
-        try {
-            s.writeUTF(v);
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
+  @Override
+  public void writeChars(String v) {
+    try {
+      s.writeChars(v);
+    } catch (Exception e) {
+      throw new RuntimeException(e);
     }
+  }
 
-    public byte[] toBytes() {
-        return byteArray.toByteArray();
+  @Override
+  public void writeUTF(String v) {
+    try {
+      s.writeUTF(v);
+    } catch (Exception e) {
+      throw new RuntimeException(e);
     }
+  }
 
-    public ByteString toByteString() {
-        return ByteString.copyFrom(byteArray.toByteArray());
-    }
+  public byte[] toBytes() {
+    return byteArray.toByteArray();
+  }
 
-    public void reset() {
-        this.byteArray.reset();
-    }
+  public ByteString toByteString() {
+    return ByteString.copyFrom(byteArray.toByteArray());
+  }
+
+  public void reset() {
+    this.byteArray.reset();
+  }
 }

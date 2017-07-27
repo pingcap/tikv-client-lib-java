@@ -18,24 +18,25 @@ package com.pingcap.tikv.meta;
 import com.pingcap.tikv.exception.TiClientInternalException;
 
 public enum IndexType {
-    IndexTypeBtree(0),
-    IndexTypeHash(1);
+  IndexTypeBtree(0),
+  IndexTypeHash(1);
 
-    private final int type;
-    IndexType(int type) {
-        this.type = type;
-    }
+  private final int type;
 
-    public static IndexType fromValue(int type) {
-        for (IndexType e : IndexType.values()) {
-            if (e.type == type) {
-                return e;
-            }
-        }
-        throw new TiClientInternalException("Invalid index type code: " + type);
-    }
+  IndexType(int type) {
+    this.type = type;
+  }
 
-    public int getTypeCode() {
-        return type;
+  public static IndexType fromValue(int type) {
+    for (IndexType e : IndexType.values()) {
+      if (e.type == type) {
+        return e;
+      }
     }
+    throw new TiClientInternalException("Invalid index type code: " + type);
+  }
+
+  public int getTypeCode() {
+    return type;
+  }
 }

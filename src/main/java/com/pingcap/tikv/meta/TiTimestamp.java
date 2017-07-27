@@ -15,19 +15,29 @@
 
 package com.pingcap.tikv.meta;
 
-/**
- * TiTimestamp is the timestamp returned by timestamp
- * oracle inside placement driver
- */
-public class TiTimestamp {
-    private final long physical;
-    private final long logical;
+import java.io.Serializable;
 
-    public TiTimestamp(long p, long l) {
-        this.physical = p;
-        this.logical = l;
-    }
+/** TiTimestamp is the timestamp returned by timestamp oracle inside placement driver */
+public class TiTimestamp implements Serializable {
+  private static final int PHYSICAL_SHIFT_BITS = 18;
 
-    public long getPhysical() { return this.physical; }
-    public long getLogical() { return this.logical; }
+  private final long physical;
+  private final long logical;
+
+  public TiTimestamp(long p, long l) {
+    this.physical = p;
+    this.logical = l;
+  }
+
+  public long getVersion() {
+    return (physical << PHYSICAL_SHIFT_BITS) + logical;
+  }
+
+  public long getPhysical() {
+    return this.physical;
+  }
+
+  public long getLogical() {
+    return this.logical;
+  }
 }

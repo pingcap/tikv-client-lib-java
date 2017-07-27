@@ -15,54 +15,54 @@
 
 package com.pingcap.tikv;
 
-import com.google.common.collect.ImmutableList;
 import com.pingcap.tikv.catalog.Catalog;
-import com.pingcap.tikv.meta.Row;
-import com.pingcap.tikv.meta.TiDBInfo;
-import com.pingcap.tikv.meta.TiRange;
-import com.pingcap.tikv.meta.TiTableInfo;
-import com.pingcap.tikv.grpc.Pdpb.RequestHeader;
-
-import java.util.Iterator;
-import java.util.List;
+import com.pingcap.tikv.meta.TiTimestamp;
+import com.pingcap.tikv.region.RegionManager;
 
 // Should be different per session thread
 public class TiCluster implements AutoCloseable {
-    private final TiSession     session;
-    private final RegionManager regionManager;
-    private final PDClient      client;
+  private final TiSession session;
+  private final RegionManager regionManager;
+  private final PDClient client;
 
-    private TiCluster(TiConfiguration conf) {
-        this.session = TiSession.create(conf);
-        this.client = PDClient.createRaw(session);
-        RequestHeader header = this.client.getHeader();
-        this.regionManager = new RegionManager(client);
-    }
+  private TiCluster(TiConfiguration conf) {
+    this.session = TiSession.create(conf);
+    this.client = PDClient.createRaw(session);
+    this.regionManager = new RegionManager(this.client);
+  }
 
-    public static TiCluster getCluster(TiConfiguration conf) {
-        return new TiCluster(conf);
-    }
+  public static TiCluster getCluster(TiConfiguration conf) {
+    return new TiCluster(conf);
+  }
 
-    public Snapshot createSnapshot() {
-        return new Snapshot(regionManager, session);
-    }
+  public TiTimestamp getTimestamp() {
+    return client.getTimestamp();
+  }
 
-    public Catalog getCatalog() {
-        return new Catalog(createSnapshot());
-    }
+  Snapshot createSnapshot() {
+    return new Snapshot(getTimestamp(), regionManager, session);
+  }
 
-    public TiSession getSession() {
-        return session;
-    }
+  public Snapshot createSnapshot(TiTimestamp ts) {
+    return new Snapshot(ts, regionManager, session);
+  }
 
-    public RegionManager getRegionManager() {
-        return regionManager;
-    }
+  public Catalog getCatalog() {
+    return new Catalog(createSnapshot());
+  }
 
-    @Override
-    public void close() throws Exception {
-        if (client != null) {
-            client.close();
-        }
+  public TiSession getSession() {
+    return session;
+  }
+
+  public RegionManager getRegionManager() {
+    return regionManager;
+  }
+
+  @Override
+  public void close() throws Exception {
+    if (client != null) {
+      client.close();
     }
+  }
 }

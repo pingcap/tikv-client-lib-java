@@ -15,109 +15,131 @@
 
 package com.pingcap.tikv.meta;
 
+import static java.util.Objects.requireNonNull;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.google.common.collect.Iterables;
+import com.google.common.collect.ImmutableList;
 import com.pingcap.tidb.tipb.TableInfo;
-
+import java.io.Serializable;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
-public class TiTableInfo {
-    private final long                id;
-    private final String              name;
-    private final String              charset;
-    private final String              collate;
-    private final List<TiColumnInfo>  columns;
-    private final List<TiIndexInfo>   indices;
-    private final boolean             pkIsHandle;
-    private final String              comment;
-    private final long                autoIncId;
-    private final long                maxColumnId;
-    private final long                maxIndexId;
-    private final long                oldSchemaId;
+public class TiTableInfo implements Serializable {
+  private final long id;
+  private final String name;
+  private final String charset;
+  private final String collate;
+  private final List<TiColumnInfo> columns;
+  private final List<TiIndexInfo> indices;
+  private final boolean pkIsHandle;
+  private final String comment;
+  private final long autoIncId;
+  private final long maxColumnId;
+  private final long maxIndexId;
+  private final long oldSchemaId;
 
-    @JsonCreator
-    public TiTableInfo(@JsonProperty("id")long                          id,
-                       @JsonProperty("name")CIStr                       name,
-                       @JsonProperty("charset")String                   charset,
-                       @JsonProperty("collate")String                   collate,
-                       @JsonProperty("pk_is_handle")boolean             pkIsHandle,
-                       @JsonProperty("cols")List<TiColumnInfo>          columns,
-                       @JsonProperty("index_info")List<TiIndexInfo>     indices,
-                       @JsonProperty("comment")String                   comment,
-                       @JsonProperty("auto_inc_id")long                 autoIncId,
-                       @JsonProperty("max_col_id")long                  maxColumnId,
-                       @JsonProperty("max_idx_id")long                  maxIndexId,
-                       @JsonProperty("old_schema_id")long               oldSchemaId) {
-        this.id = id;
-        this.name = name.getL();
-        this.charset = charset;
-        this.collate = collate;
-        this.columns = columns;
-        this.pkIsHandle = pkIsHandle;
-        this.indices = indices;
-        this.comment = comment;
-        this.autoIncId = autoIncId;
-        this.maxColumnId = maxColumnId;
-        this.maxIndexId = maxIndexId;
-        this.oldSchemaId = oldSchemaId;
-    }
+  @JsonCreator
+  public TiTableInfo(
+      @JsonProperty("id") long id,
+      @JsonProperty("name") CIStr name,
+      @JsonProperty("charset") String charset,
+      @JsonProperty("collate") String collate,
+      @JsonProperty("pk_is_handle") boolean pkIsHandle,
+      @JsonProperty("cols") List<TiColumnInfo> columns,
+      @JsonProperty("index_info") List<TiIndexInfo> indices,
+      @JsonProperty("comment") String comment,
+      @JsonProperty("auto_inc_id") long autoIncId,
+      @JsonProperty("max_col_id") long maxColumnId,
+      @JsonProperty("max_idx_id") long maxIndexId,
+      @JsonProperty("old_schema_id") long oldSchemaId) {
+    this.id = id;
+    this.name = name.getL();
+    this.charset = charset;
+    this.collate = collate;
+    this.columns = ImmutableList.copyOf(requireNonNull(columns, "columns is null"));
+    this.pkIsHandle = pkIsHandle;
+    this.indices = indices != null ? ImmutableList.copyOf(indices) : null;
+    this.comment = comment;
+    this.autoIncId = autoIncId;
+    this.maxColumnId = maxColumnId;
+    this.maxIndexId = maxIndexId;
+    this.oldSchemaId = oldSchemaId;
+  }
 
-    public long getId() {
-        return id;
-    }
+  public long getId() {
+    return id;
+  }
 
-    public String getName() {
-        return name;
-    }
+  public String getName() {
+    return name;
+  }
 
-    public String getCharset() {
-        return charset;
-    }
+  public String getCharset() {
+    return charset;
+  }
 
-    public String getCollate() {
-        return collate;
-    }
+  public String getCollate() {
+    return collate;
+  }
 
-    public List<TiColumnInfo> getColumns() {
-        return columns;
-    }
+  public List<TiColumnInfo> getColumns() {
+    return columns;
+  }
 
-    public boolean isPkHandle() {
-        return pkIsHandle;
-    }
+  public boolean isPkHandle() {
+    return pkIsHandle;
+  }
 
-    public List<TiIndexInfo> getIndices() {
-        return indices;
-    }
+  public List<TiIndexInfo> getIndices() {
+    return indices;
+  }
 
-    public String getComment() {
-        return comment;
-    }
+  public String getComment() {
+    return comment;
+  }
 
-    public long getAutoIncId() {
-        return autoIncId;
-    }
+  public long getAutoIncId() {
+    return autoIncId;
+  }
 
-    public long getMaxColumnId() {
-        return maxColumnId;
-    }
+  public long getMaxColumnId() {
+    return maxColumnId;
+  }
 
-    public long getMaxIndexId() {
-        return maxIndexId;
-    }
+  public long getMaxIndexId() {
+    return maxIndexId;
+  }
 
-    public long getOldSchemaId() {
-        return oldSchemaId;
-    }
+  public long getOldSchemaId() {
+    return oldSchemaId;
+  }
 
-    public TableInfo toProto() {
-        return TableInfo.newBuilder()
-                .setTableId(getId())
-                .addAllColumns(Iterables.transform(getColumns(), col -> col.toProto()))
-                .build();
+  public TableInfo toProto() {
+    return TableInfo.newBuilder()
+        .setTableId(getId())
+        .addAllColumns(
+            getColumns().stream().map(col -> col.toProto(this)).collect(Collectors.toList()))
+        .build();
+  }
+
+  // Only Integer Column will be a PK column
+  // and there exists only one PK column
+  public TiColumnInfo getPrimaryKeyColumn() {
+    if (isPkHandle()) {
+      for (TiColumnInfo col : getColumns()) {
+        if (col.isPrimaryKey()) {
+          return col;
+        }
+      }
     }
+    return null;
+  }
+
+  @Override
+  public String toString() {
+    return toProto().toString();
+  }
 }

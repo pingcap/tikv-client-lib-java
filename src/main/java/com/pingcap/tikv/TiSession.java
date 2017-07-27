@@ -19,28 +19,28 @@ import com.pingcap.tikv.policy.RetryNTimes;
 import com.pingcap.tikv.policy.RetryPolicy;
 
 /**
- * NOT thread-safe!! A session suppose to be change by single thread in master node
- * and use by slaves for read only purpose
+ * NOT thread-safe!! A session suppose to be change by single thread in master node and use by
+ * slaves for read only purpose
  */
 public class TiSession {
-    public static final RetryPolicy.Builder     DEF_RETRY_POLICY_BUILDER = new RetryNTimes.Builder(3);
+  private static final RetryPolicy.Builder DEF_RETRY_POLICY_BUILDER = new RetryNTimes.Builder(3);
 
-    private TiConfiguration         conf;
-    private RetryPolicy.Builder     retryPolicyBuilder = DEF_RETRY_POLICY_BUILDER;
+  private TiConfiguration conf;
+  private RetryPolicy.Builder retryPolicyBuilder = DEF_RETRY_POLICY_BUILDER;
 
-    public TiSession(TiConfiguration conf) {
-        this.conf = conf;
-    }
+  public TiSession(TiConfiguration conf) {
+    this.conf = conf;
+  }
 
-    public TiConfiguration getConf() {
-        return conf;
-    }
+  public TiConfiguration getConf() {
+    return conf;
+  }
 
-    public static TiSession create(TiConfiguration conf) {
-        return new TiSession(conf);
-    }
+  public static TiSession create(TiConfiguration conf) {
+    return new TiSession(conf);
+  }
 
-    public RetryPolicy.Builder getRetryPolicyBuilder() {
-        return retryPolicyBuilder;
-    }
+  RetryPolicy.Builder getRetryPolicyBuilder() {
+    return retryPolicyBuilder;
+  }
 }

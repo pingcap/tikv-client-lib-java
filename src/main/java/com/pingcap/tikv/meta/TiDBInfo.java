@@ -17,53 +17,53 @@ package com.pingcap.tikv.meta;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
-
 import java.util.List;
 
 public class TiDBInfo {
-    private long                id;
-    private String              name;
-    private String              charset;
-    private String              collate;
-    private List<TiTableInfo>     tables;
-    private SchemaState         schemaState;
+  private long id;
+  private String name;
+  private String charset;
+  private String collate;
+  private List<TiTableInfo> tables;
+  private SchemaState schemaState;
 
-    @JsonCreator
-    public TiDBInfo(@JsonProperty("id")long               id,
-                    @JsonProperty("db_name")CIStr         name,
-                    @JsonProperty("charset")String        charset,
-                    @JsonProperty("collate")String        collate,
-                    @JsonProperty("-")List<TiTableInfo>     tables,
-                    @JsonProperty("state")int             schemaState) {
-        this.id = id;
-        this.name = name.getL();
-        this.charset = charset;
-        this.collate = collate;
-        this.tables = tables;
-        this.schemaState = SchemaState.fromValue(schemaState);
-    }
+  @JsonCreator
+  public TiDBInfo(
+      @JsonProperty("id") long id,
+      @JsonProperty("db_name") CIStr name,
+      @JsonProperty("charset") String charset,
+      @JsonProperty("collate") String collate,
+      @JsonProperty("-") List<TiTableInfo> tables,
+      @JsonProperty("state") int schemaState) {
+    this.id = id;
+    this.name = name.getL();
+    this.charset = charset;
+    this.collate = collate;
+    this.tables = tables;
+    this.schemaState = SchemaState.fromValue(schemaState);
+  }
 
-    public long getId() {
-        return id;
-    }
+  public long getId() {
+    return id;
+  }
 
-    public String getName() {
-        return name;
-    }
+  public String getName() {
+    return name;
+  }
 
-    public String getCharset() {
-        return charset;
-    }
+  public String getCharset() {
+    return charset;
+  }
 
-    public String getCollate() {
-        return collate;
-    }
+  public String getCollate() {
+    return collate;
+  }
 
-    public List<TiTableInfo> getTables() {
-        return tables;
-    }
+  public List<TiTableInfo> getTables() {
+    return tables;
+  }
 
-    public SchemaState getSchemaState() {
-        return schemaState;
-    }
+  SchemaState getSchemaState() {
+    return schemaState;
+  }
 }

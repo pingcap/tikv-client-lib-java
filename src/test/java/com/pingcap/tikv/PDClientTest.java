@@ -15,281 +15,267 @@
 
 package com.pingcap.tikv;
 
+import static com.pingcap.tikv.GrpcUtils.encodeKey;
+import static org.junit.Assert.*;
+
 import com.google.common.collect.ImmutableList;
 import com.google.common.net.HostAndPort;
 import com.google.protobuf.ByteString;
 import com.pingcap.tikv.exception.GrpcException;
-import com.pingcap.tikv.grpc.Metapb;
+import com.pingcap.tikv.kvproto.Metapb;
+import com.pingcap.tikv.kvproto.Metapb.Store;
 import com.pingcap.tikv.meta.TiTimestamp;
-import com.pingcap.tikv.grpc.Metapb.Region;
-import com.pingcap.tikv.grpc.Metapb.Store;
+import com.pingcap.tikv.region.TiRegion;
+import java.io.IOException;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
-import java.io.IOException;
-
-import static org.junit.Assert.*;
-
-
 public class PDClientTest {
 
-    private PDMockServer server;
-    private static final long CLUSTER_ID = 1024;
-    private static final String LOCAL_ADDR = "127.0.0.1";
+  private PDMockServer server;
+  private static final long CLUSTER_ID = 1024;
+  private static final String LOCAL_ADDR = "127.0.0.1";
 
-    @Before
-    public void setup() throws IOException {
-        server = new PDMockServer();
-        server.start(CLUSTER_ID);
+  @Before
+  public void setup() throws IOException {
+    server = new PDMockServer();
+    server.start(CLUSTER_ID);
+  }
+
+  @After
+  public void tearDown() {
+    server.stop();
+  }
+
+  private PDClient createClient() {
+    server.addGetMemberResp(
+        GrpcUtils.makeGetMembersResponse(
+            server.getClusterId(),
+            GrpcUtils.makeMember(1, "http://" + LOCAL_ADDR + ":" + server.port),
+            GrpcUtils.makeMember(2, "http://" + LOCAL_ADDR + ":" + (server.port + 1)),
+            GrpcUtils.makeMember(2, "http://" + LOCAL_ADDR + ":" + (server.port + 2))));
+    TiConfiguration conf =
+        TiConfiguration.createDefault(ImmutableList.of("127.0.0.1:" + server.port));
+    return PDClient.createRaw(TiSession.create(conf));
+  }
+
+  @Test
+  public void testCreate() throws Exception {
+    try (PDClient client = createClient()) {
+      assertEquals(
+          client.getLeaderWrapper().getLeaderInfo(),
+          HostAndPort.fromParts(LOCAL_ADDR, server.port));
+      assertEquals(client.getHeader().getClusterId(), CLUSTER_ID);
     }
+  }
 
-    @After
-    public void tearDown() {
-        server.stop();
+  @Test
+  public void testTso() throws Exception {
+    try (PDClient client = createClient()) {
+      TiTimestamp ts = client.getTimestamp();
+      // Test server is set to generate physical == logical + 1
+      assertEquals(ts.getPhysical(), ts.getLogical() + 1);
     }
+  }
 
-    public PDClient createClient() {
-        server.addGetMemberResp(GrpcUtils.makeGetMembersResponse(
-                server.getClusterId(),
-                GrpcUtils.makeMember(1, "http://" + LOCAL_ADDR + ":" + server.port),
-                GrpcUtils.makeMember(2, "http://" + LOCAL_ADDR + ":" + (server.port + 1)),
-                GrpcUtils.makeMember(2, "http://" + LOCAL_ADDR + ":" + (server.port + 2))
-        ));
-        TiConfiguration conf = TiConfiguration.createDefault(ImmutableList.of("127.0.0.1:" + server.port));
-        return PDClient.createRaw(TiSession.create(conf));
+  @Test
+  public void testGetRegionByKey() throws Exception {
+    byte[] startKey = new byte[] {1, 0, 2, 4};
+    byte[] endKey = new byte[] {1, 0, 2, 5};
+    int confVer = 1026;
+    int ver = 1027;
+    server.addGetRegionResp(
+        GrpcUtils.makeGetRegionResponse(
+            server.getClusterId(),
+            GrpcUtils.makeRegion(
+                1,
+                encodeKey(startKey),
+                encodeKey(endKey),
+                GrpcUtils.makeRegionEpoch(confVer, ver),
+                GrpcUtils.makePeer(1, 10),
+                GrpcUtils.makePeer(2, 20))));
+    try (PDClient client = createClient()) {
+      TiRegion r = client.getRegionByKey(ByteString.EMPTY);
+      assertEquals(r.getStartKey(), ByteString.copyFrom(startKey));
+      assertEquals(r.getEndKey(), ByteString.copyFrom(endKey));
+      assertEquals(r.getRegionEpoch().getConfVer(), confVer);
+      assertEquals(r.getRegionEpoch().getVersion(), ver);
+      assertEquals(r.getLeader().getId(), 1);
+      assertEquals(r.getLeader().getStoreId(), 10);
     }
+  }
 
-    @Test
-    public void testCreate() throws Exception {
-        try (PDClient client = createClient()) {
-            assertEquals(client.getLeaderWrapper().getLeaderInfo(), HostAndPort.fromParts(LOCAL_ADDR, server.port));
-            assertEquals(client.getHeader().getClusterId(), CLUSTER_ID);
-        }
+  @Test
+  public void testGetRegionByKeyAsync() throws Exception {
+    byte[] startKey = new byte[] {1, 0, 2, 4};
+    byte[] endKey = new byte[] {1, 0, 2, 5};
+    int confVer = 1026;
+    int ver = 1027;
+    server.addGetRegionResp(
+        GrpcUtils.makeGetRegionResponse(
+            server.getClusterId(),
+            GrpcUtils.makeRegion(
+                1,
+                encodeKey(startKey),
+                encodeKey(endKey),
+                GrpcUtils.makeRegionEpoch(confVer, ver),
+                GrpcUtils.makePeer(1, 10),
+                GrpcUtils.makePeer(2, 20))));
+    try (PDClient client = createClient()) {
+      TiRegion r = client.getRegionByKeyAsync(ByteString.EMPTY).get();
+      assertEquals(r.getStartKey(), ByteString.copyFrom(startKey));
+      assertEquals(r.getEndKey(), ByteString.copyFrom(endKey));
+      assertEquals(r.getRegionEpoch().getConfVer(), confVer);
+      assertEquals(r.getRegionEpoch().getVersion(), ver);
+      assertEquals(r.getLeader().getId(), 1);
+      assertEquals(r.getLeader().getStoreId(), 10);
     }
+  }
 
-    @Test
-    public void testTso() throws Exception {
-        try (PDClient client = createClient()) {
-            TiTimestamp ts = client.getTimestamp();
-            // Test server is set to generate physical == logical + 1
-            assertEquals(ts.getPhysical(), ts.getLogical() + 1);
-        }
+  @Test
+  public void testGetRegionById() throws Exception {
+    byte[] startKey = new byte[] {1, 0, 2, 4};
+    byte[] endKey = new byte[] {1, 0, 2, 5};
+    int confVer = 1026;
+    int ver = 1027;
+
+    server.addGetRegionByIDResp(
+        GrpcUtils.makeGetRegionResponse(
+            server.getClusterId(),
+            GrpcUtils.makeRegion(
+                1,
+                encodeKey(startKey),
+                encodeKey(endKey),
+                GrpcUtils.makeRegionEpoch(confVer, ver),
+                GrpcUtils.makePeer(1, 10),
+                GrpcUtils.makePeer(2, 20))));
+    try (PDClient client = createClient()) {
+      TiRegion r = client.getRegionByID(0);
+      assertEquals(r.getStartKey(), ByteString.copyFrom(startKey));
+      assertEquals(r.getEndKey(), ByteString.copyFrom(endKey));
+      assertEquals(r.getRegionEpoch().getConfVer(), confVer);
+      assertEquals(r.getRegionEpoch().getVersion(), ver);
+      assertEquals(r.getLeader().getId(), 1);
+      assertEquals(r.getLeader().getStoreId(), 10);
     }
+  }
 
-    @Test
-    public void testGetRegionByKey() throws Exception {
-        byte[] startKey = new byte[]{1, 0, 2, 4};
-        byte[] endKey = new byte[]{1, 0, 2, 5};
-        int confVer = 1026;
-        int ver = 1027;
-        server.addGetRegionResp(GrpcUtils.makeGetRegionResponse(
-                server.getClusterId(),
-                GrpcUtils.makeRegion(
-                        1,
-                        ByteString.copyFrom(startKey),
-                        ByteString.copyFrom(endKey),
-                        GrpcUtils.makeRegionEpoch(confVer, ver),
-                        GrpcUtils.makePeer(1, 10),
-                        GrpcUtils.makePeer(2, 20)
-                )
-        ));
-        try (PDClient client = createClient()) {
-            Region r = client.getRegionByKey(ByteString.EMPTY);
-            assertEquals(r.getStartKey(), ByteString.copyFrom(startKey));
-            assertEquals(r.getEndKey(), ByteString.copyFrom(endKey));
-            assertEquals(r.getRegionEpoch().getConfVer(), confVer);
-            assertEquals(r.getRegionEpoch().getVersion(), ver);
-            assertEquals(r.getPeers(0).getId(), 1);
-            assertEquals(r.getPeers(1).getId(), 2);
-            assertEquals(r.getPeers(0).getStoreId(), 10);
-            assertEquals(r.getPeers(1).getStoreId(), 20);
-        }
+  @Test
+  public void testGetRegionByIdAsync() throws Exception {
+    byte[] startKey = new byte[] {1, 0, 2, 4};
+    byte[] endKey = new byte[] {1, 0, 2, 5};
+    int confVer = 1026;
+    int ver = 1027;
+    server.addGetRegionByIDResp(
+        GrpcUtils.makeGetRegionResponse(
+            server.getClusterId(),
+            GrpcUtils.makeRegion(
+                1,
+                encodeKey(startKey),
+                encodeKey(endKey),
+                GrpcUtils.makeRegionEpoch(confVer, ver),
+                GrpcUtils.makePeer(1, 10),
+                GrpcUtils.makePeer(2, 20))));
+    try (PDClient client = createClient()) {
+      TiRegion r = client.getRegionByIDAsync(0).get();
+      assertEquals(r.getStartKey(), ByteString.copyFrom(startKey));
+      assertEquals(r.getEndKey(), ByteString.copyFrom(endKey));
+      assertEquals(r.getRegionEpoch().getConfVer(), confVer);
+      assertEquals(r.getRegionEpoch().getVersion(), ver);
+      assertEquals(r.getLeader().getId(), 1);
+      assertEquals(r.getLeader().getStoreId(), 10);
     }
+  }
 
-    @Test
-    public void testGetRegionByKeyAsync() throws Exception {
-        byte[] startKey = new byte[]{1, 0, 2, 4};
-        byte[] endKey = new byte[]{1, 0, 2, 5};
-        int confVer = 1026;
-        int ver = 1027;
-        server.addGetRegionResp(GrpcUtils.makeGetRegionResponse(
-                server.getClusterId(),
-                GrpcUtils.makeRegion(
-                        1,
-                        ByteString.copyFrom(startKey),
-                        ByteString.copyFrom(endKey),
-                        GrpcUtils.makeRegionEpoch(confVer, ver),
-                        GrpcUtils.makePeer(1, 10),
-                        GrpcUtils.makePeer(2, 20)
-                )
-        ));
-        try (PDClient client = createClient()) {
-            Region r = client.getRegionByKeyAsync(ByteString.EMPTY).get();
-            assertEquals(r.getStartKey(), ByteString.copyFrom(startKey));
-            assertEquals(r.getEndKey(), ByteString.copyFrom(endKey));
-            assertEquals(r.getRegionEpoch().getConfVer(), confVer);
-            assertEquals(r.getRegionEpoch().getVersion(), ver);
-            assertEquals(r.getPeers(0).getId(), 1);
-            assertEquals(r.getPeers(1).getId(), 2);
-            assertEquals(r.getPeers(0).getStoreId(), 10);
-            assertEquals(r.getPeers(1).getStoreId(), 20);
-        }
+  @Test
+  public void testGetStore() throws Exception {
+    long storeId = 1;
+    String testAddress = "testAddress";
+    server.addGetStoreResp(
+        GrpcUtils.makeGetStoreResponse(
+            server.getClusterId(),
+            GrpcUtils.makeStore(
+                storeId,
+                testAddress,
+                Metapb.StoreState.Up,
+                GrpcUtils.makeStoreLabel("k1", "v1"),
+                GrpcUtils.makeStoreLabel("k2", "v2"))));
+    try (PDClient client = createClient()) {
+      Store r = client.getStore(0);
+      assertEquals(r.getId(), storeId);
+      assertEquals(r.getAddress(), testAddress);
+      assertEquals(r.getState(), Metapb.StoreState.Up);
+      assertEquals(r.getLabels(0).getKey(), "k1");
+      assertEquals(r.getLabels(1).getKey(), "k2");
+      assertEquals(r.getLabels(0).getValue(), "v1");
+      assertEquals(r.getLabels(1).getValue(), "v2");
+
+      server.addGetStoreResp(
+          GrpcUtils.makeGetStoreResponse(
+              server.getClusterId(),
+              GrpcUtils.makeStore(storeId, testAddress, Metapb.StoreState.Tombstone)));
+      assertNull(client.getStore(0));
     }
+  }
 
-    @Test
-    public void testGetRegionById() throws Exception {
-        byte[] startKey = new byte[]{1, 0, 2, 4};
-        byte[] endKey = new byte[]{1, 0, 2, 5};
-        int confVer = 1026;
-        int ver = 1027;
-        server.addGetRegionByIDResp(GrpcUtils.makeGetRegionResponse(
-                server.getClusterId(),
-                GrpcUtils.makeRegion(
-                        1,
-                        ByteString.copyFrom(startKey),
-                        ByteString.copyFrom(endKey),
-                        GrpcUtils.makeRegionEpoch(confVer, ver),
-                        GrpcUtils.makePeer(1, 10),
-                        GrpcUtils.makePeer(2, 20)
-                )
-        ));
-        try (PDClient client = createClient()) {
-            Region r = client.getRegionByID(0);
-            assertEquals(r.getStartKey(), ByteString.copyFrom(startKey));
-            assertEquals(r.getEndKey(), ByteString.copyFrom(endKey));
-            assertEquals(r.getRegionEpoch().getConfVer(), confVer);
-            assertEquals(r.getRegionEpoch().getVersion(), ver);
-            assertEquals(r.getPeers(0).getId(), 1);
-            assertEquals(r.getPeers(1).getId(), 2);
-            assertEquals(r.getPeers(0).getStoreId(), 10);
-            assertEquals(r.getPeers(1).getStoreId(), 20);
-        }
+  @Test
+  public void testGetStoreAsync() throws Exception {
+    long storeId = 1;
+    String testAddress = "testAddress";
+    server.addGetStoreResp(
+        GrpcUtils.makeGetStoreResponse(
+            server.getClusterId(),
+            GrpcUtils.makeStore(
+                storeId,
+                testAddress,
+                Metapb.StoreState.Up,
+                GrpcUtils.makeStoreLabel("k1", "v1"),
+                GrpcUtils.makeStoreLabel("k2", "v2"))));
+    try (PDClient client = createClient()) {
+      Store r = client.getStoreAsync(0).get();
+      assertEquals(r.getId(), storeId);
+      assertEquals(r.getAddress(), testAddress);
+      assertEquals(r.getState(), Metapb.StoreState.Up);
+      assertEquals(r.getLabels(0).getKey(), "k1");
+      assertEquals(r.getLabels(1).getKey(), "k2");
+      assertEquals(r.getLabels(0).getValue(), "v1");
+      assertEquals(r.getLabels(1).getValue(), "v2");
+
+      server.addGetStoreResp(
+          GrpcUtils.makeGetStoreResponse(
+              server.getClusterId(),
+              GrpcUtils.makeStore(storeId, testAddress, Metapb.StoreState.Tombstone)));
+      assertNull(client.getStoreAsync(0).get());
     }
+  }
 
-    @Test
-    public void testGetRegionByIdAsync() throws Exception {
-        byte[] startKey = new byte[]{1, 0, 2, 4};
-        byte[] endKey = new byte[]{1, 0, 2, 5};
-        int confVer = 1026;
-        int ver = 1027;
-        server.addGetRegionByIDResp(GrpcUtils.makeGetRegionResponse(
-                server.getClusterId(),
-                GrpcUtils.makeRegion(
-                        1,
-                        ByteString.copyFrom(startKey),
-                        ByteString.copyFrom(endKey),
-                        GrpcUtils.makeRegionEpoch(confVer, ver),
-                        GrpcUtils.makePeer(1, 10),
-                        GrpcUtils.makePeer(2, 20)
-                )
-        ));
-        try (PDClient client = createClient()) {
-            Region r = client.getRegionByIDAsync(0).get();
-            assertEquals(r.getStartKey(), ByteString.copyFrom(startKey));
-            assertEquals(r.getEndKey(), ByteString.copyFrom(endKey));
-            assertEquals(r.getRegionEpoch().getConfVer(), confVer);
-            assertEquals(r.getRegionEpoch().getVersion(), ver);
-            assertEquals(r.getPeers(0).getId(), 1);
-            assertEquals(r.getPeers(1).getId(), 2);
-            assertEquals(r.getPeers(0).getStoreId(), 10);
-            assertEquals(r.getPeers(1).getStoreId(), 20);
-        }
+  @Test
+  public void testRetryPolicy() throws Exception {
+    long storeId = 1024;
+    server.addGetStoreResp(null);
+    server.addGetStoreResp(null);
+    server.addGetStoreResp(
+        GrpcUtils.makeGetStoreResponse(
+            server.getClusterId(), GrpcUtils.makeStore(storeId, "", Metapb.StoreState.Up)));
+    try (PDClient client = createClient()) {
+      Store r = client.getStore(0);
+      assertEquals(r.getId(), storeId);
+
+      // Should fail
+      server.addGetStoreResp(null);
+      server.addGetStoreResp(null);
+      server.addGetStoreResp(null);
+      server.addGetStoreResp(
+          GrpcUtils.makeGetStoreResponse(
+              server.getClusterId(), GrpcUtils.makeStore(storeId, "", Metapb.StoreState.Up)));
+      try {
+        client.getStore(0);
+      } catch (GrpcException e) {
+        assertTrue(true);
+        return;
+      }
+      fail();
     }
-
-
-    @Test
-    public void testGetStore() throws Exception {
-        long storeId = 1;
-        String testAddress = "testAddress";
-        server.addGetStoreResp(GrpcUtils.makeGetStoreResponse(
-                server.getClusterId(),
-                GrpcUtils.makeStore(storeId, testAddress,
-                        Metapb.StoreState.Up,
-                        GrpcUtils.makeStoreLabel("k1", "v1"),
-                        GrpcUtils.makeStoreLabel("k2", "v2")
-                )
-        ));
-        try (PDClient client = createClient()) {
-            Store r = client.getStore(0);
-            assertEquals(r.getId(), storeId);
-            assertEquals(r.getAddress(), testAddress);
-            assertEquals(r.getState(), Metapb.StoreState.Up);
-            assertEquals(r.getLabels(0).getKey(), "k1");
-            assertEquals(r.getLabels(1).getKey(), "k2");
-            assertEquals(r.getLabels(0).getValue(), "v1");
-            assertEquals(r.getLabels(1).getValue(), "v2");
-
-            server.addGetStoreResp(GrpcUtils.makeGetStoreResponse(
-                    server.getClusterId(),
-                    GrpcUtils.makeStore(storeId, testAddress,
-                            Metapb.StoreState.Tombstone
-                    )
-            ));
-            assertNull(client.getStore(0));
-        }
-    }
-
-    @Test
-    public void testGetStoreAsync() throws Exception {
-        long storeId = 1;
-        String testAddress = "testAddress";
-        server.addGetStoreResp(GrpcUtils.makeGetStoreResponse(
-                server.getClusterId(),
-                GrpcUtils.makeStore(storeId, testAddress,
-                        Metapb.StoreState.Up,
-                        GrpcUtils.makeStoreLabel("k1", "v1"),
-                        GrpcUtils.makeStoreLabel("k2", "v2")
-                )
-        ));
-        try (PDClient client = createClient()) {
-            Store r = client.getStoreAsync(0).get();
-            assertEquals(r.getId(), storeId);
-            assertEquals(r.getAddress(), testAddress);
-            assertEquals(r.getState(), Metapb.StoreState.Up);
-            assertEquals(r.getLabels(0).getKey(), "k1");
-            assertEquals(r.getLabels(1).getKey(), "k2");
-            assertEquals(r.getLabels(0).getValue(), "v1");
-            assertEquals(r.getLabels(1).getValue(), "v2");
-
-            server.addGetStoreResp(GrpcUtils.makeGetStoreResponse(
-                    server.getClusterId(),
-                    GrpcUtils.makeStore(storeId, testAddress,
-                            Metapb.StoreState.Tombstone
-                    )
-            ));
-            assertNull(client.getStoreAsync(0).get());
-        }
-    }
-
-    @Test
-    public void testRetryPolicy() throws Exception {
-        long storeId = 1024;
-        server.addGetStoreResp(null);
-        server.addGetStoreResp(null);
-        server.addGetStoreResp(GrpcUtils.makeGetStoreResponse(
-                server.getClusterId(),
-                GrpcUtils.makeStore(storeId, "", Metapb.StoreState.Up)
-        ));
-        try (PDClient client = createClient()) {
-            Store r = client.getStore(0);
-            assertEquals(r.getId(), storeId);
-
-            // Should fail
-            server.addGetStoreResp(null);
-            server.addGetStoreResp(null);
-            server.addGetStoreResp(null);
-            server.addGetStoreResp(GrpcUtils.makeGetStoreResponse(
-                    server.getClusterId(),
-                    GrpcUtils.makeStore(storeId, "", Metapb.StoreState.Up)
-            ));
-            try {
-                client.getStore(0);
-            } catch (GrpcException e) {
-                assertTrue(true);
-                return;
-            }
-            fail();
-        }
-    }
+  }
 }

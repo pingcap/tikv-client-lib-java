@@ -6,7 +6,7 @@ java_library(
         ["**/*.java"],
     ),
     deps = [
-        "//src/main/proto:java",
+        "//:java",
         "@com_fasterxml_jackson_core_jackson_annotations//jar",
         "@com_fasterxml_jackson_core_jackson_core//jar",
         "@com_fasterxml_jackson_core_jackson_databind//jar",
@@ -20,6 +20,7 @@ java_library(
         "@org_pubref_rules_protobuf//java:netty_runtime_deps",
         "@org_apache_logging_log4j_log4j_api//jar",
         "@org_apache_logging_log4j_log4j_core//jar",
+        "@net_sf_trove4j_trove4j//jar",
     ],
 )
 

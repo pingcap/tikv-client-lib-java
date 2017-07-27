@@ -15,6 +15,9 @@
 
 package com.pingcap.tikv;
 
+import static io.grpc.stub.ClientCalls.asyncBidiStreamingCall;
+
+import com.pingcap.tikv.operation.ErrorHandler;
 import io.grpc.MethodDescriptor;
 import io.grpc.stub.AbstractStub;
 import io.grpc.stub.ClientCalls;
@@ -22,86 +25,88 @@ import io.grpc.stub.StreamObserver;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-import java.util.concurrent.Callable;
+public abstract class AbstractGrpcClient<
+        BlockingStubT extends AbstractStub<BlockingStubT>, StubT extends AbstractStub<StubT>>
+    implements AutoCloseable {
+  final Logger logger = LogManager.getFormatterLogger(getClass());
+  private TiSession session;
+  private TiConfiguration conf;
 
-import static io.grpc.stub.ClientCalls.asyncBidiStreamingCall;
+  protected AbstractGrpcClient(TiSession session) {
+    this.session = session;
+    this.conf = session.getConf();
+  }
 
-public abstract class AbstractGrpcClient<BlockingStubT extends AbstractStub<BlockingStubT>,
-                                         StubT extends AbstractStub<StubT>> implements AutoCloseable {
-    protected final Logger             logger = LogManager.getFormatterLogger(getClass());
-    private         TiSession          session;
-    private         TiConfiguration    conf;
+  public TiSession getSession() {
+    return session;
+  }
 
-    protected AbstractGrpcClient(TiSession session) {
-        this.session = session;
-        this.conf = session.getConf();
-    }
+  public TiConfiguration getConf() {
+    return conf;
+  }
 
-    public TiSession getSession() {
-        return session;
-    }
-
-    public TiConfiguration getConf() {
-        return conf;
-    }
-
-    // TODO: Seems a little bit messy for lambda part
-    protected <ReqT, ResT> ResT callWithRetry(MethodDescriptor<ReqT, ResT> method,
-                                              ReqT request) {
-        logger.debug("Calling %s...", method.getFullMethodName());
-        ResT resp = getSession()
-                    .getRetryPolicyBuilder()
-                    .create(getRecoveryMethod()).callWithRetry(() -> {
-                                BlockingStubT stub = getBlockingStub();
-                                return ClientCalls.blockingUnaryCall(
-                                        stub.getChannel(), method, stub.getCallOptions(), request);
-                            },
-                            method.getFullMethodName());
-        logger.debug("leaving %s...", method.getFullMethodName());
-        return resp;
-    }
-
-    protected <ReqT, ResT> void callAsyncWithRetry(MethodDescriptor<ReqT, ResT> method,
-                                                 ReqT request,
-                                                 StreamObserver<ResT> responseObserver) {
-        logger.debug("Calling %s...", method.getFullMethodName());
+  // TODO: Seems a little bit messy for lambda part
+  protected <ReqT, ResT> ResT callWithRetry(
+      MethodDescriptor<ReqT, ResT> method, ReqT request, ErrorHandler handler) {
+    logger.debug("Calling %s...", method.getFullMethodName());
+    ResT resp =
         getSession()
-                .getRetryPolicyBuilder()
-                .create(getRecoveryMethod())
-                .callWithRetry(() -> {
-                            StubT stub = getAsyncStub();
-                            ClientCalls.asyncUnaryCall(
-                                    stub.getChannel().newCall(method, stub.getCallOptions()),
-                                    request, responseObserver);
-                            return null;
-                        },
-                        method.getFullMethodName());
-        logger.debug("leaving %s...", method.getFullMethodName());
-    }
+            .getRetryPolicyBuilder()
+            .create(handler)
+            .callWithRetry(
+                () -> {
+                  BlockingStubT stub = getBlockingStub();
+                  return ClientCalls.blockingUnaryCall(
+                      stub.getChannel(), method, stub.getCallOptions(), request);
+                },
+                method.getFullMethodName());
+    logger.debug("leaving %s...", method.getFullMethodName());
+    return resp;
+  }
 
-    protected <ReqT, ResT> StreamObserver<ReqT>
-    callBidiStreamingWithRetry(MethodDescriptor<ReqT, ResT> method,
-                               StreamObserver<ResT> responseObserver) {
-        logger.debug("Calling %s...", method.getFullMethodName());
-        StreamObserver<ReqT> observer =
-                getSession()
-                .getRetryPolicyBuilder()
-                .create(getRecoveryMethod())
-                .callWithRetry(() -> {
-                            StubT stub = getAsyncStub();
-                            return asyncBidiStreamingCall(
-                                        stub.getChannel().newCall(method, stub.getCallOptions()), responseObserver);
-                        },
-                        method.getFullMethodName());
-        logger.debug("leaving %s...", method.getFullMethodName());
-        return observer;
-    }
+  protected <ReqT, ResT> void callAsyncWithRetry(
+      MethodDescriptor<ReqT, ResT> method,
+      ReqT request,
+      StreamObserver<ResT> responseObserver,
+      ErrorHandler handler) {
+    logger.debug("Calling %s...", method.getFullMethodName());
+    getSession()
+        .getRetryPolicyBuilder()
+        .create(handler)
+        .callWithRetry(
+            () -> {
+              StubT stub = getAsyncStub();
+              ClientCalls.asyncUnaryCall(
+                  stub.getChannel().newCall(method, stub.getCallOptions()),
+                  request,
+                  responseObserver);
+              return null;
+            },
+            method.getFullMethodName());
+    logger.debug("leaving %s...", method.getFullMethodName());
+  }
 
-    protected abstract BlockingStubT getBlockingStub();
-    protected abstract StubT getAsyncStub();
+  <ReqT, ResT> StreamObserver<ReqT> callBidiStreamingWithRetry(
+      MethodDescriptor<ReqT, ResT> method,
+      StreamObserver<ResT> responseObserver,
+      ErrorHandler handler) {
+    logger.debug("Calling %s...", method.getFullMethodName());
+    StreamObserver<ReqT> observer =
+        getSession()
+            .getRetryPolicyBuilder()
+            .create(handler)
+            .callWithRetry(
+                () -> {
+                  StubT stub = getAsyncStub();
+                  return asyncBidiStreamingCall(
+                      stub.getChannel().newCall(method, stub.getCallOptions()), responseObserver);
+                },
+                method.getFullMethodName());
+    logger.debug("leaving %s...", method.getFullMethodName());
+    return observer;
+  }
 
-    // TODO: A little bit odd to put here, should be inside policy
-    protected Callable<Void> getRecoveryMethod() {
-        return null;
-    }
+  protected abstract BlockingStubT getBlockingStub();
+
+  protected abstract StubT getAsyncStub();
 }

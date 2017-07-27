@@ -30,17 +30,7 @@ maven_jar(
 
 maven_jar(
     name = "com_google_instrumentation_instrumentation_api",
-    artifact = "com.google.instrumentation:instrumentation-api:0.3.0",
-)
-
-maven_jar(
-    name = "com_fasterxml_jackson_core_jackson_databind",
-    artifact = "com.fasterxml.jackson.core:jackson-databind:2.6.6",
-)
-
-maven_jar(
-    name = "com_fasterxml_jackson_core_jackson_core",
-    artifact = "com.fasterxml.jackson.core:jackson-core:2.6.6",
+    artifact = "com.google.instrumentation:instrumentation-api:0.4.2",
 )
 
 maven_jar(
@@ -103,20 +93,35 @@ maven_jar(
     artifact = "org.powermock:powermock-api-support:1.6.6",
 )
 
-git_repository(
-    name = "org_pubref_rules_protobuf",
-    remote = "https://github.com/pubref/rules_protobuf",
-    tag = "v0.7.1",
-)
-
-maven_jar(
-	name = "com_google_instrumentation_instrumentation_api",
-	artifact = "com.google.instrumentation:instrumentation-api:0.3.0",
-)
 maven_jar(
 	name = "io_netty_netty_codec_socks",
 	artifact = "io.netty:netty-codec-socks:4.1.8.Final",
 )
 
+maven_jar(
+   name = "net_sf_trove4j_trove4j",
+   artifact = "net.sf.trove4j:trove4j:3.0.1",
+)
+
+git_repository(
+    name = "org_pubref_rules_protobuf",
+    remote = "https://github.com/zhexuany/rules_protobuf",
+    commit = "7d505c7",
+)
+
 load("@org_pubref_rules_protobuf//java:rules.bzl", "java_proto_repositories")
 java_proto_repositories()
+
+bazel_shade_version = "master"
+http_archive(
+             name = "com_github_zhexuany_bazel_shade",
+             url = "https://github.com/zhexuany/bazel_shade_plugin/archive/%s.zip"%bazel_shade_version,
+             type = "zip",
+             strip_prefix= "bazel_shade_plugin-%s"%bazel_shade_version
+)
+load(
+    "@com_github_zhexuany_bazel_shade//:java_shade.bzl",
+    "java_shade_repositories",
+    "java_shade"
+)
+java_shade_repositories()

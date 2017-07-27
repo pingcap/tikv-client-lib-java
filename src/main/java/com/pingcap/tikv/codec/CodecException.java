@@ -16,11 +16,11 @@
 package com.pingcap.tikv.codec;
 
 public class CodecException extends RuntimeException {
-    public CodecException(String msg) {
-        super(msg);
-    }
+  public CodecException(String msg) {
+    super(msg);
+  }
 
-    public CodecException(String msg, Throwable t) {
-        super(msg, t);
-    }
+  public CodecException(String msg, Throwable t) {
+    super(msg, t);
+  }
 }

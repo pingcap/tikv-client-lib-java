@@ -16,41 +16,43 @@
 package com.pingcap.tikv.util;
 
 import com.google.common.util.concurrent.SettableFuture;
+import com.pingcap.tikv.kvproto.Pdpb;
+import com.pingcap.tikv.operation.ErrorHandler;
 import io.grpc.stub.StreamObserver;
-
 import java.util.concurrent.Future;
 
-public class FutureObserver<V, T> implements StreamObserver<T> {
-    private final SettableFuture<V> resultFuture;
-    private final Getter<V, T> getter;
+public class FutureObserver<Value, RespT> implements StreamObserver<RespT> {
+  private final SettableFuture<Value> resultFuture;
+  private final Getter<Value, RespT> getter;
+  private ErrorHandler<RespT, Pdpb.Error> errorHandler;
 
-    public interface Getter<V, T> {
-        V getValue(T resp);
-    }
+  public interface Getter<Value, RespT> {
+    Value getValue(RespT resp);
+  }
 
-    public FutureObserver(Getter<V, T> getter) {
-        this.resultFuture = SettableFuture.create();
-        this.getter = getter;
-    }
+  public FutureObserver(Getter<Value, RespT> getter) {
+    this.resultFuture = SettableFuture.create();
+    this.getter = getter;
+  }
 
-    public V getValue(T resp) {
-        return getter.getValue(resp);
-    }
+  public Value getValue(RespT resp) {
+    return getter.getValue(resp);
+  }
 
-    @Override
-    public void onNext(T resp) {
-        resultFuture.set(getValue(resp));
-    }
+  @Override
+  public void onNext(RespT resp) {
+    resultFuture.set(getValue(resp));
+  }
 
-    @Override
-    public void onError(Throwable t) {
-        resultFuture.setException(t);
-    }
+  @Override
+  public void onError(Throwable t) {
+    resultFuture.setException(t);
+  }
 
-    @Override
-    public void onCompleted() {}
+  @Override
+  public void onCompleted() {}
 
-    public Future<V> getFuture() {
-        return resultFuture;
-    }
+  public Future<Value> getFuture() {
+    return resultFuture;
+  }
 }

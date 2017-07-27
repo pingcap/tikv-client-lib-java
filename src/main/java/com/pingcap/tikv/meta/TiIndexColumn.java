@@ -17,31 +17,47 @@ package com.pingcap.tikv.meta;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.pingcap.tikv.types.DataType;
+import java.io.Serializable;
 
+public class TiIndexColumn implements Serializable {
+  private String name;
+  private int offset;
+  private int length;
 
-public class TiIndexColumn {
-    private String name;
-    private int    offset;
-    private int    length;
+  @JsonCreator
+  TiIndexColumn(
+      @JsonProperty("name") CIStr name,
+      @JsonProperty("offset") int offset,
+      @JsonProperty("length") int length) {
+    this.name = name.getL();
+    this.offset = offset;
+    this.length = length;
+  }
 
-    @JsonCreator
-    public TiIndexColumn(@JsonProperty("name")CIStr   name,
-                         @JsonProperty("offset")int   offset,
-                         @JsonProperty("length")int   length) {
-        this.name = name.getL();
-        this.offset = offset;
-        this.length = length;
-    }
+  public String getName() {
+    return name;
+  }
 
-    public String getName() {
-        return name;
-    }
+  public int getOffset() {
+    return offset;
+  }
 
-    public int getOffset() {
-        return offset;
-    }
+  public int getLength() {
+    return length;
+  }
 
-    public int getLength() {
-        return length;
-    }
+  public boolean isPrefixIndex() {
+    return length != DataType.UNSPECIFIED_LEN;
+  }
+
+  public boolean matchName(String otherName) {
+    return name.equalsIgnoreCase(otherName);
+  }
+
+  @Override
+  public String toString() {
+    return String.format(
+        "%s {name: %s, offset: %d, length: %d}", getClass().getSimpleName(), name, offset, length);
+  }
 }
