@@ -15,7 +15,7 @@
 
 package com.pingcap.tikv;
 
-import static com.pingcap.tikv.util.KeyRangeUtils.makeRange;
+import static com.pingcap.tikv.meta.TiKey.makeRange;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Range;

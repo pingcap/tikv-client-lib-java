@@ -16,7 +16,7 @@
 package com.pingcap.tikv.util;
 
 import static com.google.common.base.Preconditions.checkArgument;
-import static com.pingcap.tikv.util.KeyRangeUtils.formatByteString;
+import static com.pingcap.tikv.meta.TiKey.formatByteString;
 import static java.util.Objects.requireNonNull;
 
 import com.google.common.collect.ImmutableList;

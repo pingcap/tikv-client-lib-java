@@ -19,8 +19,10 @@ package com.pingcap.tikv.meta;
 
 import static java.util.Objects.requireNonNull;
 
+import com.google.common.collect.Range;
 import com.google.common.primitives.UnsignedBytes;
 import com.google.protobuf.ByteString;
+import com.pingcap.tikv.kvproto.Coprocessor;
 import java.util.Comparator;
 import javax.annotation.Nonnull;
 
@@ -71,5 +73,41 @@ public class TiKey<T> implements Comparable<TiKey<T>> {
   @Override
   public String toString() {
     return data.toString();
+  }
+
+  public static Range<TiKey> toRange(Coprocessor.KeyRange range) {
+    if (range == null || (range.getStart().isEmpty() && range.getEnd().isEmpty())) {
+      return Range.all();
+    }
+    if (range.getStart().isEmpty()) {
+      return Range.lessThan(new TiKey<>(range.getEnd()));
+    }
+    if (range.getEnd().isEmpty()) {
+      return Range.atLeast(new TiKey<>(range.getStart()));
+    }
+    return Range.closedOpen(new TiKey<>(range.getStart()), new TiKey<>(range.getEnd()));
+  }
+
+  public static Range<TiKey> makeRange(ByteString startKey, ByteString endKey) {
+    if (startKey.isEmpty() && endKey.isEmpty()) {
+      return Range.all();
+    }
+    if (startKey.isEmpty()) {
+      return Range.lessThan(new TiKey<>(endKey));
+    } else if (endKey.isEmpty()) {
+      return Range.atLeast(new TiKey<>(startKey));
+    }
+    return Range.closedOpen(new TiKey<>(startKey), new TiKey<>(endKey));
+  }
+
+  public static String formatByteString(ByteString key) {
+    StringBuilder sb = new StringBuilder();
+    for (int i = 0; i < key.size(); i++) {
+      sb.append(key.byteAt(i) & 0xff);
+      if (i < key.size() - 1) {
+        sb.append(",");
+      }
+    }
+    return sb.toString();
   }
 }
