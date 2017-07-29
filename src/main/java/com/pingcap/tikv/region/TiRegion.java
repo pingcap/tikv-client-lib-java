@@ -49,8 +49,8 @@ public class TiRegion implements Serializable {
     if (region.getStartKey().isEmpty()) {
       builder.setStartKey(region.getStartKey());
     } else {
-      byte[] decodecStartKey = BytesType.readBytes(new CodecDataInput(region.getStartKey()));
-      builder.setStartKey(ByteString.copyFrom(decodecStartKey));
+      byte[] decodeStartKey = BytesType.readBytes(new CodecDataInput(region.getStartKey()));
+      builder.setStartKey(ByteString.copyFrom(decodeStartKey));
     }
 
     if (region.getEndKey().isEmpty()) {

@@ -33,7 +33,7 @@ import com.pingcap.tikv.exception.TiClientInternalException;
 import com.pingcap.tikv.kvproto.Metapb.Peer;
 import com.pingcap.tikv.kvproto.Metapb.Region;
 import com.pingcap.tikv.kvproto.Metapb.Store;
-import com.pingcap.tikv.util.Comparables;
+import com.pingcap.tikv.meta.TiKey;
 import com.pingcap.tikv.util.Pair;
 import java.util.List;
 import java.util.Optional;
@@ -87,7 +87,7 @@ public class RegionManager {
     Long regionId;
     lock.readLock().lock();
     try {
-      regionId = keyToRegionIdCache.get(Comparables.wrap(key));
+      regionId = keyToRegionIdCache.get(new TiKey<>(key));
     } finally {
       lock.readLock().unlock();
     }

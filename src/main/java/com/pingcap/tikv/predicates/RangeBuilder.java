@@ -24,9 +24,9 @@ import com.pingcap.tikv.expression.TiConstant;
 import com.pingcap.tikv.expression.TiExpr;
 import com.pingcap.tikv.expression.TiFunctionExpression;
 import com.pingcap.tikv.expression.scalar.*;
+import com.pingcap.tikv.meta.TiKey;
 import com.pingcap.tikv.predicates.AccessConditionNormalizer.NormalizedCondition;
 import com.pingcap.tikv.types.DataType;
-import com.pingcap.tikv.util.Comparables;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -121,7 +121,7 @@ public class RangeBuilder {
     for (TiExpr ac : accessConditions) {
       NormalizedCondition cond = AccessConditionNormalizer.normalize(ac);
       TiConstant constVal = cond.constantVals.get(0);
-      Comparable<?> comparableVal = Comparables.wrap(constVal.getValue());
+      Comparable<?> comparableVal = new TiKey<>(constVal.getValue());
       TiExpr expr = cond.condition;
 
       if (expr instanceof GreaterThan) {

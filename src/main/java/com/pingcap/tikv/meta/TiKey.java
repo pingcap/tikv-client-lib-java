@@ -67,4 +67,9 @@ public class TiKey<T> implements Comparable<TiKey<T>> {
     }
     return 0;
   }
+
+  @Override
+  public String toString() {
+    return data.toString();
+  }
 }

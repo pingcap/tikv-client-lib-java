@@ -24,6 +24,7 @@ import com.google.common.net.HostAndPort;
 import com.google.protobuf.ByteString;
 import com.pingcap.tikv.kvproto.Coprocessor.KeyRange;
 import com.pingcap.tikv.kvproto.Metapb;
+import com.pingcap.tikv.meta.TiKey;
 import com.pingcap.tikv.region.RegionManager;
 import com.pingcap.tikv.region.TiRegion;
 import java.io.Serializable;
@@ -111,7 +112,7 @@ public class RangeSplitter {
       return -1;
     }
 
-    return Comparables.wrap(lhs).compareTo(Comparables.wrap(rhs));
+    return new TiKey<>(lhs).compareTo(new TiKey<>(rhs));
   }
 
   public List<RegionTask> splitRangeByRegion(List<KeyRange> keyRanges) {

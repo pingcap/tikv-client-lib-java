@@ -18,6 +18,7 @@ package com.pingcap.tikv.util;
 import com.google.common.collect.Range;
 import com.google.protobuf.ByteString;
 import com.pingcap.tikv.kvproto.Coprocessor;
+import com.pingcap.tikv.meta.TiKey;
 
 public class KeyRangeUtils {
   public static Range toRange(Coprocessor.KeyRange range) {
@@ -25,25 +26,24 @@ public class KeyRangeUtils {
       return Range.all();
     }
     if (range.getStart().isEmpty()) {
-      return Range.lessThan(Comparables.wrap(range.getEnd()));
+      return Range.lessThan(new TiKey<>(range.getEnd()));
     }
     if (range.getEnd().isEmpty()) {
-      return Range.atLeast(Comparables.wrap(range.getStart()));
+      return Range.atLeast(new TiKey<>(range.getStart()));
     }
-    return Range.closedOpen(Comparables.wrap(range.getStart()), Comparables.wrap(range.getEnd()));
+    return Range.closedOpen(new TiKey<>(range.getStart()), new TiKey<>(range.getEnd()));
   }
 
   public static Range makeRange(ByteString startKey, ByteString endKey) {
     if (startKey.isEmpty() && endKey.isEmpty()) {
       return Range.all();
     }
-    Range<? extends Comparable> result = Range.all();
     if (startKey.isEmpty()) {
-      return Range.lessThan(Comparables.wrap(endKey));
+      return Range.lessThan(new TiKey<>(endKey));
     } else if (endKey.isEmpty()) {
-      return Range.atLeast(Comparables.wrap(startKey));
+      return Range.atLeast(new TiKey<>(startKey));
     }
-    return Range.closedOpen(Comparables.wrap(startKey), Comparables.wrap(endKey));
+    return Range.closedOpen(new TiKey<>(startKey), new TiKey<>(endKey));
   }
 
   static String formatByteString(ByteString key) {
