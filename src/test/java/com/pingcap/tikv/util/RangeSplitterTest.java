@@ -26,11 +26,12 @@ public class RangeSplitterTest {
             .stream()
             .collect(Collectors.toMap(kr -> kr, kr -> region(regionRanges.indexOf(kr), kr)));
 
-    public MockRegionManager() {
+    MockRegionManager() {
       super(null);
     }
 
     @Override
+    @SuppressWarnings("unchecked")
     public Pair<TiRegion, Metapb.Store> getRegionStorePairByKey(ByteString key) {
       for (Map.Entry<KeyRange, TiRegion> entry : mockRegionMap.entrySet()) {
         if (KeyRangeUtils.toRange(entry.getKey()).contains(Comparables.wrap(key))) {

@@ -112,7 +112,7 @@ public class RangeBuilder {
    * @return access ranges
    */
   @SuppressWarnings("unchecked")
-  static List<Range> exprToRanges(List<TiExpr> accessConditions, DataType type) {
+  List<Range> exprToRanges(List<TiExpr> accessConditions, DataType type) {
     if (accessConditions == null || accessConditions.size() == 0) {
       return ImmutableList.of();
     }

@@ -66,6 +66,7 @@ public class RangeBuilderTest {
   }
 
   @Test
+  @SuppressWarnings("unchecked")
   public void exprsToPoints() throws Exception {
     TiTableInfo table = createTable();
     List<TiExpr> conds =
@@ -115,6 +116,7 @@ public class RangeBuilderTest {
   }
 
   @Test
+  @SuppressWarnings("unchecked")
   public void exprToRanges() throws Exception {
     TiTableInfo table = createTable();
     List<TiExpr> conds =

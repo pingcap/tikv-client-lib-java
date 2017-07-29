@@ -91,10 +91,11 @@ public class RangeSplitter {
     this.regionManager = regionManager;
   }
 
-  protected final RegionManager regionManager;
+  private final RegionManager regionManager;
 
   // both arguments represent right side of end points
   // so that empty is +INF
+  @SuppressWarnings("unchecked")
   private static int rightCompareTo(ByteString lhs, ByteString rhs) {
     requireNonNull(lhs, "lhs is null");
     requireNonNull(rhs, "rhs is null");

@@ -31,10 +31,6 @@ public class MetaUtils {
       return autoId++;
     }
 
-    public static TableBuilder newBuilder() {
-      return new TableBuilder();
-    }
-
     private boolean pkHandle;
     private String name;
     private List<TiColumnInfo> columns = new ArrayList<>();
@@ -68,7 +64,7 @@ public class MetaUtils {
           colNames
               .stream()
               .map(name -> columns.stream().filter(c -> c.matchName(name)).findFirst())
-              .flatMap(col -> col.isPresent() ? Stream.of(col.get()) : Stream.empty())
+              .flatMap(col -> col.map(Stream::of).orElseGet(Stream::empty))
               .map(TiColumnInfo::toIndexColumn)
               .collect(Collectors.toList());
 

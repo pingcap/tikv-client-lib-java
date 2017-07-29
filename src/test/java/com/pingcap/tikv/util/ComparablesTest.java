@@ -21,6 +21,7 @@ import com.google.protobuf.ByteString;
 import java.util.function.Function;
 import org.junit.Test;
 
+@SuppressWarnings("unchecked")
 public class ComparablesTest {
   @Test
   public void wrapTest() throws Exception {
