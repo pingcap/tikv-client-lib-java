@@ -111,17 +111,16 @@ public class RangeBuilder {
    * @param type index column type
    * @return access ranges
    */
-  @SuppressWarnings("unchecked")
   List<Range> exprToRanges(List<TiExpr> accessConditions, DataType type) {
     if (accessConditions == null || accessConditions.size() == 0) {
       return ImmutableList.of();
     }
-    RangeSet ranges = TreeRangeSet.create();
+    RangeSet<TiKey> ranges = TreeRangeSet.create();
     ranges.add(Range.all());
     for (TiExpr ac : accessConditions) {
       NormalizedCondition cond = AccessConditionNormalizer.normalize(ac);
       TiConstant constVal = cond.constantVals.get(0);
-      Comparable<?> comparableVal = new TiKey<>(constVal.getValue());
+      TiKey comparableVal = new TiKey<>(constVal.getValue());
       TiExpr expr = cond.condition;
 
       if (expr instanceof GreaterThan) {
@@ -135,8 +134,8 @@ public class RangeBuilder {
       } else if (expr instanceof Equal) {
         ranges = ranges.subRangeSet(Range.singleton(comparableVal));
       } else if (expr instanceof NotEqual) {
-        RangeSet left = ranges.subRangeSet(Range.lessThan(comparableVal));
-        RangeSet right = ranges.subRangeSet(Range.greaterThan(comparableVal));
+        RangeSet<TiKey> left = ranges.subRangeSet(Range.lessThan(comparableVal));
+        RangeSet<TiKey> right = ranges.subRangeSet(Range.greaterThan(comparableVal));
         ranges = TreeRangeSet.create(left);
         ranges.addAll(right);
       } else {
