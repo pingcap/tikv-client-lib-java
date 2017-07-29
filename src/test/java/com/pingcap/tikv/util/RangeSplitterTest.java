@@ -35,7 +35,7 @@ public class RangeSplitterTest {
     @SuppressWarnings("unchecked")
     public Pair<TiRegion, Metapb.Store> getRegionStorePairByKey(ByteString key) {
       for (Map.Entry<KeyRange, TiRegion> entry : mockRegionMap.entrySet()) {
-        if (KeyRangeUtils.toRange(entry.getKey()).contains(new TiKey<>(key))) {
+        if (TiKey.toRange(entry.getKey()).contains(new TiKey<>(key))) {
           TiRegion region = entry.getValue();
           return Pair.create(region, Metapb.Store.newBuilder().setId(region.getId()).build());
         }
