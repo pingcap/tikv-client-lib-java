@@ -7,6 +7,7 @@ import com.google.common.collect.ImmutableList;
 import com.google.protobuf.ByteString;
 import com.pingcap.tikv.codec.CodecDataOutput;
 import com.pingcap.tikv.kvproto.Coprocessor.KeyRange;
+import com.pingcap.tikv.kvproto.Kvrpcpb.IsolationLevel;
 import com.pingcap.tikv.kvproto.Metapb;
 import com.pingcap.tikv.region.RegionManager;
 import com.pingcap.tikv.region.TiRegion;
@@ -67,7 +68,7 @@ public class RangeSplitterTest {
             .setStartKey(encodeKey(range.getStart().toByteArray()))
             .setEndKey(encodeKey(range.getEnd().toByteArray()))
             .build(),
-        null);
+        null, IsolationLevel.RC);
   }
 
   private MockRegionManager mgr = new MockRegionManager();

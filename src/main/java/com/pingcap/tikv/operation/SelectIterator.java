@@ -40,6 +40,7 @@ import java.util.List;
 import java.util.NoSuchElementException;
 
 public class SelectIterator implements Iterator<Row> {
+
   protected final TiSession session;
   private final List<RegionTask> regionTasks;
 
@@ -51,7 +52,7 @@ public class SelectIterator implements Iterator<Row> {
   private TiSelectRequest tiReq;
   private RegionManager regionManager;
   private static final DataType[] handleTypes =
-      new DataType[] {DataTypeFactory.of(Types.TYPE_LONG)};
+      new DataType[]{DataTypeFactory.of(Types.TYPE_LONG)};
 
   public SelectIterator(
       TiSelectRequest req,
@@ -88,26 +89,20 @@ public class SelectIterator implements Iterator<Row> {
     }
   }
 
-  public SelectIterator(
-      TiSelectRequest req,
-      TiSession session,
-      RegionManager rm,
+  public SelectIterator(TiSelectRequest req, TiSession session, RegionManager rm,
       boolean indexScan) {
-    this(req,
-        RangeSplitter.newSplitter(rm).splitRangeByRegion(req.getRanges()),
-        session,
-        rm,
+    this(req, RangeSplitter.newSplitter(rm).splitRangeByRegion(req.getRanges()), session, rm,
         indexScan);
   }
 
   private boolean readNextRegion() {
     if (eof || index >= regionTasks.size()) {
-            return false;
+      return false;
     }
 
     RegionTask regionTask = regionTasks.get(index++);
     List<Chunk> chunks = createClientAndSendReq(regionTask, this.tiReq, this.regionManager);
-    if(chunks == null) {
+    if (chunks == null) {
       return false;
     }
     chunkIterator = new ChunkIterator(chunks);
@@ -116,7 +111,9 @@ public class SelectIterator implements Iterator<Row> {
 
   @Override
   public boolean hasNext() {
-    if (eof) return false;
+    if (eof) {
+      return false;
+    }
     while (chunkIterator == null || !chunkIterator.hasNext()) {
       // Skip empty region until found one or EOF
       if (!readNextRegion()) {

@@ -30,6 +30,7 @@ import com.pingcap.tikv.ReadOnlyPDClient;
 import com.pingcap.tikv.TiSession;
 import com.pingcap.tikv.exception.GrpcException;
 import com.pingcap.tikv.exception.TiClientInternalException;
+import com.pingcap.tikv.kvproto.Kvrpcpb.IsolationLevel;
 import com.pingcap.tikv.kvproto.Metapb.Peer;
 import com.pingcap.tikv.kvproto.Metapb.Region;
 import com.pingcap.tikv.kvproto.Metapb.Store;
@@ -165,7 +166,7 @@ public class RegionManager {
 
   public void onRegionStale(long regionID, List<Region> regions) {
     invalidateRegion(regionID);
-    regions.stream().map(r -> new TiRegion(r, r.getPeers(0))).forEach(this::putRegion);
+    regions.stream().map(r -> new TiRegion(r, r.getPeers(0), IsolationLevel.RC)).forEach(this::putRegion);
   }
 
   public void updateLeader(long regionID, long storeID) {

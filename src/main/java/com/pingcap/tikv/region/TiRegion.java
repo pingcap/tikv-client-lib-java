@@ -20,6 +20,7 @@ package com.pingcap.tikv.region;
 import com.google.protobuf.ByteString;
 import com.pingcap.tikv.codec.CodecDataInput;
 import com.pingcap.tikv.kvproto.Kvrpcpb;
+import com.pingcap.tikv.kvproto.Kvrpcpb.IsolationLevel;
 import com.pingcap.tikv.kvproto.Metapb;
 import com.pingcap.tikv.kvproto.Metapb.Peer;
 import com.pingcap.tikv.kvproto.Metapb.Region;
@@ -32,11 +33,13 @@ public class TiRegion implements Serializable {
   private final Region meta;
   private final Set<Long> unreachableStores;
   private Peer peer;
+  private final IsolationLevel isolationLevel;
 
-  public TiRegion(Region meta, Peer peer) {
+  public TiRegion(Region meta, Peer peer, IsolationLevel isolationLevel) {
     this.meta = decodeRegion(meta);
     this.peer = peer;
     this.unreachableStores = new HashSet<>();
+    this.isolationLevel = isolationLevel;
   }
 
   private Region decodeRegion(Region region) {
@@ -81,6 +84,7 @@ public class TiRegion implements Serializable {
 
   public Kvrpcpb.Context getContext() {
     Kvrpcpb.Context.Builder builder = Kvrpcpb.Context.newBuilder();
+    builder.setIsolationLevel(this.isolationLevel);
     builder.setRegionId(meta.getId()).setPeer(this.peer).setRegionEpoch(this.meta.getRegionEpoch());
     return builder.build();
   }

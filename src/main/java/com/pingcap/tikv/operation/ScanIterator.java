@@ -22,6 +22,7 @@ import com.pingcap.tikv.codec.KeyUtils;
 import com.pingcap.tikv.exception.TiClientInternalException;
 import com.pingcap.tikv.kvproto.Coprocessor.KeyRange;
 import com.pingcap.tikv.kvproto.Kvrpcpb;
+import com.pingcap.tikv.kvproto.Kvrpcpb.IsolationLevel;
 import com.pingcap.tikv.kvproto.Metapb;
 import com.pingcap.tikv.region.RegionManager;
 import com.pingcap.tikv.region.RegionStoreClient;
@@ -39,6 +40,7 @@ public class ScanIterator implements Iterator<Kvrpcpb.KvPair> {
   protected final TiSession session;
   private final RegionManager regionCache;
   protected final long version;
+  private final Kvrpcpb.IsolationLevel isolationLevel = IsolationLevel.RC;
 
   private List<Kvrpcpb.KvPair> currentCache;
   protected ByteString startKey;
