@@ -15,10 +15,10 @@
 
 package com.pingcap.tikv.predicates;
 
-import static com.google.common.base.Preconditions.checkArgument;
-import static java.util.Objects.requireNonNull;
-
-import com.google.common.collect.*;
+import com.google.common.collect.ImmutableList;
+import com.google.common.collect.Range;
+import com.google.common.collect.RangeSet;
+import com.google.common.collect.TreeRangeSet;
 import com.pingcap.tikv.exception.TiClientInternalException;
 import com.pingcap.tikv.expression.TiConstant;
 import com.pingcap.tikv.expression.TiExpr;
@@ -27,8 +27,12 @@ import com.pingcap.tikv.expression.scalar.*;
 import com.pingcap.tikv.predicates.AccessConditionNormalizer.NormalizedCondition;
 import com.pingcap.tikv.types.DataType;
 import com.pingcap.tikv.util.Comparables;
+
 import java.util.ArrayList;
 import java.util.List;
+
+import static com.google.common.base.Preconditions.checkArgument;
+import static java.util.Objects.requireNonNull;
 
 // TODO: reconsider class design and organization
 public class RangeBuilder {
@@ -175,7 +179,7 @@ public class RangeBuilder {
     private Range range;
     private DataType rangeType;
 
-    private IndexRange(
+    public IndexRange(
         List<Object> accessPoints, List<DataType> types, Range range, DataType rangeType) {
       this.accessPoints = accessPoints;
       this.types = types;
@@ -226,7 +230,7 @@ public class RangeBuilder {
       return result;
     }
 
-    List<Object> getAccessPoints() {
+    public List<Object> getAccessPoints() {
       return accessPoints;
     }
 
@@ -246,7 +250,7 @@ public class RangeBuilder {
       return types;
     }
 
-    DataType getRangeType() {
+    public DataType getRangeType() {
       return rangeType;
     }
   }

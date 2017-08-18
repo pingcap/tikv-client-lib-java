@@ -15,9 +15,6 @@
 
 package com.pingcap.tikv.predicates;
 
-import static com.google.common.base.Preconditions.checkArgument;
-import static java.util.Objects.requireNonNull;
-
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.BoundType;
 import com.google.common.collect.ImmutableList;
@@ -36,10 +33,14 @@ import com.pingcap.tikv.meta.TiTableInfo;
 import com.pingcap.tikv.predicates.RangeBuilder.IndexRange;
 import com.pingcap.tikv.types.DataType;
 import com.pingcap.tikv.types.IntegerType;
+
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+
+import static com.google.common.base.Preconditions.checkArgument;
+import static java.util.Objects.requireNonNull;
 
 // TODO: Rethink value binding part since we abstract away datum of TiDB
 public class ScanBuilder {
@@ -166,7 +167,7 @@ public class ScanBuilder {
     return ranges;
   }
 
-  private List<KeyRange> buildIndexScanKeyRange(
+  public static List<KeyRange> buildIndexScanKeyRange(
       TiTableInfo table, TiIndexInfo index, List<IndexRange> indexRanges) {
     requireNonNull(table, "Table cannot be null to encoding keyRange");
     requireNonNull(index, "Index cannot be null to encoding keyRange");
