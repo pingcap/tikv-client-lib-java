@@ -16,13 +16,9 @@
 
 package com.pingcap.tikv.statistics;
 
-import com.google.common.collect.ImmutableList;
 import com.google.protobuf.ByteString;
 import com.pingcap.tidb.tipb.Chunk;
 import com.pingcap.tidb.tipb.RowMeta;
-import com.pingcap.tikv.Snapshot;
-import com.pingcap.tikv.TiCluster;
-import com.pingcap.tikv.TiConfiguration;
 import com.pingcap.tikv.codec.CodecDataInput;
 import com.pingcap.tikv.operation.ChunkIterator;
 import com.pingcap.tikv.row.ObjectRowImpl;
@@ -45,10 +41,6 @@ import static org.junit.Assert.assertEquals;
  *
  */
 public class HistogramTest {
-  private static TiConfiguration conf =
-      TiConfiguration.createDefault(ImmutableList.of("127.0.0.1:" + 2379));
-  private static TiCluster cluster = TiCluster.getCluster(conf);
-  private static Snapshot snapshot = cluster.createSnapshot();
   private static List<Chunk> chunks = new ArrayList<>();
   private static Histogram histogram = new Histogram();
 
