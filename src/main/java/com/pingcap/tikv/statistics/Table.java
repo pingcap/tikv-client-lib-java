@@ -20,13 +20,13 @@ public class Table {
   private static final long pseudoLessRate = 3;
   private static final long pseudoBetweenRate = 40;
 
-  public long TableID;
+  private long TableID;
   public HashMap<Long, Column> Columns;
-  public HashMap<Long, Index> Indices;
+  private HashMap<Long, Index> Indices;
   public long Count; // Total row count in a table.
   public long ModifyCount; // Total modify count in a table.
   public long Version;
-  public boolean Pseudo;
+  private boolean Pseudo;
 
   public Table() {
   }
@@ -47,7 +47,7 @@ public class Table {
   }
 
   // ColumnIsInvalid checks if this column is invalid.
-  public boolean ColumnIsInvalid(ColumnInfo info) {
+  private boolean ColumnIsInvalid(ColumnInfo info) {
     if (Pseudo) {
       return true;
     }
@@ -123,7 +123,7 @@ public class Table {
     return new Table(tableID, pseudoRowCount, true);
   }
 
-  public double getPseudoRowCountByIndexRanges(List<IndexRange> indexRanges, double tableRowCount) {
+  private double getPseudoRowCountByIndexRanges(List<IndexRange> indexRanges, double tableRowCount) {
     if (Math.abs(tableRowCount) < 1e-6) {
       return 0;
     }
@@ -161,7 +161,7 @@ public class Table {
     return totalCount;
   }
 
-  public double getPseudoRowCountByColumnRanges(List<IndexRange> columnRanges, double tableRowCount) {
+  private double getPseudoRowCountByColumnRanges(List<IndexRange> columnRanges, double tableRowCount) {
     double rowCount = 0;
     for (IndexRange columnRange : columnRanges) {
       List<Object> points = columnRange.getAccessPoints();
@@ -174,17 +174,17 @@ public class Table {
         lowerBound = Comparables.wrap(rg.lowerEndpoint());
         upperBound = Comparables.wrap(rg.upperEndpoint());
       }
-      if (lowerBound == null && upperBound.compareTo(Comparables.wrap(DataType.indexMaxValue())) == 0) {
+      if (lowerBound == null && upperBound.compareTo(DataType.indexMaxValue()) == 0) {
         rowCount += tableRowCount;
-      } else if (lowerBound != null && lowerBound.compareTo(Comparables.wrap(DataType.indexMinValue())) == 0) {
+      } else if (lowerBound != null && lowerBound.compareTo(DataType.indexMinValue()) == 0) {
         double nullCount = tableRowCount / pseudoEqualRate;
-        if (upperBound.compareTo(Comparables.wrap(DataType.indexMaxValue())) == 0) {
+        if (upperBound.compareTo(DataType.indexMaxValue()) == 0) {
           rowCount += tableRowCount - nullCount;
         } else {
           double lessCount = tableRowCount / pseudoLessRate;
           rowCount += lessCount - nullCount;
         }
-      } else if (upperBound.compareTo(Comparables.wrap(DataType.indexMaxValue())) == 0) {
+      } else if (upperBound.compareTo(DataType.indexMaxValue()) == 0) {
         rowCount += tableRowCount / pseudoLessRate;
       } else {
         if (lowerBound.compareTo(upperBound) == 0) {

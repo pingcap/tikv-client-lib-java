@@ -35,6 +35,7 @@ import com.pingcap.tikv.types.Types;
 import com.pingcap.tikv.util.Bucket;
 import com.pingcap.tikv.util.Comparables;
 import com.pingcap.tikv.util.RangeSplitter;
+import com.pingcap.tikv.util.RangeSplitter.RegionTask;
 
 import java.util.Arrays;
 import java.util.Iterator;
@@ -116,13 +117,9 @@ public class Histogram {
     this.id = id;
   }
 
-  public Histogram createHistogram() throws Exception {
-    return this;
-  }
-
   //Loads histogram from storage
   public Histogram histogramFromStorage(
-      long tableID, long colID, int isIndex, long distinct, long lastUpdateVersion, long nullCount, Snapshot snapshot,
+      long tableID, long colID, long isIndex, long distinct, long lastUpdateVersion, long nullCount, Snapshot snapshot,
       DataType type, TiTableInfo table, RegionManager manager) throws Exception {
 
     TiIndexInfo index = TiIndexInfo.generateFakePrimaryKeyIndex(table);
@@ -131,16 +128,14 @@ public class Histogram {
         ImmutableList.of(
             new Equal(TiColumnRef.create(TABLE_ID, table), TiConstant.create(tableID)),
             new Equal(TiColumnRef.create(IS_INDEX, table), TiConstant.create(isIndex)),
-            new Equal(TiColumnRef.create(HIST_ID, table), TiConstant.create(colID)));
+            new Equal(TiColumnRef.create(HIST_ID, table), TiConstant.create(colID))
+        );
     ScanBuilder scanBuilder = new ScanBuilder();
     ScanBuilder.ScanPlan scanPlan = scanBuilder.buildScan(firstAnd, index, table);
     TiSelectRequest selReq = new TiSelectRequest();
     selReq
         .addRanges(scanPlan.getKeyRanges())
         .setTableInfo(table)
-        .addField(TiColumnRef.create(TABLE_ID, table))
-        .addField(TiColumnRef.create(IS_INDEX, table))
-        .addField(TiColumnRef.create(HIST_ID, table))
         .addField(TiColumnRef.create(BUCKET_ID, table))
         .addField(TiColumnRef.create(COUNT, table))
         .addField(TiColumnRef.create(REPEATS, table))
@@ -150,25 +145,21 @@ public class Histogram {
 
     selReq.addWhere(PredicateUtils.mergeCNFExpressions(scanPlan.getFilters()));
 
-    List<RangeSplitter.RegionTask> keyWithRegionTasks =
+    List<RegionTask> keyWithRegionTasks =
         RangeSplitter.newSplitter(manager)
             .splitRangeByRegion(selReq.getRanges());
-
-    //int len = keyWithRegionTasks.size();
 
     this.id = colID;
     this.numberOfDistinctValue = distinct;
     this.lastUpdateVersion = lastUpdateVersion;
     this.nullCount = nullCount;
-    //this.buckets = new Bucket[len];
 
     int len = 0;
     Bucket[] tmpBuckets = new Bucket[256];
 
-    for (RangeSplitter.RegionTask worker : keyWithRegionTasks) {
+    for (RegionTask task : keyWithRegionTasks) {
 
-      Iterator<Row> it = snapshot.select(selReq, worker);
-      Bucket bucket = new Bucket();
+      Iterator<Row> it = snapshot.select(selReq, task);
 
       while (it.hasNext()) {
         Row row = it.next();
@@ -176,6 +167,7 @@ public class Histogram {
         long count = row.getLong(1);
         long repeats = row.getLong(2);
         Comparable lowerBound, upperBound;
+        Bucket bucket = new Bucket();
         bucket.setCount(count);
         bucket.setRepeats(repeats);
 
@@ -224,7 +216,6 @@ public class Histogram {
     } else {
       cmp = values.compareTo(buckets[index].lowerBound);
     }
-    System.out.println("values: " + values.toString() + " buckets[" + index + "].lowerBound: " + buckets[index].lowerBound);
     if (cmp < 0) {
       return 0;
     }
@@ -258,7 +249,6 @@ public class Histogram {
     if (index == -buckets.length - 1) {
       return totalRowCount();
     }
-    boolean match = index >= 0;
     if (index < 0) {
       index = -index - 1;
     }
@@ -286,7 +276,7 @@ public class Histogram {
   protected double betweenRowCount(Comparable a, Comparable b) {
     double lessCountA = lessRowCount(a);
     double lessCountB = lessRowCount(b);
-    if (lessCountB >= lessCountA) {
+    if (lessCountA >= lessCountB) {
       return inBucketBetweenCount();
     }
     return lessCountB - lessCountA;
@@ -311,11 +301,32 @@ public class Histogram {
   //lowerBound returns the smallest index of the searched key
   //and returns (-[insertion point] - 1) if the key is not found in buckets
   //where [insertion point] denotes the index of the first element greater than the key
-  private int lowerBound(Comparable key) {
-    assert key.getClass() == Bucket.class;
-    return Arrays.binarySearch(buckets, key);
+  protected int lowerBound(Comparable key) {
+    int len = buckets.length;
+    if(len == 0) return -1;
+    assert key.getClass() == buckets[0].upperBound.getClass();
+    int l = 0, r = len - 1, ans = 0;
+    while(l <= r) {
+      int mid = (l + r) >> 1;
+      if(key.compareTo(buckets[mid].upperBound) >= 0) {
+        l = mid + 1;
+        ans = mid;
+      } else {
+        r = mid - 1;
+      }
+    }
+    int cmp = key.compareTo(buckets[ans].upperBound);
+    if(cmp > 0) {
+      ++ ans;
+    }
+    if(cmp != 0) {
+      ans = -ans - 1;
+    }
+    return ans;
   }
 
+  // mergeBuckets is used to merge every two neighbor buckets.
+  // parameters: bucketIdx is the index of the last bucket
   public void mergeBlock(long bucketIdx) {
     int curBuck = 0;
     for (int i = 0; i + 1 <= bucketIdx; i += 2) {
@@ -327,9 +338,7 @@ public class Histogram {
     if (bucketIdx % 2 == 0) {
       buckets[curBuck++] = buckets[(int) bucketIdx];
     }
-    Bucket[] temp = new Bucket[curBuck];
-    System.arraycopy(buckets, 0, temp, 0, curBuck);
-    buckets = temp;
+    buckets = Arrays.copyOf(buckets, curBuck);
   }
 
   // getIncreaseFactor will return a factor of data increasing after the last analysis.

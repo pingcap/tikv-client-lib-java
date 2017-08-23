@@ -18,10 +18,10 @@ package com.pingcap.tikv.util;
 public class Bucket implements Comparable<Bucket> {
   public long count;
   public long repeats;
-  public Comparable<?> lowerBound;
-  public Comparable<?> upperBound;
+  public Comparable lowerBound;
+  public Comparable upperBound;
 
-  public Bucket(long count, long repeats, Comparable<?> lowerBound, Comparable<?> upperBound) {
+  public Bucket(long count, long repeats, Comparable lowerBound, Comparable upperBound) {
     this.count = count;
     this.repeats = repeats;
     this.lowerBound = lowerBound;
@@ -33,7 +33,7 @@ public class Bucket implements Comparable<Bucket> {
 
   @Override
   public int compareTo(Bucket b) {
-    return Comparables.wrap(upperBound).compareTo(Comparables.wrap(b.upperBound));
+    return upperBound.compareTo(b.upperBound);
   }
 
   public long getCount() {
@@ -52,19 +52,19 @@ public class Bucket implements Comparable<Bucket> {
     this.repeats = repeats;
   }
 
-  public Comparable<?> getLowerBound() {
+  public Comparable getLowerBound() {
     return lowerBound;
   }
 
-  public void setLowerBound(Comparable<?> lowerBound) {
+  public void setLowerBound(Comparable lowerBound) {
     this.lowerBound = lowerBound;
   }
 
-  public Comparable<?> getUpperBound() {
+  public Comparable getUpperBound() {
     return upperBound;
   }
 
-  public void setUpperBound(Comparable<?> upperBound) {
+  public void setUpperBound(Comparable upperBound) {
     this.upperBound = upperBound;
   }
 

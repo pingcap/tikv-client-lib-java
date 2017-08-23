@@ -20,6 +20,7 @@ package com.pingcap.tikv.operation;
 import com.google.protobuf.ByteString;
 import com.pingcap.tidb.tipb.Chunk;
 import com.pingcap.tikv.exception.TiClientInternalException;
+
 import java.util.Iterator;
 import java.util.List;
 
@@ -30,7 +31,7 @@ public class ChunkIterator implements Iterator<ByteString> {
     private int bufOffset;
     private boolean eof;
 
-    ChunkIterator(List<Chunk> chunks) {
+    public ChunkIterator(List<Chunk> chunks) {
       // Read and then advance semantics
       this.chunks = chunks;
       chunkIndex = 0;
