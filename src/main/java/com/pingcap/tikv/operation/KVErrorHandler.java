@@ -22,8 +22,8 @@ import com.pingcap.tikv.kvproto.Kvrpcpb;
 import com.pingcap.tikv.kvproto.Pdpb;
 import com.pingcap.tikv.region.RegionManager;
 import io.grpc.Status;
-import io.grpc.Status.Code;
 import io.grpc.StatusRuntimeException;
+
 import java.util.function.Function;
 
 public class KVErrorHandler<RespT> implements ErrorHandler<RespT, Pdpb.Error> {
@@ -52,7 +52,7 @@ public class KVErrorHandler<RespT> implements ErrorHandler<RespT, Pdpb.Error> {
       if (error.hasNotLeader()) {
         // update Leader here
         // no need update here. just let retry take control of this.
-        this.regionManager.updateLeader(ctx.getRegionId(), ctx.getPeer().getStoreId());
+        this.regionManager.updateLeader(error.getNotLeader().getLeader().getId(), error.getNotLeader().getLeader().getStoreId());
         // TODO add sleep here
         throw new StatusRuntimeException(Status.fromCode(Status.Code.UNAVAILABLE).withDescription(error.toString()));
       }
