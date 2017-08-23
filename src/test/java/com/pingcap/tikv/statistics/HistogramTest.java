@@ -98,7 +98,6 @@ public class HistogramTest {
     blobs.decodeValueToRow(cdi, row, 22);
     blobs.decodeValueToRow(cdi, row, 23);
 
-
     assertEquals(row.getLong(0), 27);
     assertEquals(row.getLong(1), 0);
     assertEquals(row.getLong(2), 1);
