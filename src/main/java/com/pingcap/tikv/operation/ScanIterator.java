@@ -94,15 +94,18 @@ public class ScanIterator implements Iterator<Kvrpcpb.KvPair> {
     return true;
   }
 
+  private boolean cacheDrain() {
+    return currentCache == null || index >= currentCache.size();
+  }
+
   @Override
   public boolean hasNext() {
-    if (eof) {
+    if (cacheDrain() && eof) {
       return false;
     }
     if (index == -1 || index >= currentCache.size()) {
       if (!loadCache()) {
         eof = true;
-        return false;
       }
     }
     if (!contains(currentCache.get(index).getKey())) {
@@ -118,7 +121,7 @@ public class ScanIterator implements Iterator<Kvrpcpb.KvPair> {
   }
 
   private Kvrpcpb.KvPair getCurrent() {
-    if (eof) {
+    if (cacheDrain() && eof) {
       throw new NoSuchElementException();
     }
     if (index < currentCache.size()) {

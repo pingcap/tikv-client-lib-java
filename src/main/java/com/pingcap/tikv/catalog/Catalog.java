@@ -15,19 +15,10 @@
 
 package com.pingcap.tikv.catalog;
 
-import com.fasterxml.jackson.core.JsonParseException;
-import com.fasterxml.jackson.databind.JsonMappingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.ImmutableList;
-import com.google.protobuf.ByteString;
 import com.pingcap.tikv.Snapshot;
-import com.pingcap.tikv.codec.CodecDataInput;
-import com.pingcap.tikv.codec.KeyUtils;
-import com.pingcap.tikv.exception.TiClientInternalException;
 import com.pingcap.tikv.meta.TiDBInfo;
 import com.pingcap.tikv.meta.TiTableInfo;
-import java.nio.charset.StandardCharsets;
-import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -36,38 +27,25 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 
 public class Catalog {
-  protected static final Logger logger = LogManager.getFormatterLogger(Catalog.class);
-  private static ByteString KEY_DB = ByteString.copyFromUtf8("DBs");
-  private static ByteString KEY_TABLE = ByteString.copyFromUtf8("Table");
-  private static ByteString KEY_SCHEMA_VERSION =  ByteString.copyFromUtf8("SchemaVersionKey");
-
-  private static final String DB_PREFIX = "DB";
-  private static final String TBL_PREFIX = "Table";
-
   private Supplier<Snapshot> snapshotProvider;
   private ScheduledExecutorService service;
   private CatalogCache metaCache;
 
-
-
   private static class CatalogCache {
     private CatalogCache(HashMap<String, TiDBInfo> dbCache,
                          HashMap<TiDBInfo, HashMap<String, TiTableInfo>> tableCache,
-                         CatalogTransaction trx,
-                         long version) {
+                         CatalogTransaction transaction) {
       this.dbCache = dbCache;
       this.tableCache = tableCache;
-      this.trx = trx;
-      this.currentVersion = version;
+      this.transaction = transaction;
+      this.currentVersion = transaction.getLatestSchemaVersion();
     }
 
     private HashMap<String, TiDBInfo> dbCache = new HashMap<>();
     private HashMap<TiDBInfo, HashMap<String, TiTableInfo>> tableCache = new HashMap<>();
-    private CatalogTransaction trx;
+    private CatalogTransaction transaction;
     private long currentVersion;
 
     public HashMap<String, TiDBInfo> getDbCache() {
@@ -78,8 +56,8 @@ public class Catalog {
       return tableCache;
     }
 
-    public CatalogTransaction getTrx() {
-      return trx;
+    public CatalogTransaction getTransaction() {
+      return transaction;
     }
 
     public long getVersion() {
@@ -98,7 +76,7 @@ public class Catalog {
   private void reloadCache() {
     Snapshot snapshot = snapshotProvider.get();
     CatalogTransaction newTrx = new CatalogTransaction(snapshot);
-    long latestVersion = getLatestSchemaVersion(newTrx);
+    long latestVersion = newTrx.getLatestSchemaVersion();
     if (latestVersion > metaCache.getVersion()) {
       metaCache = createNewMetaCache(newTrx);
     }
@@ -108,34 +86,25 @@ public class Catalog {
     HashMap<String, TiDBInfo> newDBCache = new HashMap<>();
     HashMap<TiDBInfo, HashMap<String, TiTableInfo>> newTableCache = new HashMap<>();
 
-    trx.hashGetFields(KEY_DB)
-        .stream()
-        .map(kv -> parseFromJson(kv.second, TiDBInfo.class))
-        .forEach(db -> newDBCache.put(db.getName(), db));
+    List<TiDBInfo> databases = trx.getDatabases();
+    databases.forEach(db -> newDBCache.put(db.getName(), db));
 
-    Collection<TiDBInfo> databases = newDBCache.values();
     for (TiDBInfo db : databases) {
-      ByteString dbKey = encodeDatabaseID(db.getId());
-
-      trx.hashGetFields(dbKey)
-          .stream()
-          .filter(kv -> KeyUtils.hasPrefix(kv.first, KEY_TABLE))
-          .map(kv -> parseFromJson(kv.second, TiTableInfo.class))
-          .forEach(table ->
-              newTableCache.compute(db, (key, tableMap) -> {
-                if (tableMap == null) {
-                  HashMap<String, TiTableInfo> newTableMap = new HashMap<>();
-                  newTableMap.put(table.getName(), table);
-                  return newTableMap;
-                } else {
-                  tableMap.put(table.getName(), table);
-                  return tableMap;
-                }
-              })
-          );
+      List<TiTableInfo> tables = trx.getTables(db.getId());
+      for (TiTableInfo table : tables) {
+        newTableCache.compute(db, (key, tableMap) -> {
+          if (tableMap == null) {
+            HashMap<String, TiTableInfo> newTableMap = new HashMap<>();
+            newTableMap.put(table.getName(), table);
+            return newTableMap;
+          } else {
+            tableMap.put(table.getName(), table);
+            return tableMap;
+          }
+        });
+      }
     }
-
-    return new CatalogCache(newDBCache, newTableCache, trx, getLatestSchemaVersion(trx));
+    return new CatalogCache(newDBCache, newTableCache, trx);
   }
 
 
@@ -157,86 +126,18 @@ public class Catalog {
     return metaCache.getDbCache().get(dbName);
   }
 
+  public TiTableInfo getTable(String dbName, String tableName) {
+    TiDBInfo database = getDatabase(dbName);
+    if (database == null) {
+      return null;
+    }
+    return getTable(database, tableName);
+  }
+
   public TiTableInfo getTable(TiDBInfo database, String tableName) {
     Objects.requireNonNull(database, "database is null");
     Objects.requireNonNull(tableName, "tableName is null");
     Map<String, TiTableInfo> tableMap = metaCache.getTableCache().get(database);
     return tableMap.get(tableName);
-  }
-
-  public static long getLatestSchemaVersion(CatalogTransaction trx) {
-    Objects.requireNonNull(trx, "Transaction is null");
-    ByteString versionBytes = trx.bytesGet(KEY_SCHEMA_VERSION);
-    CodecDataInput cdi = new CodecDataInput(versionBytes.toByteArray());
-    return Long.parseLong(new String(cdi.toByteArray(), StandardCharsets.UTF_8));
-  }
-
-  public TiDBInfo getDatabase(long id) {
-    ByteString dbKey = encodeDatabaseID(id);
-    try {
-      ByteString json = metaCache.getTrx().hashGet(KEY_DB, dbKey);
-      if (json == null) {
-        return null;
-      }
-      return parseFromJson(json, TiDBInfo.class);
-    } catch (Exception e) {
-      // TODO: Handle key not exists and let loose others
-      return null;
-    }
-  }
-
-  private TiDBInfo getDatabase(ByteString dbKey) {
-    Objects.requireNonNull(dbKey, "dbKey is null");
-    try {
-      ByteString json = metaCache.getTrx().hashGet(KEY_DB, dbKey);
-      if (json == null) {
-        return null;
-      }
-      return parseFromJson(json, TiDBInfo.class);
-    } catch (Exception e) {
-      // TODO: Handle key not exists and let loose others
-      return null;
-    }
-  }
-
-  public TiTableInfo getTable(TiDBInfo database, long tableId) {
-    Objects.requireNonNull(database, "database is null");
-    ByteString dbKey = encodeDatabaseID(database.getId());
-    if (!databaseExists(dbKey)) {
-      return null;
-    }
-    ByteString tableKey = encodeTableId(tableId);
-    ByteString json = metaCache.getTrx().hashGet(dbKey, tableKey);
-    return parseFromJson(json, TiTableInfo.class);
-  }
-
-  private static ByteString encodeDatabaseID(long id) {
-    return ByteString.copyFrom(String.format("%s:%d", DB_PREFIX, id).getBytes());
-  }
-
-  private static ByteString encodeTableId(long id) {
-    return ByteString.copyFrom(String.format("%s:%d", TBL_PREFIX, id).getBytes());
-  }
-
-  private boolean databaseExists(ByteString dbKey) {
-    return getDatabase(dbKey) == null;
-  }
-
-  public static <T> T parseFromJson(ByteString json, Class<T> cls) {
-    Objects.requireNonNull(json, "json is null");
-    Objects.requireNonNull(cls, "cls is null");
-
-    logger.debug("Parse Json %s : %s", cls.getSimpleName(), json.toStringUtf8());
-    ObjectMapper mapper = new ObjectMapper();
-    try {
-      return mapper.readValue(json.toStringUtf8(), cls);
-    } catch (JsonParseException | JsonMappingException e) {
-      String errMsg =
-          String.format(
-              "Invalid JSON value for Type %s: %s\n", cls.getSimpleName(), json.toStringUtf8());
-      throw new TiClientInternalException(errMsg, e);
-    } catch (Exception e1) {
-      throw new TiClientInternalException("Error parsing Json", e1);
-    }
   }
 }

@@ -45,7 +45,7 @@ public class Comparables {
         "Cannot cast to Comparable for type: " + o.getClass().getSimpleName());
   }
 
-  private static class ComparableBytes implements Comparable<ComparableBytes> {
+  public static class ComparableBytes implements Comparable<ComparableBytes> {
     // below might uses UnsafeComparator if possible
     private static final Comparator<byte[]> comparator = UnsignedBytes.lexicographicalComparator();
     private final byte[] bytes;
@@ -63,12 +63,17 @@ public class Comparables {
       return comparator.compare(bytes, other.bytes);
     }
 
+
+    public byte[] getBytes() {
+      return bytes;
+    }
+
     public static ComparableBytes wrap(byte[] bytes) {
       return new ComparableBytes(bytes);
     }
   }
 
-  private static class ComparableByteString implements Comparable<ComparableByteString> {
+  public static class ComparableByteString implements Comparable<ComparableByteString> {
     private final ByteString bytes;
 
     private ComparableByteString(ByteString bytes) {
@@ -87,6 +92,10 @@ public class Comparables {
       }
       // one is the prefix of other then the longer is larger
       return bytes.size() - otherBytes.size();
+    }
+
+    public ByteString getByteString() {
+      return bytes;
     }
 
     public static ComparableByteString wrap(ByteString bytes) {
