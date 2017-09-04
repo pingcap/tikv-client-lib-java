@@ -48,7 +48,9 @@ public class TiCluster implements AutoCloseable {
   }
 
   public Catalog getCatalog() {
-    return new Catalog(createSnapshot());
+    return new Catalog(() -> createSnapshot(),
+                       session.getConf().getMetaReloadPeriod(),
+                       session.getConf().getMetaReloadPeriodUnit());
   }
 
   public TiSession getSession() {

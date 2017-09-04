@@ -47,7 +47,7 @@ public class CatalogTransaction {
     this.prefix = META_PREFIX;
   }
 
-  private Snapshot getSnapshot() {
+  public Snapshot getSnapshot() {
     return snapshot;
   }
 
@@ -55,19 +55,18 @@ public class CatalogTransaction {
     return prefix;
   }
 
-  private static void encodeStringDataKey(CodecDataOutput cdo, byte[] prefix, byte[] key) {
+  private void encodeStringDataKey(CodecDataOutput cdo, byte[] key) {
     cdo.write(prefix);
     BytesType.writeBytes(cdo, key);
     IntegerType.writeULong(cdo, STR_DATA_FLAG);
   }
 
-  private static void encodeHashDataKey(
-      CodecDataOutput cdo, byte[] prefix, byte[] key, byte[] field) {
-    encodeHashDataKeyPrefix(cdo, prefix, key);
+  private void encodeHashDataKey(CodecDataOutput cdo, byte[] key, byte[] field) {
+    encodeHashDataKeyPrefix(cdo, key);
     BytesType.writeBytes(cdo, field);
   }
 
-  private static void encodeHashDataKeyPrefix(CodecDataOutput cdo, byte[] prefix, byte[] key) {
+  private void encodeHashDataKeyPrefix(CodecDataOutput cdo, byte[] key) {
     cdo.write(prefix);
     BytesType.writeBytes(cdo, key);
     IntegerType.writeULong(cdo, HASH_DATA_FLAG);
@@ -90,13 +89,19 @@ public class CatalogTransaction {
 
   public ByteString hashGet(ByteString key, ByteString field) {
     CodecDataOutput cdo = new CodecDataOutput();
-    encodeHashDataKey(cdo, prefix, key.toByteArray(), field.toByteArray());
+    encodeHashDataKey(cdo, key.toByteArray(), field.toByteArray());
+    return snapshot.get(cdo.toByteString());
+  }
+
+  public ByteString bytesGet(ByteString key) {
+    CodecDataOutput cdo = new CodecDataOutput();
+    encodeStringDataKey(cdo, key.toByteArray());
     return snapshot.get(cdo.toByteString());
   }
 
   public List<Pair<ByteString, ByteString>> hashGetFields(ByteString key) {
     CodecDataOutput cdo = new CodecDataOutput();
-    encodeHashDataKeyPrefix(cdo, prefix, key.toByteArray());
+    encodeHashDataKeyPrefix(cdo, key.toByteArray());
     ByteString encodedKey = cdo.toByteString();
 
     Iterator<Kvrpcpb.KvPair> iterator = snapshot.scan(encodedKey);

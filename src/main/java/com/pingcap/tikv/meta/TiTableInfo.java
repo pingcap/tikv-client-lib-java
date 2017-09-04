@@ -56,7 +56,7 @@ public class TiTableInfo implements Serializable {
       @JsonProperty("max_idx_id") long maxIndexId,
       @JsonProperty("old_schema_id") long oldSchemaId) {
     this.id = id;
-    this.name = name.getL();
+    this.name = name.getO();
     this.charset = charset;
     this.collate = collate;
     this.columns = ImmutableList.copyOf(requireNonNull(columns, "columns is null"));
