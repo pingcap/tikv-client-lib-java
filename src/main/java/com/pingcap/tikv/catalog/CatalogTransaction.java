@@ -65,14 +65,6 @@ public class CatalogTransaction {
     this.prefix = META_PREFIX;
   }
 
-  public Snapshot getSnapshot() {
-    return snapshot;
-  }
-
-  public byte[] getPrefix() {
-    return prefix;
-  }
-
   private void encodeStringDataKey(CodecDataOutput cdo, byte[] key) {
     cdo.write(prefix);
     BytesType.writeBytes(cdo, key);

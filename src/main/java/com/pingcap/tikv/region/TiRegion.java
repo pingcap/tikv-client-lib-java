@@ -18,11 +18,13 @@
 package com.pingcap.tikv.region;
 
 import com.google.protobuf.ByteString;
+import com.pingcap.tikv.codec.CodecDataInput;
 import com.pingcap.tikv.kvproto.Kvrpcpb;
 import com.pingcap.tikv.kvproto.Kvrpcpb.IsolationLevel;
 import com.pingcap.tikv.kvproto.Metapb;
 import com.pingcap.tikv.kvproto.Metapb.Peer;
 import com.pingcap.tikv.kvproto.Metapb.Region;
+import com.pingcap.tikv.types.BytesType;
 import java.io.Serializable;
 import java.util.HashSet;
 import java.util.Set;
@@ -34,7 +36,7 @@ public class TiRegion implements Serializable {
   private final IsolationLevel isolationLevel;
 
   public TiRegion(Region meta, Peer peer, IsolationLevel isolationLevel) {
-    this.meta = meta;
+    this.meta = decodeRegion(meta);
     this.peer = peer;
     this.unreachableStores = new HashSet<>();
     this.isolationLevel = isolationLevel;
@@ -42,6 +44,30 @@ public class TiRegion implements Serializable {
 
   public Region getRawRegion() {
     return meta;
+  }
+
+  private Region decodeRegion(Region region) {
+    Region.Builder builder =
+        Region.newBuilder()
+            .setId(region.getId())
+            .setRegionEpoch(region.getRegionEpoch())
+            .addAllPeers(region.getPeersList());
+
+    if (region.getStartKey().isEmpty()) {
+      builder.setStartKey(region.getStartKey());
+    } else {
+      byte[] decodecStartKey = BytesType.readBytes(new CodecDataInput(region.getStartKey()));
+      builder.setStartKey(ByteString.copyFrom(decodecStartKey));
+    }
+
+    if (region.getEndKey().isEmpty()) {
+      builder.setEndKey(region.getEndKey());
+    } else {
+      byte[] decodecEndKey = BytesType.readBytes(new CodecDataInput(region.getEndKey()));
+      builder.setEndKey(ByteString.copyFrom(decodecEndKey));
+    }
+
+    return builder.build();
   }
 
   public Peer getLeader() {

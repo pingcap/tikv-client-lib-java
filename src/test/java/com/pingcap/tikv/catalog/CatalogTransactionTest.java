@@ -29,6 +29,7 @@ import com.pingcap.tikv.codec.CodecDataOutput;
 import com.pingcap.tikv.kvproto.Kvrpcpb.IsolationLevel;
 import com.pingcap.tikv.kvproto.Metapb;
 import com.pingcap.tikv.meta.TiDBInfo;
+import com.pingcap.tikv.meta.TiTableInfo;
 import com.pingcap.tikv.region.TiRegion;
 import com.pingcap.tikv.types.BytesType;
 import com.pingcap.tikv.types.IntegerType;
@@ -106,7 +107,7 @@ public class CatalogTransactionTest {
   }
 
   @Test
-  public void getLatestSchemaVersion() throws Exception {
+  public void getLatestSchemaVersionTest() throws Exception {
     setupPDResponse();
     CodecDataOutput cdo = new CodecDataOutput();
     cdo.write(new byte[] {'m'});
@@ -129,8 +130,17 @@ public class CatalogTransactionTest {
     return cdo.toByteString();
   }
 
+  private ByteString getDBKeyForTable(ByteString dbKey, ByteString tableKey) {
+    CodecDataOutput cdo = new CodecDataOutput();
+    cdo.write(new byte[] {'m'});
+    BytesType.writeBytes(cdo, dbKey.toByteArray());
+    IntegerType.writeULong(cdo, 'h');
+    BytesType.writeBytes(cdo, tableKey.toByteArray());
+    return cdo.toByteString();
+  }
+
   @Test
-  public void getDatabases() throws Exception {
+  public void getDatabasesTest() throws Exception {
     setupPDResponse();
     kvServer.put(getDBKey("DB:130"),
         ByteString.copyFromUtf8("{\n"
@@ -159,5 +169,332 @@ public class CatalogTransactionTest {
 
     assertEquals(264, dbs.get(1).getId());
     assertEquals("TPCH_001", dbs.get(1).getName());
+
+    TiDBInfo db = trx.getDatabase(130);
+    assertEquals(130, db.getId());
+    assertEquals("global_temp", db.getName());
+  }
+
+  @Test
+  public void getTablesTest() throws Exception {
+    final String tableTest =
+        "\n"
+            + "{\n"
+            + "   \"id\": 42,\n"
+            + "   \"name\": {\n"
+            + "      \"O\": \"test\",\n"
+            + "      \"L\": \"test\"\n"
+            + "   },\n"
+            + "   \"charset\": \"\",\n"
+            + "   \"collate\": \"\",\n"
+            + "   \"cols\": [\n"
+            + "      {\n"
+            + "         \"id\": 1,\n"
+            + "         \"name\": {\n"
+            + "            \"O\": \"c1\",\n"
+            + "            \"L\": \"c1\"\n"
+            + "         },\n"
+            + "         \"offset\": 0,\n"
+            + "         \"origin_default\": null,\n"
+            + "         \"default\": null,\n"
+            + "         \"type\": {\n"
+            + "            \"Tp\": 3,\n"
+            + "            \"Flag\": 139,\n"
+            + "            \"Flen\": 11,\n"
+            + "            \"Decimal\": -1,\n"
+            + "            \"Charset\": \"binary\",\n"
+            + "            \"Collate\": \"binary\",\n"
+            + "            \"Elems\": null\n"
+            + "         },\n"
+            + "         \"state\": 5,\n"
+            + "         \"comment\": \"\"\n"
+            + "      },\n"
+            + "      {\n"
+            + "         \"id\": 2,\n"
+            + "         \"name\": {\n"
+            + "            \"O\": \"c2\",\n"
+            + "            \"L\": \"c2\"\n"
+            + "         },\n"
+            + "         \"offset\": 1,\n"
+            + "         \"origin_default\": null,\n"
+            + "         \"default\": null,\n"
+            + "         \"type\": {\n"
+            + "            \"Tp\": 15,\n"
+            + "            \"Flag\": 0,\n"
+            + "            \"Flen\": 100,\n"
+            + "            \"Decimal\": -1,\n"
+            + "            \"Charset\": \"utf8\",\n"
+            + "            \"Collate\": \"utf8_bin\",\n"
+            + "            \"Elems\": null\n"
+            + "         },\n"
+            + "         \"state\": 5,\n"
+            + "         \"comment\": \"\"\n"
+            + "      },\n"
+            + "      {\n"
+            + "         \"id\": 3,\n"
+            + "         \"name\": {\n"
+            + "            \"O\": \"c3\",\n"
+            + "            \"L\": \"c3\"\n"
+            + "         },\n"
+            + "         \"offset\": 2,\n"
+            + "         \"origin_default\": null,\n"
+            + "         \"default\": null,\n"
+            + "         \"type\": {\n"
+            + "            \"Tp\": 15,\n"
+            + "            \"Flag\": 0,\n"
+            + "            \"Flen\": 100,\n"
+            + "            \"Decimal\": -1,\n"
+            + "            \"Charset\": \"utf8\",\n"
+            + "            \"Collate\": \"utf8_bin\",\n"
+            + "            \"Elems\": null\n"
+            + "         },\n"
+            + "         \"state\": 5,\n"
+            + "         \"comment\": \"\"\n"
+            + "      },\n"
+            + "      {\n"
+            + "         \"id\": 4,\n"
+            + "         \"name\": {\n"
+            + "            \"O\": \"c4\",\n"
+            + "            \"L\": \"c4\"\n"
+            + "         },\n"
+            + "         \"offset\": 3,\n"
+            + "         \"origin_default\": null,\n"
+            + "         \"default\": null,\n"
+            + "         \"type\": {\n"
+            + "            \"Tp\": 3,\n"
+            + "            \"Flag\": 128,\n"
+            + "            \"Flen\": 11,\n"
+            + "            \"Decimal\": -1,\n"
+            + "            \"Charset\": \"binary\",\n"
+            + "            \"Collate\": \"binary\",\n"
+            + "            \"Elems\": null\n"
+            + "         },\n"
+            + "         \"state\": 5,\n"
+            + "         \"comment\": \"\"\n"
+            + "      }\n"
+            + "   ],\n"
+            + "   \"index_info\": [\n"
+            + "      {\n"
+            + "         \"id\": 1,\n"
+            + "         \"idx_name\": {\n"
+            + "            \"O\": \"test_index\",\n"
+            + "            \"L\": \"test_index\"\n"
+            + "         },\n"
+            + "         \"tbl_name\": {\n"
+            + "            \"O\": \"\",\n"
+            + "            \"L\": \"\"\n"
+            + "         },\n"
+            + "         \"idx_cols\": [\n"
+            + "            {\n"
+            + "               \"name\": {\n"
+            + "                  \"O\": \"c1\",\n"
+            + "                  \"L\": \"c1\"\n"
+            + "               },\n"
+            + "               \"offset\": 0,\n"
+            + "               \"length\": -1\n"
+            + "            },\n"
+            + "            {\n"
+            + "               \"name\": {\n"
+            + "                  \"O\": \"c2\",\n"
+            + "                  \"L\": \"c2\"\n"
+            + "               },\n"
+            + "               \"offset\": 1,\n"
+            + "               \"length\": -1\n"
+            + "            },\n"
+            + "            {\n"
+            + "               \"name\": {\n"
+            + "                  \"O\": \"c3\",\n"
+            + "                  \"L\": \"c3\"\n"
+            + "               },\n"
+            + "               \"offset\": 2,\n"
+            + "               \"length\": -1\n"
+            + "            }\n"
+            + "         ],\n"
+            + "         \"is_unique\": false,\n"
+            + "         \"is_primary\": false,\n"
+            + "         \"state\": 5,\n"
+            + "         \"comment\": \"\",\n"
+            + "         \"index_type\": 0\n"
+            + "      }\n"
+            + "   ],\n"
+            + "   \"fk_info\": null,\n"
+            + "   \"state\": 5,\n"
+            + "   \"pk_is_handle\": true,\n"
+            + "   \"comment\": \"\",\n"
+            + "   \"auto_inc_id\": 0,\n"
+            + "   \"max_col_id\": 4,\n"
+            + "   \"max_idx_id\": 1\n"
+            + "}";
+
+    final String tableTest1 =
+        "\n"
+            + "{\n"
+            + "   \"id\": 43,\n"
+            + "   \"name\": {\n"
+            + "      \"O\": \"tEst1\",\n"
+            + "      \"L\": \"test1\"\n"
+            + "   },\n"
+            + "   \"charset\": \"\",\n"
+            + "   \"collate\": \"\",\n"
+            + "   \"cols\": [\n"
+            + "      {\n"
+            + "         \"id\": 1,\n"
+            + "         \"name\": {\n"
+            + "            \"O\": \"c1\",\n"
+            + "            \"L\": \"c1\"\n"
+            + "         },\n"
+            + "         \"offset\": 0,\n"
+            + "         \"origin_default\": null,\n"
+            + "         \"default\": null,\n"
+            + "         \"type\": {\n"
+            + "            \"Tp\": 3,\n"
+            + "            \"Flag\": 139,\n"
+            + "            \"Flen\": 11,\n"
+            + "            \"Decimal\": -1,\n"
+            + "            \"Charset\": \"binary\",\n"
+            + "            \"Collate\": \"binary\",\n"
+            + "            \"Elems\": null\n"
+            + "         },\n"
+            + "         \"state\": 5,\n"
+            + "         \"comment\": \"\"\n"
+            + "      },\n"
+            + "      {\n"
+            + "         \"id\": 2,\n"
+            + "         \"name\": {\n"
+            + "            \"O\": \"c2\",\n"
+            + "            \"L\": \"c2\"\n"
+            + "         },\n"
+            + "         \"offset\": 1,\n"
+            + "         \"origin_default\": null,\n"
+            + "         \"default\": null,\n"
+            + "         \"type\": {\n"
+            + "            \"Tp\": 15,\n"
+            + "            \"Flag\": 0,\n"
+            + "            \"Flen\": 100,\n"
+            + "            \"Decimal\": -1,\n"
+            + "            \"Charset\": \"utf8\",\n"
+            + "            \"Collate\": \"utf8_bin\",\n"
+            + "            \"Elems\": null\n"
+            + "         },\n"
+            + "         \"state\": 5,\n"
+            + "         \"comment\": \"\"\n"
+            + "      },\n"
+            + "      {\n"
+            + "         \"id\": 3,\n"
+            + "         \"name\": {\n"
+            + "            \"O\": \"c3\",\n"
+            + "            \"L\": \"c3\"\n"
+            + "         },\n"
+            + "         \"offset\": 2,\n"
+            + "         \"origin_default\": null,\n"
+            + "         \"default\": null,\n"
+            + "         \"type\": {\n"
+            + "            \"Tp\": 15,\n"
+            + "            \"Flag\": 0,\n"
+            + "            \"Flen\": 100,\n"
+            + "            \"Decimal\": -1,\n"
+            + "            \"Charset\": \"utf8\",\n"
+            + "            \"Collate\": \"utf8_bin\",\n"
+            + "            \"Elems\": null\n"
+            + "         },\n"
+            + "         \"state\": 5,\n"
+            + "         \"comment\": \"\"\n"
+            + "      },\n"
+            + "      {\n"
+            + "         \"id\": 4,\n"
+            + "         \"name\": {\n"
+            + "            \"O\": \"c4\",\n"
+            + "            \"L\": \"c4\"\n"
+            + "         },\n"
+            + "         \"offset\": 3,\n"
+            + "         \"origin_default\": null,\n"
+            + "         \"default\": null,\n"
+            + "         \"type\": {\n"
+            + "            \"Tp\": 3,\n"
+            + "            \"Flag\": 128,\n"
+            + "            \"Flen\": 11,\n"
+            + "            \"Decimal\": -1,\n"
+            + "            \"Charset\": \"binary\",\n"
+            + "            \"Collate\": \"binary\",\n"
+            + "            \"Elems\": null\n"
+            + "         },\n"
+            + "         \"state\": 5,\n"
+            + "         \"comment\": \"\"\n"
+            + "      }\n"
+            + "   ],\n"
+            + "   \"index_info\": [\n"
+            + "      {\n"
+            + "         \"id\": 1,\n"
+            + "         \"idx_name\": {\n"
+            + "            \"O\": \"test_index\",\n"
+            + "            \"L\": \"test_index\"\n"
+            + "         },\n"
+            + "         \"tbl_name\": {\n"
+            + "            \"O\": \"\",\n"
+            + "            \"L\": \"\"\n"
+            + "         },\n"
+            + "         \"idx_cols\": [\n"
+            + "            {\n"
+            + "               \"name\": {\n"
+            + "                  \"O\": \"c1\",\n"
+            + "                  \"L\": \"c1\"\n"
+            + "               },\n"
+            + "               \"offset\": 0,\n"
+            + "               \"length\": -1\n"
+            + "            },\n"
+            + "            {\n"
+            + "               \"name\": {\n"
+            + "                  \"O\": \"c2\",\n"
+            + "                  \"L\": \"c2\"\n"
+            + "               },\n"
+            + "               \"offset\": 1,\n"
+            + "               \"length\": -1\n"
+            + "            },\n"
+            + "            {\n"
+            + "               \"name\": {\n"
+            + "                  \"O\": \"c3\",\n"
+            + "                  \"L\": \"c3\"\n"
+            + "               },\n"
+            + "               \"offset\": 2,\n"
+            + "               \"length\": -1\n"
+            + "            }\n"
+            + "         ],\n"
+            + "         \"is_unique\": false,\n"
+            + "         \"is_primary\": false,\n"
+            + "         \"state\": 5,\n"
+            + "         \"comment\": \"\",\n"
+            + "         \"index_type\": 0\n"
+            + "      }\n"
+            + "   ],\n"
+            + "   \"fk_info\": null,\n"
+            + "   \"state\": 5,\n"
+            + "   \"pk_is_handle\": true,\n"
+            + "   \"comment\": \"\",\n"
+            + "   \"auto_inc_id\": 0,\n"
+            + "   \"max_col_id\": 4,\n"
+            + "   \"max_idx_id\": 1\n"
+            + "}";
+
+    setupPDResponse();
+    int dbId = 130;
+    int tableTestId = 42;
+    int tableTest1Id = 43;
+    ByteString dbKey = ByteString.copyFrom(String.format("%s:%d", "DB", dbId).getBytes());
+    ByteString tableTestKey = ByteString.copyFrom(String.format("%s:%d", "Table", tableTestId).getBytes());
+    ByteString tableTest1Key = ByteString.copyFrom(String.format("%s:%d", "Table", tableTest1Id).getBytes());
+    kvServer.put(getDBKeyForTable(dbKey, tableTestKey),
+                 ByteString.copyFromUtf8(tableTest));
+
+    kvServer.put(getDBKeyForTable(dbKey, tableTest1Key),
+        ByteString.copyFromUtf8(tableTest1));
+
+    TiConfiguration conf =
+        TiConfiguration.createDefault(ImmutableList.of("127.0.0.1:" + pdServer.port));
+    TiCluster cluster = TiCluster.getCluster(conf);
+    CatalogTransaction trx = new CatalogTransaction(cluster.createSnapshot());
+    List<TiTableInfo> tables = trx.getTables(130);
+    assertEquals(tables.size(), 2);
+    assertEquals(tables.get(0).getName(), "test");
+    assertEquals(tables.get(1).getName(), "tEst1");
   }
 }
