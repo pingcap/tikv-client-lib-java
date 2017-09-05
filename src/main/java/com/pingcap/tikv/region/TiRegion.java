@@ -42,10 +42,6 @@ public class TiRegion implements Serializable {
     this.isolationLevel = isolationLevel;
   }
 
-  public Region getRawRegion() {
-    return meta;
-  }
-
   private Region decodeRegion(Region region) {
     Region.Builder builder =
         Region.newBuilder()

@@ -48,9 +48,7 @@ public class CatalogTransaction {
 
   private static final byte[] META_PREFIX = new byte[] {'m'};
 
-  private static final byte HASH_META_FLAG = 'H';
   private static final byte HASH_DATA_FLAG = 'h';
-  private static final byte STR_META_FLAG = 'S';
   private static final byte STR_DATA_FLAG = 's';
 
   private static ByteString KEY_DB = ByteString.copyFromUtf8("DBs");
@@ -58,7 +56,6 @@ public class CatalogTransaction {
   private static ByteString KEY_SCHEMA_VERSION =  ByteString.copyFromUtf8("SchemaVersionKey");
 
   private static final String DB_PREFIX = "DB";
-  private static final String TBL_PREFIX = "Table";
 
   public CatalogTransaction(Snapshot snapshot) {
     this.snapshot = snapshot;
@@ -131,10 +128,6 @@ public class CatalogTransaction {
     return ByteString.copyFrom(String.format("%s:%d", DB_PREFIX, id).getBytes());
   }
 
-  private static ByteString encodeTableId(long id) {
-    return ByteString.copyFrom(String.format("%s:%d", TBL_PREFIX, id).getBytes());
-  }
-
   public long getLatestSchemaVersion() {
     ByteString versionBytes = bytesGet(KEY_SCHEMA_VERSION);
     CodecDataInput cdi = new CodecDataInput(versionBytes.toByteArray());
@@ -153,7 +146,7 @@ public class CatalogTransaction {
   public TiDBInfo getDatabase(long id) {
     ByteString dbKey = encodeDatabaseID(id);
     ByteString json = hashGet(KEY_DB, dbKey);
-    if (json == null) {
+    if (json == null || json.isEmpty()) {
       return null;
     }
     return parseFromJson(json, TiDBInfo.class);
@@ -169,35 +162,6 @@ public class CatalogTransaction {
       }
     }
     return builder.build();
-  }
-
-  public TiTableInfo getTable(TiDBInfo database, long tableId) {
-    Objects.requireNonNull(database, "database is null");
-    ByteString dbKey = encodeDatabaseID(database.getId());
-    if (!databaseExists(dbKey)) {
-      return null;
-    }
-    ByteString tableKey = encodeTableId(tableId);
-    ByteString json = hashGet(dbKey, tableKey);
-    return parseFromJson(json, TiTableInfo.class);
-  }
-
-  private boolean databaseExists(ByteString dbKey) {
-    return getDatabase(dbKey) == null;
-  }
-
-  private TiDBInfo getDatabase(ByteString dbKey) {
-    Objects.requireNonNull(dbKey, "dbKey is null");
-    try {
-      ByteString json = hashGet(KEY_DB, dbKey);
-      if (json == null) {
-        return null;
-      }
-      return parseFromJson(json, TiDBInfo.class);
-    } catch (Exception e) {
-      // TODO: Handle key not exists and let loose others
-      return null;
-    }
   }
 
   public static <T> T parseFromJson(ByteString json, Class<T> cls) {

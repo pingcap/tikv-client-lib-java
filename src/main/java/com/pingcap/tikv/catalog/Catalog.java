@@ -48,11 +48,11 @@ public class Catalog {
     private CatalogTransaction transaction;
     private long currentVersion;
 
-    public HashMap<String, TiDBInfo> getDbCache() {
+    private HashMap<String, TiDBInfo> getDBCache() {
       return dbCache;
     }
 
-    public HashMap<TiDBInfo, HashMap<String, TiTableInfo>> getTableCache() {
+    private HashMap<TiDBInfo, HashMap<String, TiTableInfo>> getTableCache() {
       return tableCache;
     }
 
@@ -71,6 +71,12 @@ public class Catalog {
     metaCache = createNewMetaCache(new CatalogTransaction(snapshotProvider.get()));
     service = Executors.newSingleThreadScheduledExecutor();
     service.scheduleAtFixedRate(() -> reloadCache(), refreshPeriod, refreshPeriod, periodUnit);
+  }
+
+  public Catalog(Supplier<Snapshot> snapshotProvider) {
+    this.snapshotProvider = Objects.requireNonNull(snapshotProvider,
+        "Snapshot Provider is null");
+    metaCache = createNewMetaCache(new CatalogTransaction(snapshotProvider.get()));
   }
 
   private void reloadCache() {
@@ -109,7 +115,7 @@ public class Catalog {
 
 
   public List<TiDBInfo> listDatabases() {
-    return ImmutableList.copyOf(metaCache.getDbCache().values());
+    return ImmutableList.copyOf(metaCache.getDBCache().values());
   }
 
   public List<TiTableInfo> listTables(TiDBInfo database) {
@@ -123,7 +129,7 @@ public class Catalog {
 
   public TiDBInfo getDatabase(String dbName) {
     Objects.requireNonNull(dbName, "dbName is null");
-    return metaCache.getDbCache().get(dbName);
+    return metaCache.getDBCache().get(dbName);
   }
 
   public TiTableInfo getTable(String dbName, String tableName) {
