@@ -22,6 +22,7 @@ import com.google.common.annotations.VisibleForTesting;
 import com.pingcap.tidb.tipb.ColumnInfo;
 import com.pingcap.tikv.types.DataType;
 import com.pingcap.tikv.types.DataTypeFactory;
+
 import java.io.Serializable;
 import java.util.List;
 
@@ -96,7 +97,7 @@ public class TiColumnInfo implements Serializable {
     return comment;
   }
 
-  boolean isPrimaryKey() {
+  public boolean isPrimaryKey() {
     return isPrimaryKey;
   }
 

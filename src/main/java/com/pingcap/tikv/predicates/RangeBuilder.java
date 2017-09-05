@@ -116,7 +116,7 @@ public class RangeBuilder {
    * @return access ranges
    */
   @SuppressWarnings("unchecked")
-  static List<Range> exprToRanges(List<TiExpr> accessConditions, DataType type) {
+  public static List<Range> exprToRanges(List<TiExpr> accessConditions, DataType type) {
     if (accessConditions == null || accessConditions.size() == 0) {
       return ImmutableList.of();
     }
@@ -151,7 +151,7 @@ public class RangeBuilder {
     return ImmutableList.copyOf(ranges.asRanges());
   }
 
-  static List<IndexRange> appendRanges(
+  public static List<IndexRange> appendRanges(
       List<IndexRange> indexRanges, List<Range> ranges, DataType rangeType) {
     requireNonNull(ranges);
     List<IndexRange> resultRanges = new ArrayList<>();

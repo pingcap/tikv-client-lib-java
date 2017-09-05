@@ -87,7 +87,7 @@ public class ScanBuilder {
     if (index == null || index.isFakePrimaryKey()) {
       keyRanges = buildTableScanKeyRange(table, irs);
     } else {
-      keyRanges = buildIndexScanKeyRange(table, index, irs);
+      keyRanges = buildIndexScanKeyRange(table.getId(), index, irs);
     }
 
     return new ScanPlan(keyRanges, result.residualConditions);
@@ -168,8 +168,8 @@ public class ScanBuilder {
   }
 
   public static List<KeyRange> buildIndexScanKeyRange(
-      TiTableInfo table, TiIndexInfo index, List<IndexRange> indexRanges) {
-    requireNonNull(table, "Table cannot be null to encoding keyRange");
+      long tableID, TiIndexInfo index, List<IndexRange> indexRanges) {
+    requireNonNull(tableID, "Table cannot be null to encoding keyRange");
     requireNonNull(index, "Index cannot be null to encoding keyRange");
     requireNonNull(index, "indexRanges cannot be null to encoding keyRange");
 
@@ -234,12 +234,12 @@ public class ScanBuilder {
 
         cdo.reset();
       }
-      TableCodec.writeIndexSeekKey(cdo, table.getId(), index.getId(), lPointKey, lKey);
+      TableCodec.writeIndexSeekKey(cdo, tableID, index.getId(), lPointKey, lKey);
 
       ByteString lbsKey = ByteString.copyFrom(cdo.toBytes());
 
       cdo.reset();
-      TableCodec.writeIndexSeekKey(cdo, table.getId(), index.getId(), uPointKey, uKey);
+      TableCodec.writeIndexSeekKey(cdo, tableID, index.getId(), uPointKey, uKey);
       ByteString ubsKey = ByteString.copyFrom(cdo.toBytes());
 
       ranges.add(KeyRange.newBuilder().setStart(lbsKey).setEnd(ubsKey).build());
@@ -271,6 +271,10 @@ public class ScanBuilder {
       this.rangeType = rangeType;
     }
 
+    public List<TiExpr> getAccessConditions() {
+      return this.accessConditions;
+    }
+
     public static IndexMatchingResult create(List<TiExpr> residualConditions) {
       return new IndexMatchingResult(
           residualConditions, ImmutableList.of(), ImmutableList.of(), ImmutableList.of(), null);
@@ -278,7 +282,7 @@ public class ScanBuilder {
   }
 
   @VisibleForTesting
-  static IndexMatchingResult extractConditions(
+  public static IndexMatchingResult extractConditions(
       List<TiExpr> conditions, TiTableInfo table, TiIndexInfo index) {
     // 0. Different than TiDB implementation, here logic has been unified for TableScan and IndexScan by
     // adding fake index on clustered table's pk

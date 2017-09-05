@@ -20,9 +20,15 @@ import com.pingcap.tidb.tipb.ExprType;
 import com.pingcap.tikv.codec.CodecDataOutput;
 import com.pingcap.tikv.exception.TiClientInternalException;
 import com.pingcap.tikv.meta.TiColumnInfo;
+import com.pingcap.tikv.meta.TiIndexColumn;
+import com.pingcap.tikv.meta.TiIndexInfo;
 import com.pingcap.tikv.meta.TiTableInfo;
 import com.pingcap.tikv.types.DataType;
 import com.pingcap.tikv.types.IntegerType;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Set;
 
 public class TiColumnRef implements TiExpr {
   public static TiColumnInfo getColumnWithName(String name, TiTableInfo table) {
@@ -99,6 +105,36 @@ public class TiColumnRef implements TiExpr {
     this.tableInfo = table;
     this.columnInfo = columnInfo;
     return this;
+  }
+
+  public static TiColumnRef colInfo2Col(Set<TiColumnRef> cols, TiColumnInfo col) {
+    for(TiColumnRef c: cols) {
+      if(String.CASE_INSENSITIVE_ORDER.compare(c.getName(), col.getName()) == 0) {
+        return c;
+      }
+    }
+    return null;
+  }
+
+  private static TiColumnRef indexCol2Col(Set<TiColumnRef> cols, TiIndexColumn col) {
+    for(TiColumnRef c: cols) {
+      if(String.CASE_INSENSITIVE_ORDER.compare(c.getName(), col.getName()) == 0) {
+        return c;
+      }
+    }
+    return null;
+  }
+
+  public static List<TiColumnRef> indexInfo2Cols(Set<TiColumnRef> cols, TiIndexInfo index) {
+    List<TiColumnRef> retCols = new ArrayList<>();
+    for(TiIndexColumn c: index.getIndexColumns()) {
+      TiColumnRef col = indexCol2Col(cols, c);
+      if(col == null) {
+        return retCols;
+      }
+      retCols.add(col);
+    }
+    return retCols;
   }
 
   public String getName() {

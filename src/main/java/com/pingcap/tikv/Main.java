@@ -6,6 +6,7 @@ import com.pingcap.tikv.catalog.Catalog;
 import com.pingcap.tikv.expression.TiColumnRef;
 import com.pingcap.tikv.expression.TiConstant;
 import com.pingcap.tikv.expression.TiExpr;
+import com.pingcap.tikv.expression.scalar.GreaterEqual;
 import com.pingcap.tikv.expression.scalar.NotEqual;
 import com.pingcap.tikv.meta.TiDBInfo;
 import com.pingcap.tikv.meta.TiIndexInfo;
@@ -16,6 +17,8 @@ import com.pingcap.tikv.predicates.PredicateUtils;
 import com.pingcap.tikv.predicates.ScanBuilder;
 import com.pingcap.tikv.region.TiRegion;
 import com.pingcap.tikv.row.Row;
+import com.pingcap.tikv.statistics.Table;
+import com.pingcap.tikv.statistics.TableStats;
 import com.pingcap.tikv.util.RangeSplitter;
 
 import java.util.Iterator;
@@ -41,7 +44,7 @@ public class Main {
     }
 
     Catalog cat = cluster.getCatalog();
-    TiDBInfo db = cat.getDatabase("test");
+    TiDBInfo db = cat.getDatabase("mysql");
     TiTableInfo table = cat.getTable(db, "t1");
 
     TiIndexInfo index = TiIndexInfo.generateFakePrimaryKeyIndex(table);
@@ -86,6 +89,18 @@ public class Main {
         System.out.print("\n");
       }
     }
+
+    System.out.println(table.getId());
+
+    TableStats tableStats = new TableStats();
+    tableStats.build(cat, snapshot, cluster.getRegionManager());
+    System.out.println(table.getName() + "-->" + table.getColumns().get(0).getName());
+    Table t = tableStats.tableStatsFromStorage(cat, snapshot, table, cluster.getRegionManager());
+
+    List<TiExpr> myExprs = ImmutableList.of(
+        new GreaterEqual(TiColumnRef.create("s1", table), TiConstant.create(2)));
+    System.out.println(t.Selectivity(cat, db, myExprs));
+
     cluster.close();
     client.close();
   }

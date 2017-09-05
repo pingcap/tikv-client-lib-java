@@ -15,14 +15,15 @@
 
 package com.pingcap.tikv.expression;
 
-import static com.google.common.base.Preconditions.checkArgument;
-import static java.util.Objects.requireNonNull;
-
 import com.google.common.collect.ImmutableList;
 import com.pingcap.tidb.tipb.Expr;
 import com.pingcap.tidb.tipb.ExprType;
 import com.pingcap.tikv.meta.TiTableInfo;
+
 import java.util.List;
+
+import static com.google.common.base.Preconditions.checkArgument;
+import static java.util.Objects.requireNonNull;
 
 public abstract class TiFunctionExpression implements TiExpr {
 
@@ -36,7 +37,7 @@ public abstract class TiFunctionExpression implements TiExpr {
   protected abstract ExprType getExprType();
 
   public TiExpr getArg(int i) {
-    checkArgument(i < args.size(), "Index out of bound for TiExpression Arguments");
+    checkArgument(i < args.size(), "IndexWithHistogram out of bound for TiExpression Arguments");
     return args.get(i);
   }
 

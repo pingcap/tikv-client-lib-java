@@ -43,11 +43,9 @@ import java.util.List;
 
 public class Histogram {
 
-  private static final String DB_NAME = "mysql"; //the name of database
-  private static final String TABLE_NAME = "stats_buckets"; //the name of table
   private static final String TABLE_ID = "table_id"; //the ID of table
   private static final String IS_INDEX = "is_index"; // whether or not have an index
-  private static final String HIST_ID = "hist_id"; //Column ID for each histogram
+  private static final String HIST_ID = "hist_id"; //ColumnWithHistogram ID for each histogram
   private static final String BUCKET_ID = "bucket_id"; //the ID of bucket
   private static final String COUNT = "count"; //the total number of bucket
   private static final String REPEATS = "repeats"; //repeats values in histogram
@@ -118,9 +116,9 @@ public class Histogram {
   }
 
   //Loads histogram from storage
-  public Histogram histogramFromStorage(
+  protected Histogram histogramFromStorage(
       long tableID, long colID, long isIndex, long distinct, long lastUpdateVersion, long nullCount, Snapshot snapshot,
-      DataType type, TiTableInfo table, RegionManager manager) throws Exception {
+      DataType type, TiTableInfo table, RegionManager manager) {
 
     TiIndexInfo index = TiIndexInfo.generateFakePrimaryKeyIndex(table);
 
@@ -160,7 +158,6 @@ public class Histogram {
     for (RegionTask task : keyWithRegionTasks) {
 
       Iterator<Row> it = snapshot.select(selReq, task);
-
       while (it.hasNext()) {
         Row row = it.next();
         long bucketID = row.getLong(0);
@@ -302,27 +299,8 @@ public class Histogram {
   //and returns (-[insertion point] - 1) if the key is not found in buckets
   //where [insertion point] denotes the index of the first element greater than the key
   protected int lowerBound(Comparable key) {
-    int len = buckets.length;
-    if(len == 0) return -1;
     assert key.getClass() == buckets[0].upperBound.getClass();
-    int l = 0, r = len - 1, ans = 0;
-    while(l <= r) {
-      int mid = (l + r) >> 1;
-      if(key.compareTo(buckets[mid].upperBound) >= 0) {
-        l = mid + 1;
-        ans = mid;
-      } else {
-        r = mid - 1;
-      }
-    }
-    int cmp = key.compareTo(buckets[ans].upperBound);
-    if(cmp > 0) {
-      ++ ans;
-    }
-    if(cmp != 0) {
-      ans = -ans - 1;
-    }
-    return ans;
+    return Arrays.binarySearch(buckets, new Bucket(key));
   }
 
   // mergeBuckets is used to merge every two neighbor buckets.

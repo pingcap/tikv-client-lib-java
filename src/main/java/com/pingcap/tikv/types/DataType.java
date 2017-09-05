@@ -15,8 +15,6 @@
 
 package com.pingcap.tikv.types;
 
-import static com.pingcap.tikv.types.Types.*;
-
 import com.google.common.collect.ImmutableList;
 import com.google.protobuf.ByteString;
 import com.pingcap.tikv.codec.CodecDataInput;
@@ -24,8 +22,11 @@ import com.pingcap.tikv.codec.CodecDataOutput;
 import com.pingcap.tikv.meta.Collation;
 import com.pingcap.tikv.meta.TiColumnInfo;
 import com.pingcap.tikv.row.Row;
+
 import java.io.Serializable;
 import java.util.List;
+
+import static com.pingcap.tikv.types.Types.*;
 
 /** Base Type for encoding and decoding TiDB row information. */
 public abstract class DataType implements Serializable {
@@ -228,6 +229,10 @@ public abstract class DataType implements Serializable {
   }
 
   public static boolean hasBinaryFlag(int flag) {
+    return (flag & BinaryFlag) > 0;
+  }
+
+  public static boolean hasPriKeyFlag(int flag) {
     return (flag & PriKeyFlag) > 0;
   }
 

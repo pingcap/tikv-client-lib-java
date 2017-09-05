@@ -15,6 +15,8 @@
 
 package com.pingcap.tikv.util;
 
+import javax.annotation.ParametersAreNonnullByDefault;
+
 public class Bucket implements Comparable<Bucket> {
   public long count;
   public long repeats;
@@ -28,10 +30,16 @@ public class Bucket implements Comparable<Bucket> {
     this.upperBound = upperBound;
   }
 
+  // used for binary search only
+  public Bucket(Comparable upperBound) {
+    this.upperBound = upperBound;
+  }
+
   public Bucket() {
   }
 
   @Override
+  @ParametersAreNonnullByDefault
   public int compareTo(Bucket b) {
     return upperBound.compareTo(b.upperBound);
   }

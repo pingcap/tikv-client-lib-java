@@ -23,9 +23,10 @@ import com.pingcap.tikv.codec.TableCodec;
 import com.pingcap.tikv.kvproto.Coprocessor.KeyRange;
 import com.pingcap.tikv.meta.TiSelectRequest;
 import com.pingcap.tikv.row.Row;
+
 import java.util.Iterator;
 
-// A very bad implementation of Index Scanner barely made work
+// A very bad implementation of IndexWithHistogram Scanner barely made work
 // TODO: need to make it parallel and group indexes
 public class IndexScanIterator implements Iterator<Row> {
   private final Iterator<Row> iter;
