@@ -113,7 +113,6 @@ public class Catalog {
     return new CatalogCache(newDBCache, newTableCache, trx);
   }
 
-
   public List<TiDBInfo> listDatabases() {
     return ImmutableList.copyOf(metaCache.getDBCache().values());
   }

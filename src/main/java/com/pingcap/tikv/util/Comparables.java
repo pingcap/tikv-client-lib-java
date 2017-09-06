@@ -63,6 +63,22 @@ public class Comparables {
       return comparator.compare(bytes, other.bytes);
     }
 
+    @Override
+    public boolean equals(Object other) {
+      if (other == this) {
+        return true;
+      }
+      if (other instanceof ComparableByteString) {
+        return ((ComparableBytes) other).compareTo(this) == 0;
+      } else {
+        return false;
+      }
+    }
+
+    @Override
+    public int hashCode() {
+      return bytes.hashCode();
+    }
 
     public byte[] getBytes() {
       return bytes;
@@ -100,6 +116,23 @@ public class Comparables {
 
     public static ComparableByteString wrap(ByteString bytes) {
       return new ComparableByteString(bytes);
+    }
+
+    @Override
+    public boolean equals(Object other) {
+      if (other == this) {
+        return true;
+      }
+      if (other instanceof ComparableByteString) {
+        return ((ComparableByteString) other).compareTo(this) == 0;
+      } else {
+        return false;
+      }
+    }
+
+    @Override
+    public int hashCode() {
+      return bytes.hashCode();
     }
   }
 }

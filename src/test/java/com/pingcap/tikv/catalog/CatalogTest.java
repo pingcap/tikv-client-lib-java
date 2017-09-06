@@ -35,7 +35,6 @@ public class CatalogTest {
     conf = TiConfiguration.createDefault(ImmutableList.of("127.0.0.1:" + pdServer.port));
   }
 
-
   @Test
   public void listDatabases() throws Exception {
     MetaMockHelper helper = new MetaMockHelper(pdServer, kvServer);
@@ -103,6 +102,15 @@ public class CatalogTest {
     assertEquals("other", names.get(0));
     assertEquals("tEst1", names.get(1));
     assertEquals("test", names.get(2));
+
+    db = cat.getDatabase("TPCH_001");
+    tables = cat.listTables(db);
+    assertEquals(null, tables);
+
+    helper.dropDatabase(db.getId());
+    wrapper.call("reloadCache");
+    tables = cat.listTables(db);
+    assertEquals(null, tables);
 
     assertEquals(42, cat.getTable("global_temp", "test").getId());
     assertEquals(null, cat.getTable("global_temp", "test111"));

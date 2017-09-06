@@ -71,6 +71,10 @@ public class KVMockServer extends TikvGrpc.TikvImplBase {
     dataMap.put(Comparables.wrap(key), value);
   }
 
+  public void remove(ByteString key) {
+    dataMap.remove(Comparables.wrap(key));
+  }
+
   public void put(String key, String value) {
     put(ByteString.copyFromUtf8(key),
         ByteString.copyFromUtf8(value));

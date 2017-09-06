@@ -152,7 +152,7 @@ public class MetaUtils {
               region));
     }
 
-    private ByteString getDBKey(int id) {
+    private ByteString getDBKey(long id) {
       CodecDataOutput cdo = new CodecDataOutput();
       cdo.write(new byte[] {'m'});
       BytesType.writeBytes(cdo, "DBs".getBytes());
@@ -161,7 +161,7 @@ public class MetaUtils {
       return cdo.toByteString();
     }
 
-    public void addDatabase(int id, String name) {
+    public void addDatabase(long id, String name) {
       String dbJson = String.format("{\n"
           + " \"id\":%d,\n"
           + " \"db_name\":{\"O\":\"%s\",\"L\":\"%s\"},\n"
@@ -171,7 +171,11 @@ public class MetaUtils {
       kvServer.put(getDBKey(id), ByteString.copyFromUtf8(dbJson));
     }
 
-    private ByteString getKeyForTable(int dbId, int tableId) {
+    public void dropDatabase(long id) {
+      kvServer.remove(getDBKey(id));
+    }
+
+    private ByteString getKeyForTable(long dbId, long tableId) {
       ByteString dbKey = ByteString.copyFrom(String.format("%s:%d", "DB", dbId).getBytes());
       ByteString tableKey = ByteString.copyFrom(String.format("%s:%d", "Table", tableId).getBytes());
 
@@ -245,6 +249,10 @@ public class MetaUtils {
 
       kvServer.put(getKeyForTable(dbId, tableId),
           ByteString.copyFromUtf8(tableJson));
+    }
+
+    public void dropTable(long dbId, long tableId) {
+      kvServer.remove(getKeyForTable(dbId, tableId));
     }
   }
 }
