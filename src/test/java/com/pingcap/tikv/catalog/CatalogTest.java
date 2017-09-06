@@ -90,6 +90,10 @@ public class CatalogTest {
     assertEquals("tEst1", names.get(0));
     assertEquals("test", names.get(1));
 
+    assertEquals("test", cat.getTable(db, 42).getName());
+    assertEquals("tEst1", cat.getTable(db, 43).getName());
+    assertEquals(null, cat.getTable(db, 44));
+
     helper.addTable(130, 44, "other");
     helper.setSchemaVersion(667);
 

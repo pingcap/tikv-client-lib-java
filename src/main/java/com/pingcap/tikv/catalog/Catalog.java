@@ -19,6 +19,7 @@ import com.google.common.collect.ImmutableList;
 import com.pingcap.tikv.Snapshot;
 import com.pingcap.tikv.meta.TiDBInfo;
 import com.pingcap.tikv.meta.TiTableInfo;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -126,6 +127,8 @@ public class Catalog {
     return ImmutableList.copyOf(tables.values());
   }
 
+
+
   public TiDBInfo getDatabase(String dbName) {
     Objects.requireNonNull(dbName, "dbName is null");
     return metaCache.getDBCache().get(dbName);
@@ -144,5 +147,17 @@ public class Catalog {
     Objects.requireNonNull(tableName, "tableName is null");
     Map<String, TiTableInfo> tableMap = metaCache.getTableCache().get(database);
     return tableMap.get(tableName);
+  }
+
+  public TiTableInfo getTable(TiDBInfo database, long tableId) {
+    Objects.requireNonNull(database, "database is null");
+    Map<String, TiTableInfo> tableMap = metaCache.getTableCache().get(database);
+    Collection<TiTableInfo> tables = tableMap.values();
+    for (TiTableInfo table : tables) {
+      if (table.getId() == tableId) {
+        return table;
+      }
+    }
+    return null;
   }
 }
