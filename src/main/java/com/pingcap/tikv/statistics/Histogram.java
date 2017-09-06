@@ -37,6 +37,7 @@ import com.pingcap.tikv.util.Comparables;
 import com.pingcap.tikv.util.RangeSplitter;
 import com.pingcap.tikv.util.RangeSplitter.RegionTask;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
@@ -55,7 +56,7 @@ public class Histogram {
   //Histogram
   private long id;
   private long numberOfDistinctValue; // Number of distinct values.
-  private Bucket[] buckets;
+  private List<Bucket> buckets;
   private long nullCount;
   private long lastUpdateVersion;
 
@@ -65,7 +66,7 @@ public class Histogram {
 
   public Histogram(long id,
                    long numberOfDistinctValue,
-                   Bucket[] buckets,
+                   List<Bucket> buckets,
                    long nullCount,
                    long lastUpdateVersion) {
     this.id = id;
@@ -83,11 +84,11 @@ public class Histogram {
     this.numberOfDistinctValue = numberOfDistinctValue;
   }
 
-  public Bucket[] getBuckets() {
+  public List<Bucket> getBuckets() {
     return buckets;
   }
 
-  public void setBuckets(Bucket[] buckets) {
+  public void setBuckets(List<Bucket> buckets) {
     this.buckets = buckets;
   }
 
@@ -128,6 +129,7 @@ public class Histogram {
             new Equal(TiColumnRef.create(IS_INDEX, table), TiConstant.create(isIndex)),
             new Equal(TiColumnRef.create(HIST_ID, table), TiConstant.create(colID))
         );
+    List<String> strs = ImmutableList.of(BUCKET_ID, COUNT, REPEATS, LOWER_BOUND, UPPER_BOUND);
     ScanBuilder scanBuilder = new ScanBuilder();
     ScanBuilder.ScanPlan scanPlan = scanBuilder.buildScan(firstAnd, index, table);
     TiSelectRequest selReq = new TiSelectRequest();
@@ -153,7 +155,8 @@ public class Histogram {
     this.nullCount = nullCount;
 
     int len = 0;
-    Bucket[] tmpBuckets = new Bucket[256];
+    ArrayList<Bucket> tmpBuckets = new ArrayList<>(256);
+    for(int i = 0; i < 256; i ++) tmpBuckets.add(new Bucket());
 
     for (RegionTask task : keyWithRegionTasks) {
 
@@ -164,32 +167,31 @@ public class Histogram {
         long count = row.getLong(1);
         long repeats = row.getLong(2);
         Comparable lowerBound, upperBound;
-        Bucket bucket = new Bucket();
-        bucket.setCount(count);
-        bucket.setRepeats(repeats);
-
-        if (isIndex == 1) {
-          lowerBound = Comparables.wrap(row.get(3, DataTypeFactory.of(Types.TYPE_BLOB)));
-          upperBound = Comparables.wrap(row.get(4, DataTypeFactory.of(Types.TYPE_BLOB)));
-        } else {
-          lowerBound = Comparables.wrap(row.get(3, type));
-          upperBound = Comparables.wrap(row.get(4, type));
-        }
-        bucket.setLowerBound(lowerBound);
-        bucket.setLowerBound(upperBound);
         try {
-          tmpBuckets[((int) bucketID)] = bucket;
+          Bucket bucket = tmpBuckets.get((int) bucketID);
+          bucket.setCount(count);
+          bucket.setRepeats(repeats);
+
+          if (isIndex == 1) {
+            lowerBound = Comparables.wrap(row.get(3, DataTypeFactory.of(Types.TYPE_BLOB)));
+            upperBound = Comparables.wrap(row.get(4, DataTypeFactory.of(Types.TYPE_BLOB)));
+          } else {
+            lowerBound = Comparables.wrap(row.get(3, type));
+            upperBound = Comparables.wrap(row.get(4, type));
+          }
+          bucket.setLowerBound(lowerBound);
+          bucket.setLowerBound(upperBound);
         } catch (IndexOutOfBoundsException e) {
           System.err.println("IndexOutOfBoundsException: " + e.getMessage());
         } catch (Exception e) {
           System.err.println("Exception: " + e.getMessage());
         }
-        ++len;
+        ++ len;
       }
     }
-    buckets = Arrays.copyOf(tmpBuckets, len);
-    for (int i = 1; i < buckets.length; i++) {
-      buckets[i].count += buckets[i - 1].count;
+    buckets = tmpBuckets.subList(0, len);
+    for (int i = 1; i < buckets.size(); i++) {
+      buckets.get(i).count += buckets.get(i - 1).count;
     }
     return this;
   }
@@ -198,20 +200,20 @@ public class Histogram {
   protected double equalRowCount(Comparable values) {
     int index = lowerBound(values);
     //index not in range
-    if (index == -buckets.length - 1) {
+    if (index == -buckets.size() - 1) {
       return 0;
     }
     // index found
     if (index >= 0) {
-      return buckets[index].repeats;
+      return buckets.get(index).repeats;
     }
     //index not found
     index = -index - 1;
     int cmp;
-    if (buckets[index].lowerBound == null) {
+    if (buckets.get(index).lowerBound == null) {
       cmp = 1;
     } else {
-      cmp = values.compareTo(buckets[index].lowerBound);
+      cmp = values.compareTo(buckets.get(index).lowerBound);
     }
     if (cmp < 0) {
       return 0;
@@ -243,19 +245,19 @@ public class Histogram {
   protected double lessRowCount(Comparable values) {
     int index = lowerBound(values);
     //index not in range
-    if (index == -buckets.length - 1) {
+    if (index == -buckets.size() - 1) {
       return totalRowCount();
     }
     if (index < 0) {
       index = -index - 1;
     }
-    double curCount = buckets[index].count;
+    double curCount = buckets.get(index).count;
     double preCount = 0;
     if (index > 0) {
-      preCount = buckets[index - 1].count;
+      preCount = buckets.get(index - 1).count;
     }
-    double lessThanBucketValueCount = curCount - buckets[index].repeats;
-    int c = values.compareTo(buckets[index].lowerBound);
+    double lessThanBucketValueCount = curCount - buckets.get(index).repeats;
+    int c = values.compareTo(buckets.get(index).lowerBound);
     if (c <= 0) {
       return preCount;
     }
@@ -280,14 +282,14 @@ public class Histogram {
   }
 
   protected double totalRowCount() {
-    if (0 == buckets.length) {
+    if (buckets.isEmpty()) {
       return 0;
     }
-    return (buckets[buckets.length - 1].count);
+    return (buckets.get(buckets.size() - 1).count);
   }
 
   protected double bucketRowCount() {
-    return totalRowCount() / buckets.length;
+    return totalRowCount() / buckets.size();
   }
 
   protected double inBucketBetweenCount() {
@@ -299,8 +301,8 @@ public class Histogram {
   //and returns (-[insertion point] - 1) if the key is not found in buckets
   //where [insertion point] denotes the index of the first element greater than the key
   protected int lowerBound(Comparable key) {
-    assert key.getClass() == buckets[0].upperBound.getClass();
-    return Arrays.binarySearch(buckets, new Bucket(key));
+    assert key.getClass() == buckets.get(0).upperBound.getClass();
+    return Arrays.binarySearch(buckets.toArray(), new Bucket(key));
   }
 
   // mergeBuckets is used to merge every two neighbor buckets.
@@ -308,20 +310,20 @@ public class Histogram {
   public void mergeBlock(long bucketIdx) {
     int curBuck = 0;
     for (int i = 0; i + 1 <= bucketIdx; i += 2) {
-      buckets[curBuck++] = new Bucket(buckets[i + 1].count,
-          buckets[i + 1].repeats,
-          buckets[i + 1].lowerBound,
-          buckets[i].upperBound);
+      buckets.set(curBuck++, new Bucket(buckets.get(i + 1).count,
+          buckets.get(i + 1).repeats,
+          buckets.get(i + 1).lowerBound,
+          buckets.get(i).upperBound));
     }
     if (bucketIdx % 2 == 0) {
-      buckets[curBuck++] = buckets[(int) bucketIdx];
+      buckets.set(curBuck++, buckets.get((int) bucketIdx));
     }
-    buckets = Arrays.copyOf(buckets, curBuck);
+    buckets = buckets.subList(0, curBuck);
   }
 
   // getIncreaseFactor will return a factor of data increasing after the last analysis.
   protected double getIncreaseFactor(long totalCount) {
-    long columnCount = buckets[buckets.length - 1].count + nullCount;
+    long columnCount = buckets.get(buckets.size() - 1).count + nullCount;
     if (columnCount == 0) {
       return 1.0;
     }

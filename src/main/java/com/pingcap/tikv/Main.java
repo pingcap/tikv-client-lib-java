@@ -19,6 +19,7 @@ import com.pingcap.tikv.region.TiRegion;
 import com.pingcap.tikv.row.Row;
 import com.pingcap.tikv.statistics.Table;
 import com.pingcap.tikv.statistics.TableStats;
+import com.pingcap.tikv.util.DBReader;
 import com.pingcap.tikv.util.RangeSplitter;
 
 import java.util.Iterator;
@@ -46,6 +47,8 @@ public class Main {
     Catalog cat = cluster.getCatalog();
     TiDBInfo db = cat.getDatabase("mysql");
     TiTableInfo table = cat.getTable(db, "t1");
+    System.out.println("table t1 has id: " + table.getId());
+    System.out.println("and this is table " + cat.getTable(db, 47).getName());
 
     TiIndexInfo index = TiIndexInfo.generateFakePrimaryKeyIndex(table);
 
@@ -93,12 +96,13 @@ public class Main {
     System.out.println(table.getId());
 
     TableStats tableStats = new TableStats();
-    tableStats.build(cat, snapshot, cluster.getRegionManager());
+    tableStats.build(new DBReader(cat, snapshot, cluster.getRegionManager()));
     System.out.println(table.getName() + "-->" + table.getColumns().get(0).getName());
     Table t = tableStats.tableStatsFromStorage(cat, snapshot, table, cluster.getRegionManager());
 
     List<TiExpr> myExprs = ImmutableList.of(
         new GreaterEqual(TiColumnRef.create("s1", table), TiConstant.create(2)));
+    System.out.println(myExprs.size());
     System.out.println(t.Selectivity(cat, db, myExprs));
 
     cluster.close();

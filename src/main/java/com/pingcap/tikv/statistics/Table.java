@@ -118,7 +118,7 @@ public class Table {
       return true;
     }
     ColumnWithHistogram column = Columns.get(info.getColumnId());
-    return column.getHistogram() == null || column.getHistogram().getBuckets().length == 0;
+    return column.getHistogram() == null || column.getHistogram().getBuckets().isEmpty();
   }
 
   // ColumnGreaterRowCount estimates the row count where the column greater than value.
@@ -169,7 +169,7 @@ public class Table {
   public double GetRowCountByColumnRanges(long columnID, List<IndexRange> columnRanges) {
     ColumnWithHistogram c = Columns.get(columnID);
     Histogram hist = c.getHistogram();
-    if (Pseudo || hist == null || hist.getBuckets().length == 0) {
+    if (Pseudo || hist == null || hist.getBuckets().isEmpty()) {
       return getPseudoRowCountByColumnRanges(columnRanges, Count);
     }
     return c.getColumnRowCount(columnRanges);
@@ -179,7 +179,7 @@ public class Table {
   public double GetRowCountByIndexRanges(long indexID, List<IndexRange> indexRanges) {
     IndexWithHistogram i = Indices.get(indexID);
     Histogram hist = i.getHistogram();
-    if (Pseudo || hist == null || hist.getBuckets().length == 0) {
+    if (Pseudo || hist == null || hist.getBuckets().isEmpty()) {
       return getPseudoRowCountByIndexRanges(indexRanges, Count);
     }
     return i.getRowCount(indexRanges, getTableID());
@@ -333,7 +333,7 @@ public class Table {
     for(ColumnWithHistogram colInfo: Columns.values()) {
       TiColumnRef col = TiColumnRef.colInfo2Col(extractedCols, colInfo.getColumnInfo());
       // This column should have histogram.
-      if(col != null && colInfo.getHistogram().getBuckets().length > 0) {
+      if(col != null && !colInfo.getHistogram().getBuckets().isEmpty()) {
         BitSet maskCovered = new BitSet(len);
         List<IndexRange> ranges = new ArrayList<>();
         maskCovered.clear();
@@ -348,7 +348,7 @@ public class Table {
     for(IndexWithHistogram idxInfo: Indices.values()) {
       List<TiColumnRef> idxCols = TiColumnRef.indexInfo2Cols(extractedCols, idxInfo.getIndexInfo());
       // This index should have histogram.
-      if(idxCols.size() > 0 && idxInfo.getHistogram().getBuckets().length > 0) {
+      if(idxCols.size() > 0 && !idxInfo.getHistogram().getBuckets().isEmpty()) {
         BitSet maskCovered = new BitSet(len);
         List<IndexRange> ranges = new ArrayList<>();
         ranges = getMaskAndRanges(exprs, idxCols, maskCovered, ranges, table, idxInfo.getIndexInfo());

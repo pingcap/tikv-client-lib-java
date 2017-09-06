@@ -15,6 +15,7 @@ import com.pingcap.tikv.region.RegionManager;
 import com.pingcap.tikv.row.Row;
 import com.pingcap.tikv.types.DataType;
 import com.pingcap.tikv.types.DataTypeFactory;
+import com.pingcap.tikv.util.DBReader;
 import com.pingcap.tikv.util.RangeSplitter;
 
 import java.util.ArrayList;
@@ -140,7 +141,11 @@ public class TableStats {
     return table;
   }
 
-  public void build(Catalog cat, Snapshot snapshot, RegionManager manager) {
+  public void build(DBReader dbReader) {
+
+    Catalog cat = dbReader.getCatalog();
+    Snapshot snapshot = dbReader.getSnapshot();
+    RegionManager manager = dbReader.getRegionManager();
 
     TiDBInfo db = cat.getDatabase("mysql");
     TiTableInfo tableInfo = cat.getTable(db, "stats_meta");

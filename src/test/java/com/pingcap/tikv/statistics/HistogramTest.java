@@ -144,26 +144,11 @@ public class HistogramTest {
     histogram.setLastUpdateVersion(23333333);
     histogram.setNumberOfDistinctValue(5);
     histogram.setNullCount(15);
-    Bucket[] buckets = new Bucket[4];
-    for(int i = 0; i < 4; i ++) {
-      buckets[i] = new Bucket();
-    }
-    buckets[0].setCount(5);
-    buckets[0].setRepeats(5);
-    buckets[0].setLowerBound(3);
-    buckets[0].setUpperBound(3);
-    buckets[1].setCount(10);
-    buckets[1].setRepeats(5);
-    buckets[1].setLowerBound(8);
-    buckets[1].setUpperBound(8);
-    buckets[2].setCount(25);
-    buckets[2].setRepeats(15);
-    buckets[2].setLowerBound(100);
-    buckets[2].setUpperBound(100);
-    buckets[3].setCount(30);
-    buckets[3].setRepeats(1);
-    buckets[3].setLowerBound(101);
-    buckets[3].setUpperBound(200);
+    ArrayList<Bucket> buckets = new ArrayList<>(4);
+    buckets.add(new Bucket(5, 5, 3, 3));
+    buckets.add(new Bucket(10, 5, 8, 8));
+    buckets.add(new Bucket(25, 15, 100, 100));
+    buckets.add(new Bucket(30, 1, 101, 200));
     histogram.setBuckets(buckets);
   }
 
@@ -220,8 +205,8 @@ public class HistogramTest {
 
   @Test
   public void testMergeBlock() throws Exception {
-    histogram.mergeBlock(histogram.getBuckets().length - 1);
-    assertEquals(histogram.getBuckets().length, 2);
+    histogram.mergeBlock(histogram.getBuckets().size() - 1);
+    assertEquals(histogram.getBuckets().size(), 2);
   }
 
 }
