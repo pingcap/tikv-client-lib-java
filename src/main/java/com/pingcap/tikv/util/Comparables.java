@@ -20,6 +20,7 @@ import static java.util.Objects.requireNonNull;
 import com.google.common.primitives.UnsignedBytes;
 import com.google.protobuf.ByteString;
 import com.pingcap.tikv.exception.CastingException;
+import java.util.Arrays;
 import java.util.Comparator;
 import javax.annotation.Nonnull;
 
@@ -77,7 +78,7 @@ public class Comparables {
 
     @Override
     public int hashCode() {
-      return bytes.hashCode();
+      return Arrays.hashCode(bytes);
     }
 
     public byte[] getBytes() {
