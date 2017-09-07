@@ -29,11 +29,15 @@ public class TiConfiguration {
   private static final int DEF_SCAN_BATCH_SIZE = 100;
   private static final boolean DEF_IGNORE_TRUNCATE = true;
   private static final boolean DEF_TRUNCATE_AS_WARNING = false;
+  private static final int DEF_META_RELOAD_PERIOD = 1;
+  private static final TimeUnit DEF_META_RELOAD_UNIT = TimeUnit.SECONDS;
 
   private int timeout = DEF_TIMEOUT;
   private TimeUnit timeoutUnit = DEF_TIMEOUT_UNIT;
   private boolean ignoreTruncate = DEF_IGNORE_TRUNCATE;
   private boolean truncateAsWarning = DEF_TRUNCATE_AS_WARNING;
+  private TimeUnit metaReloadUnit = DEF_META_RELOAD_UNIT;
+  private int metaReloadPeriod = DEF_META_RELOAD_PERIOD;
   private List<HostAndPort> pdAddrs = new ArrayList<>();
 
   public static TiConfiguration createDefault(List<String> pdAddrs) {
@@ -58,6 +62,22 @@ public class TiConfiguration {
 
   public TimeUnit getTimeoutUnit() {
     return timeoutUnit;
+  }
+
+  public TimeUnit getMetaReloadPeriodUnit() {
+    return metaReloadUnit;
+  }
+
+  public void setMetaReloadPeriodUnit(TimeUnit timeUnit) {
+    this.metaReloadUnit = timeUnit;
+  }
+
+  public void setMetaReloadPeriod(int metaReloadPeriod) {
+    this.metaReloadPeriod = metaReloadPeriod;
+  }
+
+  public int getMetaReloadPeriod() {
+    return metaReloadPeriod;
   }
 
   public void setTimeoutUnit(TimeUnit timeoutUnit) {

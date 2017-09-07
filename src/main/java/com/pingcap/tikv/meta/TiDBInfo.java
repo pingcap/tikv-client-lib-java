@@ -66,4 +66,23 @@ public class TiDBInfo {
   SchemaState getSchemaState() {
     return schemaState;
   }
+
+  @Override
+  public boolean equals(Object other) {
+    if (other == this) {
+      return true;
+    }
+    if (!(other instanceof TiDBInfo)) {
+      return false;
+    }
+    TiDBInfo otherDB = (TiDBInfo)other;
+    return otherDB.getId() == getId() && otherDB.getName().equals(getName());
+  }
+
+  @Override
+  public int hashCode() {
+    final int prime = 31;
+    int result = prime + Long.hashCode(getId());
+    return result * prime + getName().hashCode();
+  }
 }

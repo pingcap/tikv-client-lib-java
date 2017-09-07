@@ -17,11 +17,13 @@
 
 package com.pingcap.tikv.operation;
 
-import static com.pingcap.tikv.types.Types.*;
+import static com.pingcap.tikv.types.Types.TYPE_BLOB;
+import static com.pingcap.tikv.types.Types.TYPE_NEW_DECIMAL;
+import static com.pingcap.tikv.types.Types.TYPE_VARCHAR;
 import static org.junit.Assert.assertEquals;
 
 import com.google.protobuf.ByteString;
-import com.pingcap.tikv.catalog.Catalog;
+import com.pingcap.tikv.catalog.CatalogTransaction;
 import com.pingcap.tikv.expression.TiByItem;
 import com.pingcap.tikv.expression.TiColumnRef;
 import com.pingcap.tikv.expression.TiConstant;
@@ -40,7 +42,7 @@ public class SchemaInferTest {
       "{\"id\":29,\"name\":{\"O\":\"t1\",\"L\":\"t1\"},\"charset\":\"\",\"collate\":\"\",\"cols\":[{\"id\":1,\"name\":{\"O\":\"time\",\"L\":\"time\"},\"offset\":0,\"origin_default\":null,\"default\":null,\"type\":{\"Tp\":10,\"Flag\":128,\"Flen\":-1,\"Decimal\":-1,\"Charset\":\"binary\",\"Collate\":\"binary\",\"Elems\":null},\"state\":5,\"comment\":\"\"},{\"id\":2,\"name\":{\"O\":\"number\",\"L\":\"number\"},\"offset\":1,\"origin_default\":null,\"default\":null,\"type\":{\"Tp\":3,\"Flag\":128,\"Flen\":-1,\"Decimal\":-1,\"Charset\":\"binary\",\"Collate\":\"binary\",\"Elems\":null},\"state\":5,\"comment\":\"\"},{\"id\":3,\"name\":{\"O\":\"name\",\"L\":\"name\"},\"offset\":2,\"origin_default\":null,\"default\":null,\"type\":{\"Tp\":15,\"Flag\":0,\"Flen\":-1,\"Decimal\":-1,\"Charset\":\"utf8\",\"Collate\":\"utf8_bin\",\"Elems\":null},\"state\":5,\"comment\":\"\"}],\"index_info\":null,\"fk_info\":null,\"state\":5,\"pk_is_handle\":false,\"comment\":\"\",\"auto_inc_id\":0,\"max_col_id\":3,\"max_idx_id\":0}";
   private final ByteString table29Bs = ByteString.copyFromUtf8(table29);
 
-  private TiTableInfo table = Catalog.parseFromJson(table29Bs, TiTableInfo.class);
+  private TiTableInfo table = CatalogTransaction.parseFromJson(table29Bs, TiTableInfo.class);
   private TiExpr number = TiColumnRef.create("number", table);
   private TiColumnRef name = TiColumnRef.create("name", table);
   private TiExpr sum = new Sum(number);

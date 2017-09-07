@@ -35,7 +35,7 @@ import java.util.List;
 import java.util.NoSuchElementException;
 
 public class ScanIterator implements Iterator<Kvrpcpb.KvPair> {
-  private final Range keyRange;
+  private final Range scanRange;
   private final int batchSize;
   protected final TiSession session;
   private final RegionManager regionCache;
@@ -45,7 +45,7 @@ public class ScanIterator implements Iterator<Kvrpcpb.KvPair> {
   private List<Kvrpcpb.KvPair> currentCache;
   protected ByteString startKey;
   protected int index = -1;
-  private boolean eof = false;
+  private boolean endOfRegion = false;
 
   public ScanIterator(
       ByteString startKey,
@@ -56,14 +56,14 @@ public class ScanIterator implements Iterator<Kvrpcpb.KvPair> {
       long version) {
     this.startKey = startKey;
     this.batchSize = batchSize;
-    this.keyRange = KeyRangeUtils.toRange(range);
+    this.scanRange = KeyRangeUtils.toRange(range);
     this.session = session;
     this.regionCache = rm;
     this.version = version;
   }
 
   private boolean loadCache() {
-    if (eof) return false;
+    if (endOfRegion) return false;
 
     Pair<TiRegion, Metapb.Store> pair = regionCache.getRegionStorePairByKey(startKey);
     TiRegion region = pair.first;
@@ -94,19 +94,24 @@ public class ScanIterator implements Iterator<Kvrpcpb.KvPair> {
     return true;
   }
 
+  private boolean cacheDrain() {
+    return currentCache == null
+        || index >= currentCache.size()
+        || index == -1;
+  }
+
   @Override
   public boolean hasNext() {
-    if (eof) {
+    if (cacheDrain() && endOfRegion) {
       return false;
     }
-    if (index == -1 || index >= currentCache.size()) {
+    if (cacheDrain()) {
       if (!loadCache()) {
-        eof = true;
-        return false;
+        endOfRegion = true;
       }
     }
     if (!contains(currentCache.get(index).getKey())) {
-      eof = true;
+      endOfRegion = true;
       return false;
     }
     return true;
@@ -114,17 +119,17 @@ public class ScanIterator implements Iterator<Kvrpcpb.KvPair> {
 
   @SuppressWarnings("unchecked")
   private boolean contains(ByteString key) {
-    return keyRange.contains(Comparables.wrap(key));
+    return scanRange.contains(Comparables.wrap(key));
   }
 
   private Kvrpcpb.KvPair getCurrent() {
-    if (eof) {
+    if (cacheDrain() && endOfRegion) {
       throw new NoSuchElementException();
     }
     if (index < currentCache.size()) {
       Kvrpcpb.KvPair kv = currentCache.get(index++);
       if (!contains(kv.getKey())) {
-        eof = true;
+        endOfRegion = true;
         throw new NoSuchElementException();
       }
       return kv;

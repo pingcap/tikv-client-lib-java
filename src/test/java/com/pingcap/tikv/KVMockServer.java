@@ -27,12 +27,19 @@ import com.pingcap.tikv.kvproto.Kvrpcpb;
 import com.pingcap.tikv.kvproto.Kvrpcpb.Context;
 import com.pingcap.tikv.kvproto.TikvGrpc;
 import com.pingcap.tikv.region.TiRegion;
+import com.pingcap.tikv.util.Comparables;
+import com.pingcap.tikv.util.Comparables.ComparableByteString;
 import io.grpc.Server;
 import io.grpc.ServerBuilder;
 import io.grpc.Status;
 import java.io.IOException;
 import java.net.ServerSocket;
-import java.util.*;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.SortedMap;
+import java.util.TreeMap;
 import java.util.stream.Collectors;
 
 public class KVMockServer extends TikvGrpc.TikvImplBase {
@@ -40,7 +47,7 @@ public class KVMockServer extends TikvGrpc.TikvImplBase {
   private int port;
   private Server server;
   private TiRegion region;
-  private TreeMap<String, String> dataMap = new TreeMap<>();
+  private TreeMap<Comparable<ByteString>, ByteString> dataMap = new TreeMap<>();
   private Map<ByteString, Integer> errorMap = new HashMap<>();
 
   // for KV error
@@ -56,11 +63,24 @@ public class KVMockServer extends TikvGrpc.TikvImplBase {
   static final int STORE_NOT_MATCH = 9;
   static final int RAFT_ENTRY_TOO_LARGE = 10;
 
-  void put(String key, String value) {
-    dataMap.put(key, value);
+  public int getPort() {
+    return port;
   }
 
-  void putError(String key, int code) {
+  public void put(ByteString key, ByteString value) {
+    dataMap.put(Comparables.wrap(key), value);
+  }
+
+  public void remove(ByteString key) {
+    dataMap.remove(Comparables.wrap(key));
+  }
+
+  public void put(String key, String value) {
+    put(ByteString.copyFromUtf8(key),
+        ByteString.copyFromUtf8(value));
+  }
+
+  public void putError(String key, int code) {
     errorMap.put(ByteString.copyFromUtf8(key), code);
   }
 
@@ -93,8 +113,7 @@ public class KVMockServer extends TikvGrpc.TikvImplBase {
         setErrorInfo(errorCode, errBuilder);
         builder.setRegionError(errBuilder.build());
       } else {
-        ByteString value = ByteString.copyFromUtf8(dataMap.get(key.toStringUtf8()));
-        builder.setValue(value);
+        builder.setValue(dataMap.get(Comparables.wrap(key)));
       }
       responseObserver.onNext(builder.build());
       responseObserver.onCompleted();
@@ -119,8 +138,6 @@ public class KVMockServer extends TikvGrpc.TikvImplBase {
         setErrorInfo(errorCode, errBuilder);
         builder.setRegionError(errBuilder.build());
         //builder.setError("");
-      } else {
-        ByteString value = ByteString.copyFromUtf8(dataMap.get(key.toStringUtf8()));
       }
       responseObserver.onNext(builder.build());
       responseObserver.onCompleted();
@@ -164,9 +181,6 @@ public class KVMockServer extends TikvGrpc.TikvImplBase {
       if (errorCode != null) {
         setErrorInfo(errorCode, errBuilder);
         builder.setRegionError(errBuilder.build());
-        //builder.setError("");
-      } else {
-        ByteString value = ByteString.copyFromUtf8(dataMap.get(key.toStringUtf8()));
       }
       responseObserver.onNext(builder.build());
       responseObserver.onCompleted();
@@ -197,7 +211,7 @@ public class KVMockServer extends TikvGrpc.TikvImplBase {
         }
         builder.setError(errBuilder);
       } else {
-        ByteString value = ByteString.copyFromUtf8(dataMap.get(key.toStringUtf8()));
+        ByteString value = dataMap.get(Comparables.wrap(key));
         builder.setValue(value);
       }
       responseObserver.onNext(builder.build());
@@ -228,15 +242,15 @@ public class KVMockServer extends TikvGrpc.TikvImplBase {
         builder.setRegionError(errBuilder.build());
       } else {
         ByteString startKey = request.getStartKey();
-        SortedMap<String, String> kvs = dataMap.tailMap(startKey.toStringUtf8());
+        SortedMap<ComparableByteString, ByteString> kvs = dataMap.tailMap(Comparables.wrap(startKey));
         builder.addAllPairs(
             kvs.entrySet()
                 .stream()
                 .map(
                     kv ->
                         Kvrpcpb.KvPair.newBuilder()
-                            .setKey(ByteString.copyFromUtf8(kv.getKey()))
-                            .setValue(ByteString.copyFromUtf8(kv.getValue()))
+                            .setKey(kv.getKey().getByteString())
+                            .setValue(kv.getValue())
                             .build())
                 .collect(Collectors.toList()));
       }
@@ -271,7 +285,7 @@ public class KVMockServer extends TikvGrpc.TikvImplBase {
           builder.setRegionError(errBuilder.build());
           break;
         } else {
-          ByteString value = ByteString.copyFromUtf8(dataMap.get(key.toStringUtf8()));
+          ByteString value = dataMap.get(Comparables.wrap(key));
           resultList.add(Kvrpcpb.KvPair.newBuilder().setKey(key).setValue(value).build());
         }
       }
@@ -312,16 +326,16 @@ public class KVMockServer extends TikvGrpc.TikvImplBase {
           break;
         } else {
           ByteString startKey = keyRange.getStart();
-          SortedMap<String, String> kvs = dataMap.tailMap(startKey.toStringUtf8());
+          SortedMap<ByteString, ByteString> kvs = dataMap.tailMap(Comparables.wrap(startKey));
           builder.addAllChunks(
               kvs.entrySet()
                   .stream()
                   .filter(Objects::nonNull)
-                  .filter(kv -> kv.getKey().compareTo(keyRange.getEnd().toStringUtf8()) <= 0)
+                  .filter(kv -> Comparables.wrap(kv.getKey()).compareTo(Comparables.wrap(keyRange.getEnd())) <= 0)
                   .map(
                       kv ->
                           Chunk.newBuilder()
-                              .setRowsData(ByteString.copyFromUtf8(kv.getValue()))
+                              .setRowsData(kv.getValue())
                               .build())
                   .collect(Collectors.toList()));
         }
@@ -334,7 +348,7 @@ public class KVMockServer extends TikvGrpc.TikvImplBase {
     }
   }
 
-  int start(TiRegion region) throws IOException {
+  public int start(TiRegion region) throws IOException {
     try (ServerSocket s = new ServerSocket(0)) {
       port = s.getLocalPort();
     }
