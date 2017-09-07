@@ -104,7 +104,7 @@ public abstract class DataType implements Serializable {
   public abstract Object decodeNotNull(int flag, CodecDataInput cdi);
 
   /**
-   * decode a null value from row which is nothing.
+   * decode value from row which is nothing.
    *
    * @param cdi source of data.
    */
@@ -120,8 +120,9 @@ public abstract class DataType implements Serializable {
     int flag = cdi.readUnsignedByte();
     if (isNullFlag(flag)) {
       row.setNull(pos);
+    } else {
+      decodeValueNoNullToRow(row, pos, decodeNotNull(flag, cdi));
     }
-    decodeValueNoNullToRow(row, pos, decodeNotNull(flag, cdi));
   }
 
   public static void indexMaxValue(CodecDataOutput cdo) {
