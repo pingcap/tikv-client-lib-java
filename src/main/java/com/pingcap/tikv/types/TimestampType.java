@@ -26,8 +26,11 @@ import java.sql.Time;
 import java.sql.Timestamp;
 import java.time.Duration;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
 
 public class TimestampType extends DataType {
+  private final ZoneId defaultZone = ZoneId.of("UTC");
   static TimestampType of(int tp) {
     return new TimestampType(tp);
   }
@@ -49,12 +52,10 @@ public class TimestampType extends DataType {
       if (localDateTime == null) {
         return null;
       }
-      return Timestamp.valueOf(localDateTime);
+      return Timestamp.from(ZonedDateTime.of(localDateTime, ZoneId.of("UTC")).toInstant());
     } else if (flag == INT_FLAG) {
       long nanoSec = IntegerType.readLong(cdi);
       Duration duration = Duration.ofNanos(nanoSec);
-      // Go and Java share the same behavior. Time is calculated from 1970 Jan 1 UTC.
-      // row.setTime(pos, time);
       return new Time(duration.toMillis());
     } else {
       throw new InvalidCodecFormatException("Invalid Flag type for TimestampType: " + flag);
@@ -77,12 +78,11 @@ public class TimestampType extends DataType {
       if (localDateTime == null) {
         row.setNull(pos);
       }
-      Timestamp timestamp = Timestamp.valueOf(localDateTime);
+      Timestamp timestamp = Timestamp.from(ZonedDateTime.of(localDateTime, defaultZone).toInstant());
       row.setTimestamp(pos, timestamp);
     } else if (flag == INT_FLAG) {
       long nanoSec = IntegerType.readLong(cdi);
       Duration duration = Duration.ofNanos(nanoSec);
-      // Go and Java share the same behavior. Time is calculated from 1970 Jan 1 UTC.
       Time time = new Time(duration.toMillis());
       row.setTime(pos, time);
     } else {
