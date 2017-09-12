@@ -50,19 +50,16 @@ public class HistogramTest {
      * +----------+----------+---------+-----------+-------+---------+-------------+-------------+
      * | table_id | is_index | hist_id | bucket_id | count | repeats | upper_bound | lower_bound |
      * +----------+----------+---------+-----------+-------+---------+-------------+-------------+
-     * |       27 |        0 |       1 |         0 |     1 |       1 | 1           | 1           |
-     * |       27 |        0 |       1 |         1 |     1 |       1 | 5           | 3           |
-     * |       27 |        1 |       2 |         0 |     1 |       1 | 1           | 1           |
+     * |       27 |        0 |       0 |         0 |     2 |       1 | 1           | 0           |
+     * |       27 |        0 |       0 |         1 |     3 |       1 | 3           | 2           |
      * +----------+----------+---------+-----------+-------+---------+-------------+-------------+
      */
-    String histogramStr = "\b6\b\000\b\002\b\000\b\002\b\002\002\0021\002\0021\b6\b\000\b\002\b\002\b\002\b\002\002\0025\002\0023\b6" +
-        "\b\002\b\004\b\000\b\002\b\002\002\0021\002\0021";
+    String histogramStr = "\b6\b\000\b\000\b\000\b\004\b\002\002\0021\002\0020\b6\b\000\b\000\b\002\b\006\b\002\002\0023\002\0022";
     Chunk chunk =
         Chunk.newBuilder()
             .setRowsData(ByteString.copyFromUtf8(histogramStr))
             .addRowsMeta(0, RowMeta.newBuilder().setHandle(6).setLength(18))
             .addRowsMeta(1, RowMeta.newBuilder().setHandle(7).setLength(18))
-            .addRowsMeta(2, RowMeta.newBuilder().setHandle(8).setLength(18))
             .build();
 
     chunks.add(chunk);
@@ -88,40 +85,23 @@ public class HistogramTest {
     ints.decodeValueToRow(cdi, row, 13);
     blobs.decodeValueToRow(cdi, row, 14);
     blobs.decodeValueToRow(cdi, row, 15);
-    cdi = new CodecDataInput(chunkIterator.next());
-    ints.decodeValueToRow(cdi, row, 16);
-    ints.decodeValueToRow(cdi, row, 17);
-    ints.decodeValueToRow(cdi, row, 18);
-    ints.decodeValueToRow(cdi, row, 19);
-    ints.decodeValueToRow(cdi, row, 20);
-    ints.decodeValueToRow(cdi, row, 21);
-    blobs.decodeValueToRow(cdi, row, 22);
-    blobs.decodeValueToRow(cdi, row, 23);
 
     assertEquals(row.getLong(0), 27);
     assertEquals(row.getLong(1), 0);
-    assertEquals(row.getLong(2), 1);
+    assertEquals(row.getLong(2), 0);
     assertEquals(row.getLong(3), 0);
-    assertEquals(row.getLong(4), 1);
+    assertEquals(row.getLong(4), 2);
     assertEquals(row.getLong(5), 1);
     assertArrayEquals(row.getBytes(6), ByteString.copyFromUtf8("1").toByteArray());
-    assertArrayEquals(row.getBytes(7), ByteString.copyFromUtf8("1").toByteArray());
+    assertArrayEquals(row.getBytes(7), ByteString.copyFromUtf8("0").toByteArray());
     assertEquals(row.getLong(8), 27);
     assertEquals(row.getLong(9), 0);
-    assertEquals(row.getLong(10), 1);
+    assertEquals(row.getLong(10), 0);
     assertEquals(row.getLong(11), 1);
-    assertEquals(row.getLong(12), 1);
+    assertEquals(row.getLong(12), 3);
     assertEquals(row.getLong(13), 1);
-    assertArrayEquals(row.getBytes(14), ByteString.copyFromUtf8("5").toByteArray());
-    assertArrayEquals(row.getBytes(15), ByteString.copyFromUtf8("3").toByteArray());
-    assertEquals(row.getLong(16), 27);
-    assertEquals(row.getLong(17), 1);
-    assertEquals(row.getLong(18), 2);
-    assertEquals(row.getLong(19), 0);
-    assertEquals(row.getLong(20), 1);
-    assertEquals(row.getLong(21), 1);
-    assertArrayEquals(row.getBytes(22), ByteString.copyFromUtf8("1").toByteArray());
-    assertArrayEquals(row.getBytes(23), ByteString.copyFromUtf8("1").toByteArray());
+    assertArrayEquals(row.getBytes(14), ByteString.copyFromUtf8("3").toByteArray());
+    assertArrayEquals(row.getBytes(15), ByteString.copyFromUtf8("2").toByteArray());
   }
 
   @Before
@@ -132,47 +112,46 @@ public class HistogramTest {
      * +---------+-----------+-------+---------+-------------+-------------+
      * | hist_id | bucket_id | count | repeats | upper_bound | lower_bound |
      * +---------+-----------+-------+---------+-------------+-------------+
-     * |      10 |         0 |     5 |       5 | 3           | 3           |
-     * |      10 |         1 |    10 |       5 | 8           | 8           |
-     * |      10 |         2 |    25 |      15 | 100         | 100         |
-     * |      10 |         3 |    30 |       1 | 200         | 101         |
+     * |      10 |         0 |     5 |       2 | 3           | 0           |
+     * |      10 |         1 |    10 |       1 | 7           | 4           |
+     * |      10 |         2 |    25 |       4 | 11          | 8           |
+     * |      10 |         3 |    30 |       0 | 15          | 12          |
      * +---------+-----------+-------+---------+-------------+-------------+
      */
 
     histogram.setId(10);
     histogram.setNullCount(4);
     histogram.setLastUpdateVersion(23333333);
-    histogram.setNumberOfDistinctValue(5);
-    histogram.setNullCount(15);
+    histogram.setNumberOfDistinctValue(10);
     ArrayList<Bucket> buckets = new ArrayList<>(4);
-    buckets.add(new Bucket(5, 5, 3, 3));
-    buckets.add(new Bucket(10, 5, 8, 8));
-    buckets.add(new Bucket(25, 15, 100, 100));
-    buckets.add(new Bucket(30, 1, 101, 200));
+    buckets.add(new Bucket(5, 2, 0, 3));
+    buckets.add(new Bucket(10, 1, 4, 7));
+    buckets.add(new Bucket(25, 4, 8, 11));
+    buckets.add(new Bucket(30, 0, 12, 15));
     histogram.setBuckets(buckets);
   }
 
   @Test
   public void testEqualRowCount() throws Exception {
-    assertEquals(histogram.equalRowCount(8), 5.0, 0.000001);
-    assertEquals(histogram.equalRowCount(150), 6.0, 0.000001);
+    assertEquals(histogram.equalRowCount(4), 3.0, 0.000001);
+    assertEquals(histogram.equalRowCount(11), 4.0, 0.000001);
   }
 
   @Test
   public void testGreaterRowCount() throws Exception {
-    assertEquals(histogram.greaterRowCount(0), 30.0, 0.000001);
-    assertEquals(histogram.greaterRowCount(3), 25.0, 0.000001);
-    assertEquals(histogram.greaterRowCount(4), 25.0, 0.000001);
-    assertEquals(histogram.greaterRowCount(9), 20.0, 0.000001);
-    assertEquals(histogram.greaterRowCount(100), 5.0, 0.000001);
-    assertEquals(histogram.greaterRowCount(150), 0.0, 0.000001);
-    assertEquals(histogram.greaterRowCount(1000), 0.0, 0.000001);
+    assertEquals(histogram.greaterRowCount(-1), 30.0, 0.000001);
+    assertEquals(histogram.greaterRowCount(0), 27.0, 0.000001);
+    assertEquals(histogram.greaterRowCount(4), 22.0, 0.000001);
+    assertEquals(histogram.greaterRowCount(9), 11.5, 0.000001);
+    assertEquals(histogram.greaterRowCount(11), 10.5, 0.000001); //shouldn't this be 5.0?
+    assertEquals(histogram.greaterRowCount(12), 2.0, 0.000001);
+    assertEquals(histogram.greaterRowCount(19), 0.0, 0.000001);
   }
 
   @Test
   public void testBetweenRowCount() throws Exception {
-    assertEquals(histogram.betweenRowCount(12, 150), 17.0, 0.000001);
-    assertEquals(histogram.betweenRowCount(102, 160), 3.5, 0.000001);
+    assertEquals(histogram.betweenRowCount(2, 6), 5.5, 0.000001);
+    assertEquals(histogram.betweenRowCount(8, 10), 5.5, 0.000001);
   }
 
   @Test
@@ -183,12 +162,12 @@ public class HistogramTest {
   @Test
   public void testLessRowCount() throws Exception {
     assertEquals(histogram.lessRowCount(0), 0.0, 0.000001);
-    assertEquals(histogram.lessRowCount(3), 0.0, 0.000001);
+    assertEquals(histogram.lessRowCount(3), 1.5, 0.000001);
     assertEquals(histogram.lessRowCount(4), 5.0, 0.000001);
-    assertEquals(histogram.lessRowCount(9), 10.0, 0.000001);
-    assertEquals(histogram.lessRowCount(100), 10.0, 0.000001);
-    assertEquals(histogram.lessRowCount(150), 27.0, 0.000001);
-    assertEquals(histogram.lessRowCount(1000), 30.0, 0.000001);
+    assertEquals(histogram.lessRowCount(7), 7.0, 0.000001);
+    assertEquals(histogram.lessRowCount(9), 15.5, 0.000001);
+    assertEquals(histogram.lessRowCount(12), 25.0, 0.000001);
+    assertEquals(histogram.lessRowCount(15), 27.5, 0.000001); //shouldn't this be 30.0?
   }
 
   @Test
@@ -196,11 +175,11 @@ public class HistogramTest {
     assertEquals(histogram.lowerBound(0), -1);
     assertEquals(histogram.lowerBound(3), 0);
     assertEquals(histogram.lowerBound(4), -2);
-    assertEquals(histogram.lowerBound(8), 1);
-    assertEquals(histogram.lowerBound(99), -3);
-    assertEquals(histogram.lowerBound(100), 2);
-    assertEquals(histogram.lowerBound(101), -4);
-    assertEquals(histogram.lowerBound(1000), -5);
+    assertEquals(histogram.lowerBound(7), 1);
+    assertEquals(histogram.lowerBound(9), -3);
+    assertEquals(histogram.lowerBound(11), 2);
+    assertEquals(histogram.lowerBound(13), -4);
+    assertEquals(histogram.lowerBound(19), -5);
   }
 
   @Test

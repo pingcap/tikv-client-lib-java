@@ -17,11 +17,6 @@
 
 package com.pingcap.tikv.operation;
 
-import static com.pingcap.tikv.types.Types.TYPE_BLOB;
-import static com.pingcap.tikv.types.Types.TYPE_NEW_DECIMAL;
-import static com.pingcap.tikv.types.Types.TYPE_VARCHAR;
-import static org.junit.Assert.assertEquals;
-
 import com.google.protobuf.ByteString;
 import com.pingcap.tikv.catalog.CatalogTransaction;
 import com.pingcap.tikv.expression.TiByItem;
@@ -34,8 +29,12 @@ import com.pingcap.tikv.meta.TiSelectRequest;
 import com.pingcap.tikv.meta.TiTableInfo;
 import com.pingcap.tikv.types.DataType;
 import com.pingcap.tikv.types.DataTypeFactory;
-import java.util.List;
 import org.junit.Test;
+
+import java.util.List;
+
+import static com.pingcap.tikv.types.Types.*;
+import static org.junit.Assert.assertEquals;
 
 public class SchemaInferTest {
   private final String table29 =

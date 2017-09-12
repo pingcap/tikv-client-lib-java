@@ -25,6 +25,7 @@ import com.pingcap.tikv.kvproto.Metapb;
 import com.pingcap.tikv.kvproto.Metapb.Peer;
 import com.pingcap.tikv.kvproto.Metapb.Region;
 import com.pingcap.tikv.types.BytesType;
+
 import java.io.Serializable;
 import java.util.HashSet;
 import java.util.Set;

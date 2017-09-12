@@ -109,6 +109,7 @@ public class TiColumnRef implements TiExpr {
 
   public static TiColumnRef colInfo2Col(Set<TiColumnRef> cols, TiColumnInfo col) {
     for(TiColumnRef c: cols) {
+      System.out.println("Comparing " + c.getName() + " with " + col.getName());
       if(String.CASE_INSENSITIVE_ORDER.compare(c.getName(), col.getName()) == 0) {
         return c;
       }

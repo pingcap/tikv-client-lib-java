@@ -15,14 +15,15 @@
 
 package com.pingcap.tikv.util;
 
-import static java.util.Objects.requireNonNull;
-
 import com.google.common.primitives.UnsignedBytes;
 import com.google.protobuf.ByteString;
 import com.pingcap.tikv.exception.CastingException;
+
+import javax.annotation.Nonnull;
 import java.util.Arrays;
 import java.util.Comparator;
-import javax.annotation.Nonnull;
+
+import static java.util.Objects.requireNonNull;
 
 /**
  * Wrap objects into comparable types ByteString and byte[] are compared as unsigned lexicographical

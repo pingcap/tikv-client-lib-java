@@ -17,29 +17,22 @@
 package com.pingcap.tikv.statistics;
 
 import com.google.common.collect.ImmutableList;
-import com.pingcap.tikv.Snapshot;
 import com.pingcap.tikv.expression.TiColumnRef;
 import com.pingcap.tikv.expression.TiConstant;
 import com.pingcap.tikv.expression.TiExpr;
 import com.pingcap.tikv.expression.scalar.Equal;
-import com.pingcap.tikv.meta.TiIndexInfo;
 import com.pingcap.tikv.meta.TiSelectRequest;
 import com.pingcap.tikv.meta.TiTableInfo;
-import com.pingcap.tikv.predicates.PredicateUtils;
-import com.pingcap.tikv.predicates.ScanBuilder;
-import com.pingcap.tikv.region.RegionManager;
 import com.pingcap.tikv.row.Row;
 import com.pingcap.tikv.types.DataType;
 import com.pingcap.tikv.types.DataTypeFactory;
 import com.pingcap.tikv.types.Types;
 import com.pingcap.tikv.util.Bucket;
 import com.pingcap.tikv.util.Comparables;
-import com.pingcap.tikv.util.RangeSplitter;
-import com.pingcap.tikv.util.RangeSplitter.RegionTask;
+import com.pingcap.tikv.util.DBReader;
 
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Iterator;
 import java.util.List;
 
 public class Histogram {
@@ -118,36 +111,20 @@ public class Histogram {
 
   //Loads histogram from storage
   protected Histogram histogramFromStorage(
-      long tableID, long colID, long isIndex, long distinct, long lastUpdateVersion, long nullCount, Snapshot snapshot,
-      DataType type, TiTableInfo table, RegionManager manager) {
+      long tableID, long colID, long isIndex, long distinct, long lastUpdateVersion,
+      long nullCount, DBReader dbReader, DataType type) {
 
-    TiIndexInfo index = TiIndexInfo.generateFakePrimaryKeyIndex(table);
-
+    TiTableInfo table = dbReader.getTableInfo("stats_buckets");
     List<TiExpr> firstAnd =
         ImmutableList.of(
             new Equal(TiColumnRef.create(TABLE_ID, table), TiConstant.create(tableID)),
             new Equal(TiColumnRef.create(IS_INDEX, table), TiConstant.create(isIndex)),
             new Equal(TiColumnRef.create(HIST_ID, table), TiConstant.create(colID))
         );
-    List<String> strs = ImmutableList.of(BUCKET_ID, COUNT, REPEATS, LOWER_BOUND, UPPER_BOUND);
-    ScanBuilder scanBuilder = new ScanBuilder();
-    ScanBuilder.ScanPlan scanPlan = scanBuilder.buildScan(firstAnd, index, table);
-    TiSelectRequest selReq = new TiSelectRequest();
-    selReq
-        .addRanges(scanPlan.getKeyRanges())
-        .setTableInfo(table)
-        .addField(TiColumnRef.create(BUCKET_ID, table))
-        .addField(TiColumnRef.create(COUNT, table))
-        .addField(TiColumnRef.create(REPEATS, table))
-        .addField(TiColumnRef.create(LOWER_BOUND, table))
-        .addField(TiColumnRef.create(UPPER_BOUND, table))
-        .setStartTs(snapshot.getVersion());
 
-    selReq.addWhere(PredicateUtils.mergeCNFExpressions(scanPlan.getFilters()));
-
-    List<RegionTask> keyWithRegionTasks =
-        RangeSplitter.newSplitter(manager)
-            .splitRangeByRegion(selReq.getRanges());
+    List<String> returnFields = ImmutableList.of(BUCKET_ID, COUNT, REPEATS, LOWER_BOUND, UPPER_BOUND);
+    TiSelectRequest selReq = dbReader.getSelectRequest("stats_buckets", firstAnd, returnFields);
+    List<Row> rows = dbReader.getSelectedRows(selReq);
 
     this.id = colID;
     this.numberOfDistinctValue = distinct;
@@ -158,36 +135,31 @@ public class Histogram {
     ArrayList<Bucket> tmpBuckets = new ArrayList<>(256);
     for(int i = 0; i < 256; i ++) tmpBuckets.add(new Bucket());
 
-    for (RegionTask task : keyWithRegionTasks) {
+    for (Row row: rows) {
+      long bucketID = row.getLong(0);
+      long count = row.getLong(1);
+      long repeats = row.getLong(2);
+      Comparable lowerBound, upperBound;
+      try {
+        Bucket bucket = tmpBuckets.get((int) bucketID);
+        bucket.setCount(count);
+        bucket.setRepeats(repeats);
 
-      Iterator<Row> it = snapshot.select(selReq, task);
-      while (it.hasNext()) {
-        Row row = it.next();
-        long bucketID = row.getLong(0);
-        long count = row.getLong(1);
-        long repeats = row.getLong(2);
-        Comparable lowerBound, upperBound;
-        try {
-          Bucket bucket = tmpBuckets.get((int) bucketID);
-          bucket.setCount(count);
-          bucket.setRepeats(repeats);
-
-          if (isIndex == 1) {
-            lowerBound = Comparables.wrap(row.get(3, DataTypeFactory.of(Types.TYPE_BLOB)));
-            upperBound = Comparables.wrap(row.get(4, DataTypeFactory.of(Types.TYPE_BLOB)));
-          } else {
-            lowerBound = Comparables.wrap(row.get(3, type));
-            upperBound = Comparables.wrap(row.get(4, type));
-          }
-          bucket.setLowerBound(lowerBound);
-          bucket.setLowerBound(upperBound);
-        } catch (IndexOutOfBoundsException e) {
-          System.err.println("IndexOutOfBoundsException: " + e.getMessage());
-        } catch (Exception e) {
-          System.err.println("Exception: " + e.getMessage());
+        if (isIndex == 1) {
+          lowerBound = Comparables.wrap(row.get(3, DataTypeFactory.of(Types.TYPE_BLOB)));
+          upperBound = Comparables.wrap(row.get(4, DataTypeFactory.of(Types.TYPE_BLOB)));
+        } else {
+          lowerBound = Comparables.wrap(row.get(3, type));
+          upperBound = Comparables.wrap(row.get(4, type));
         }
-        ++ len;
+        bucket.setLowerBound(lowerBound);
+        bucket.setLowerBound(upperBound);
+      } catch (IndexOutOfBoundsException e) {
+        System.err.println("IndexOutOfBoundsException: " + e.getMessage());
+      } catch (Exception e) {
+        System.err.println("Exception: " + e.getMessage());
       }
+      ++ len;
     }
     buckets = tmpBuckets.subList(0, len);
     for (int i = 1; i < buckets.size(); i++) {

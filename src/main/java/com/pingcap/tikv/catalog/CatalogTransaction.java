@@ -15,8 +15,6 @@
 
 package com.pingcap.tikv.catalog;
 
-import static com.google.common.base.Preconditions.checkArgument;
-
 import com.fasterxml.jackson.core.JsonParseException;
 import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -33,13 +31,16 @@ import com.pingcap.tikv.meta.TiTableInfo;
 import com.pingcap.tikv.types.BytesType;
 import com.pingcap.tikv.types.IntegerType;
 import com.pingcap.tikv.util.Pair;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Objects;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
+
+import static com.google.common.base.Preconditions.checkArgument;
 
 public class CatalogTransaction {
   protected static final Logger logger = LogManager.getFormatterLogger(Catalog.class);

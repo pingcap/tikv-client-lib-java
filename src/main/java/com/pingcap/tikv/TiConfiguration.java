@@ -93,7 +93,7 @@ public class TiConfiguration {
     return DEF_SCAN_BATCH_SIZE;
   }
 
-  protected boolean isIgnoreTruncate() {
+  public boolean isIgnoreTruncate() {
     return ignoreTruncate;
   }
 
@@ -101,7 +101,7 @@ public class TiConfiguration {
     this.ignoreTruncate = ignoreTruncate;
   }
 
-  protected boolean isTruncateAsWarning() {
+  public boolean isTruncateAsWarning() {
     return truncateAsWarning;
   }
 

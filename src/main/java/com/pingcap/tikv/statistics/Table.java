@@ -2,12 +2,10 @@ package com.pingcap.tikv.statistics;
 
 import com.google.common.collect.Range;
 import com.pingcap.tidb.tipb.ColumnInfo;
-import com.pingcap.tikv.catalog.Catalog;
 import com.pingcap.tikv.expression.TiBinaryFunctionExpresson;
 import com.pingcap.tikv.expression.TiColumnRef;
 import com.pingcap.tikv.expression.TiConstant;
 import com.pingcap.tikv.expression.TiExpr;
-import com.pingcap.tikv.meta.TiDBInfo;
 import com.pingcap.tikv.meta.TiIndexInfo;
 import com.pingcap.tikv.meta.TiTableInfo;
 import com.pingcap.tikv.predicates.PredicateUtils;
@@ -17,6 +15,7 @@ import com.pingcap.tikv.predicates.ScanBuilder;
 import com.pingcap.tikv.predicates.ScanBuilder.IndexMatchingResult;
 import com.pingcap.tikv.types.DataType;
 import com.pingcap.tikv.util.Comparables;
+import com.pingcap.tikv.util.DBReader;
 
 import java.util.*;
 
@@ -316,7 +315,7 @@ public class Table {
     return minFactor;
   }
 
-  public double Selectivity(Catalog cat, TiDBInfo db, List<TiExpr> exprs) {
+  public double Selectivity(DBReader dbReader, List<TiExpr> exprs) {
     if(Count == 0) {
       return 1.0;
     }
@@ -327,7 +326,7 @@ public class Table {
       return 1.0;
     }
     int len = exprs.size();
-    TiTableInfo table = cat.getTable(db, getTableID());
+    TiTableInfo table = dbReader.getTableInfo(getTableID());
     ArrayList<exprSet> sets = new ArrayList<>();
     Set<TiColumnRef> extractedCols = PredicateUtils.extractColumnRefFromExpr(PredicateUtils.mergeCNFExpressions(exprs));
     for(ColumnWithHistogram colInfo: Columns.values()) {
@@ -361,7 +360,7 @@ public class Table {
     double ret = 1.0;
     BitSet mask = new BitSet(len);
     mask.clear();
-    mask.flip(0, len - 1);
+    mask.flip(0, len);
     for(exprSet set: sets) {
       mask.xor(set.mask);
       double rowCount = 1.0;
@@ -422,7 +421,7 @@ public class Table {
   private ArrayList<exprSet> getUsableSetsByGreedy(ArrayList<exprSet> sets, int len) {
     ArrayList<exprSet> newBlocks = new ArrayList<>();
     BitSet mask = new BitSet(len);
-    mask.flip(0, len - 1);
+    mask.flip(0, len);
     BitSet st;
     while (true) {
       int bestID = -1;

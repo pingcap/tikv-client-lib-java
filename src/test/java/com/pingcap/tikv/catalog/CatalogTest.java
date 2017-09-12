@@ -1,7 +1,5 @@
 package com.pingcap.tikv.catalog;
 
-import static org.junit.Assert.assertEquals;
-
 import com.google.common.collect.ImmutableList;
 import com.pingcap.tikv.KVMockServer;
 import com.pingcap.tikv.PDMockServer;
@@ -13,10 +11,13 @@ import com.pingcap.tikv.meta.TiDBInfo;
 import com.pingcap.tikv.meta.TiTableInfo;
 import com.pingcap.tikv.region.TiRegion;
 import com.pingcap.tikv.util.RefelctionWrapper;
-import java.util.List;
-import java.util.stream.Collectors;
 import org.junit.Before;
 import org.junit.Test;
+
+import java.util.List;
+import java.util.stream.Collectors;
+
+import static org.junit.Assert.assertEquals;
 
 
 public class CatalogTest {

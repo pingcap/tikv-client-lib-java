@@ -26,6 +26,7 @@ import com.pingcap.tikv.kvproto.Metapb;
 import com.pingcap.tikv.types.BytesType;
 import com.pingcap.tikv.types.DataType;
 import com.pingcap.tikv.types.IntegerType;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -203,49 +204,126 @@ public class MetaUtils {
       kvServer.put(getSchemaVersionKey(), ByteString.copyFromUtf8(String.format("%d", version)));
     }
 
+    public String buildDefaultTableFormat() {
+      return "\n"
+          + "{\n"
+          + "   \"id\": %d,\n"
+          + "   \"name\": {\n"
+          + "      \"O\": \"%s\",\n"
+          + "      \"L\": \"%s\"\n"
+          + "   },\n"
+          + "   \"charset\": \"\",\n"
+          + "   \"collate\": \"\",\n"
+          + "   \"cols\": [\n"
+          + "      {\n"
+          + "         \"id\": 1,\n"
+          + "         \"name\": {\n"
+          + "            \"O\": \"c1\",\n"
+          + "            \"L\": \"c1\"\n"
+          + "         },\n"
+          + "         \"offset\": 0,\n"
+          + "         \"origin_default\": null,\n"
+          + "         \"default\": null,\n"
+          + "         \"type\": {\n"
+          + "            \"Tp\": 3,\n"
+          + "            \"Flag\": 139,\n"
+          + "            \"Flen\": 11,\n"
+          + "            \"Decimal\": -1,\n"
+          + "            \"Charset\": \"binary\",\n"
+          + "            \"Collate\": \"binary\",\n"
+          + "            \"Elems\": null\n"
+          + "         },\n"
+          + "         \"state\": 5,\n"
+          + "         \"comment\": \"\"\n"
+          + "      }\n"
+          + "   ],\n"
+          + "   \"index_info\": [],\n"
+          + "   \"fk_info\": null,\n"
+          + "   \"state\": 5,\n"
+          + "   \"pk_is_handle\": true,\n"
+          + "   \"comment\": \"\",\n"
+          + "   \"auto_inc_id\": 0,\n"
+          + "   \"max_col_id\": 4,\n"
+          + "   \"max_idx_id\": 1\n"
+          + "}";
+    }
+
+    public String buildTableFormat(List<TiColumnInfo> cols, List<TiIndexInfo> idx) {
+
+      String columnTemplate =
+            "      {\n"
+          + "         \"id\": %d,\n"
+          + "         \"name\": {\n"
+          + "            \"O\": \"%s\",\n"
+          + "            \"L\": \"%s\"\n"
+          + "         },\n"
+          + "         \"offset\": %d,\n"
+          + "         \"origin_default\": null,\n"
+          + "         \"default\": null,\n"
+          + "         \"type\": {\n"
+          + "            \"Tp\": %d,\n"
+          + "            \"Flag\": %d,\n"
+          + "            \"Flen\": %d,\n"
+          + "            \"Decimal\": %d,\n"
+          + "            \"Charset\": \"binary\",\n"
+          + "            \"Collate\": \"binary\",\n"
+          + "            \"Elems\": null\n"
+          + "         },\n"
+          + "         \"state\": 5,\n"
+          + "         \"comment\": \"\"\n"
+          + "      }\n";
+
+      String columns = "";
+
+      for(TiColumnInfo col: cols) {
+        columns = columns.concat(String.format(columnTemplate, col.getId(), col.getName(),
+            col.getName().toLowerCase(), col.getOffset(), col.getType().getTypeCode(),
+            col.getType().getFlag(), col.getType().getLength(), col.getType().getDecimal()));
+        columns = columns.concat(",");
+      }
+
+      if(columns.length() > 0) {
+        columns = columns.substring(0, columns.length());
+      }
+
+      String indices = "";
+
+      return "\n"
+          + "{\n"
+          + "   \"id\": %d,\n"
+          + "   \"name\": {\n"
+          + "      \"O\": \"%s\",\n"
+          + "      \"L\": \"%s\"\n"
+          + "   },\n"
+          + "   \"charset\": \"\",\n"
+          + "   \"collate\": \"\",\n"
+          + "   \"cols\": [\n"
+          + columns
+          + "   ],\n"
+          + "   \"index_info\": [\n"
+          + indices
+          + "   ],\n"
+          + "   \"fk_info\": null,\n"
+          + "   \"state\": 5,\n"
+          + "   \"pk_is_handle\": true,\n"
+          + "   \"comment\": \"%s\",\n"
+          + "   \"auto_inc_id\": 0,\n"
+          + "   \"max_col_id\": %d,\n"
+          + "   \"max_idx_id\": %d\n"
+          + "}";
+    }
+
     public void addTable(int dbId, int tableId, String tableName) {
       String tableJson = String.format(
-          "\n"
-              + "{\n"
-              + "   \"id\": %d,\n"
-              + "   \"name\": {\n"
-              + "      \"O\": \"%s\",\n"
-              + "      \"L\": \"%s\"\n"
-              + "   },\n"
-              + "   \"charset\": \"\",\n"
-              + "   \"collate\": \"\",\n"
-              + "   \"cols\": [\n"
-              + "      {\n"
-              + "         \"id\": 1,\n"
-              + "         \"name\": {\n"
-              + "            \"O\": \"c1\",\n"
-              + "            \"L\": \"c1\"\n"
-              + "         },\n"
-              + "         \"offset\": 0,\n"
-              + "         \"origin_default\": null,\n"
-              + "         \"default\": null,\n"
-              + "         \"type\": {\n"
-              + "            \"Tp\": 3,\n"
-              + "            \"Flag\": 139,\n"
-              + "            \"Flen\": 11,\n"
-              + "            \"Decimal\": -1,\n"
-              + "            \"Charset\": \"binary\",\n"
-              + "            \"Collate\": \"binary\",\n"
-              + "            \"Elems\": null\n"
-              + "         },\n"
-              + "         \"state\": 5,\n"
-              + "         \"comment\": \"\"\n"
-              + "      }\n"
-              + "   ],\n"
-              + "   \"index_info\": [],\n"
-              + "   \"fk_info\": null,\n"
-              + "   \"state\": 5,\n"
-              + "   \"pk_is_handle\": true,\n"
-              + "   \"comment\": \"\",\n"
-              + "   \"auto_inc_id\": 0,\n"
-              + "   \"max_col_id\": 4,\n"
-              + "   \"max_idx_id\": 1\n"
-              + "}", tableId, tableName, tableName.toLowerCase());
+          buildDefaultTableFormat(), tableId, tableName, tableName.toLowerCase());
+
+      kvServer.put(getKeyForTable(dbId, tableId),
+          ByteString.copyFromUtf8(tableJson));
+    }
+
+    public void addTable(int dbId, int tableId, String tableName, String myTableJson) {
+      String tableJson = String.format(
+          myTableJson, tableId, tableName, tableName.toLowerCase());
 
       kvServer.put(getKeyForTable(dbId, tableId),
           ByteString.copyFromUtf8(tableJson));

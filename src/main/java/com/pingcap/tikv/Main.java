@@ -8,21 +8,14 @@ import com.pingcap.tikv.expression.TiConstant;
 import com.pingcap.tikv.expression.TiExpr;
 import com.pingcap.tikv.expression.scalar.GreaterEqual;
 import com.pingcap.tikv.expression.scalar.NotEqual;
-import com.pingcap.tikv.meta.TiDBInfo;
-import com.pingcap.tikv.meta.TiIndexInfo;
 import com.pingcap.tikv.meta.TiSelectRequest;
 import com.pingcap.tikv.meta.TiTableInfo;
-import com.pingcap.tikv.operation.SchemaInfer;
-import com.pingcap.tikv.predicates.PredicateUtils;
-import com.pingcap.tikv.predicates.ScanBuilder;
 import com.pingcap.tikv.region.TiRegion;
 import com.pingcap.tikv.row.Row;
 import com.pingcap.tikv.statistics.Table;
 import com.pingcap.tikv.statistics.TableStats;
 import com.pingcap.tikv.util.DBReader;
-import com.pingcap.tikv.util.RangeSplitter;
 
-import java.util.Iterator;
 import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -45,65 +38,34 @@ public class Main {
     }
 
     Catalog cat = cluster.getCatalog();
-    TiDBInfo db = cat.getDatabase("mysql");
-    TiTableInfo table = cat.getTable(db, "t1");
-    System.out.println("table t1 has id: " + table.getId());
-    System.out.println("and this is table " + cat.getTable(db, 47).getName());
+    DBReader dbReader = new DBReader(cat, "mysql", snapshot, cluster.getRegionManager(), conf);
 
-    TiIndexInfo index = TiIndexInfo.generateFakePrimaryKeyIndex(table);
-
+    TiTableInfo table = dbReader.getTableInfo("t1");
     List<TiExpr> exprs =
         ImmutableList.of(
             new NotEqual(TiColumnRef.create("s1", table), TiConstant.create("xxxx")));
 
-    ScanBuilder scanBuilder = new ScanBuilder();
-    ScanBuilder.ScanPlan scanPlan = scanBuilder.buildScan(exprs, index, table);
+    List<String> returnFields =
+        ImmutableList.of("c1", "s1");
 
-    TiSelectRequest selReq = new TiSelectRequest();
-    selReq
-        .addRanges(scanPlan.getKeyRanges())
-        .setTableInfo(table)
-//        .setIndexInfo(index)
-        .addField(TiColumnRef.create("c1", table))
-        .addField(TiColumnRef.create("s1", table))
-        .setStartTs(snapshot.getVersion());
+    TiSelectRequest selReq = dbReader.getSelectRequest("t1", exprs, returnFields);
+    List<Row> sql = dbReader.getSelectedRows(selReq);
 
-    if (conf.isIgnoreTruncate()) {
-      selReq.setTruncateMode(TiSelectRequest.TruncateMode.IgnoreTruncation);
-    } else if (conf.isTruncateAsWarning()) {
-      selReq.setTruncateMode(TiSelectRequest.TruncateMode.TruncationAsWarning);
-    }
-
-    selReq.addWhere(PredicateUtils.mergeCNFExpressions(scanPlan.getFilters()));
-
-    List<RangeSplitter.RegionTask> keyWithRegionTasks =
-        RangeSplitter.newSplitter(cluster.getRegionManager())
-            .splitRangeByRegion(selReq.getRanges());
-    for (RangeSplitter.RegionTask task : keyWithRegionTasks) {
-      Iterator<Row> it = snapshot.select(selReq, task);
-      while (it.hasNext()) {
-        Row r = it.next();
-        SchemaInfer schemaInfer = SchemaInfer.create(selReq);
-        for (int i = 0; i < r.fieldCount(); i++) {
-          Object val = r.get(i, schemaInfer.getType(i));
-          System.out.print(val);
-          System.out.print(" ");
-        }
-        System.out.print("\n");
-      }
-    }
+    dbReader.printRows(sql, selReq);
 
     System.out.println(table.getId());
 
     TableStats tableStats = new TableStats();
-    tableStats.build(new DBReader(cat, snapshot, cluster.getRegionManager()));
+    tableStats.build(dbReader);
     System.out.println(table.getName() + "-->" + table.getColumns().get(0).getName());
-    Table t = tableStats.tableStatsFromStorage(cat, snapshot, table, cluster.getRegionManager());
+    Table t = tableStats.tableStatsFromStorage(dbReader, table);
+
+    System.out.println();
 
     List<TiExpr> myExprs = ImmutableList.of(
         new GreaterEqual(TiColumnRef.create("s1", table), TiConstant.create(2)));
     System.out.println(myExprs.size());
-    System.out.println(t.Selectivity(cat, db, myExprs));
+    System.out.println(t.Selectivity(dbReader, myExprs));
 
     cluster.close();
     client.close();
