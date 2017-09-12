@@ -28,12 +28,12 @@ import java.util.Optional;
 import java.util.concurrent.LinkedBlockingDeque;
 
 public class PDMockServer extends PDGrpc.PDImplBase {
-  int port;
+  public int port;
   private long clusterId;
 
   private Server server;
 
-  void addGetMemberResp(GetMembersResponse r) {
+  public void addGetMemberResp(GetMembersResponse r) {
     getMembersResp.addLast(Optional.ofNullable(r));
   }
 
@@ -70,7 +70,7 @@ public class PDMockServer extends PDGrpc.PDImplBase {
     };
   }
 
-  void addGetRegionResp(GetRegionResponse r) {
+  public void addGetRegionResp(GetRegionResponse r) {
     getRegionResp.addLast(r);
   }
 
@@ -86,7 +86,7 @@ public class PDMockServer extends PDGrpc.PDImplBase {
     }
   }
 
-  void addGetRegionByIDResp(GetRegionResponse r) {
+  public void addGetRegionByIDResp(GetRegionResponse r) {
     getRegionByIDResp.addLast(r);
   }
 
@@ -102,7 +102,7 @@ public class PDMockServer extends PDGrpc.PDImplBase {
     }
   }
 
-  void addGetStoreResp(GetStoreResponse r) {
+  public void addGetStoreResp(GetStoreResponse r) {
     getStoreResp.addLast(Optional.ofNullable(r));
   }
 
@@ -117,7 +117,7 @@ public class PDMockServer extends PDGrpc.PDImplBase {
     }
   }
 
-  void start(long clusterId) throws IOException {
+  public void start(long clusterId) throws IOException {
     try (ServerSocket s = new ServerSocket(0)) {
       port = s.getLocalPort();
     }
@@ -127,13 +127,13 @@ public class PDMockServer extends PDGrpc.PDImplBase {
     Runtime.getRuntime().addShutdownHook(new Thread(PDMockServer.this::stop));
   }
 
-  void stop() {
+  public void stop() {
     if (server != null) {
       server.shutdown();
     }
   }
 
-  long getClusterId() {
+  public long getClusterId() {
     return clusterId;
   }
 }

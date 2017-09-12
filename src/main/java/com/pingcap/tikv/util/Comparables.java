@@ -20,6 +20,7 @@ import static java.util.Objects.requireNonNull;
 import com.google.common.primitives.UnsignedBytes;
 import com.google.protobuf.ByteString;
 import com.pingcap.tikv.exception.CastingException;
+import java.util.Arrays;
 import java.util.Comparator;
 import javax.annotation.Nonnull;
 
@@ -45,7 +46,7 @@ public class Comparables {
         "Cannot cast to Comparable for type: " + o.getClass().getSimpleName());
   }
 
-  private static class ComparableBytes implements Comparable<ComparableBytes> {
+  public static class ComparableBytes implements Comparable<ComparableBytes> {
     // below might uses UnsafeComparator if possible
     private static final Comparator<byte[]> comparator = UnsignedBytes.lexicographicalComparator();
     private final byte[] bytes;
@@ -63,12 +64,33 @@ public class Comparables {
       return comparator.compare(bytes, other.bytes);
     }
 
+    @Override
+    public boolean equals(Object other) {
+      if (other == this) {
+        return true;
+      }
+      if (other instanceof ComparableByteString) {
+        return ((ComparableBytes) other).compareTo(this) == 0;
+      } else {
+        return false;
+      }
+    }
+
+    @Override
+    public int hashCode() {
+      return Arrays.hashCode(bytes);
+    }
+
+    public byte[] getBytes() {
+      return bytes;
+    }
+
     public static ComparableBytes wrap(byte[] bytes) {
       return new ComparableBytes(bytes);
     }
   }
 
-  private static class ComparableByteString implements Comparable<ComparableByteString> {
+  public static class ComparableByteString implements Comparable<ComparableByteString> {
     private final ByteString bytes;
 
     private ComparableByteString(ByteString bytes) {
@@ -89,8 +111,29 @@ public class Comparables {
       return bytes.size() - otherBytes.size();
     }
 
+    public ByteString getByteString() {
+      return bytes;
+    }
+
     public static ComparableByteString wrap(ByteString bytes) {
       return new ComparableByteString(bytes);
+    }
+
+    @Override
+    public boolean equals(Object other) {
+      if (other == this) {
+        return true;
+      }
+      if (other instanceof ComparableByteString) {
+        return ((ComparableByteString) other).compareTo(this) == 0;
+      } else {
+        return false;
+      }
+    }
+
+    @Override
+    public int hashCode() {
+      return bytes.hashCode();
     }
   }
 }
