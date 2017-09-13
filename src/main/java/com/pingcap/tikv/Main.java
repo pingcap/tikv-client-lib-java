@@ -41,7 +41,7 @@ public class Main {
     TiTableInfo table = dbReader.getTableInfo("t1");
     List<TiExpr> exprs =
         ImmutableList.of(
-            new NotEqual(TiColumnRef.create("s1", table), TiConstant.create("xxxx")));
+            new NotEqual(TiColumnRef.create("s1", table), TiConstant.create("xxxxx")));
 
     List<String> returnFields =
         ImmutableList.of("c1", "s1");
