@@ -1,6 +1,5 @@
 package com.pingcap.tikv.util;
 
-import com.google.common.annotations.VisibleForTesting;
 import com.pingcap.tikv.Snapshot;
 import com.pingcap.tikv.TiConfiguration;
 import com.pingcap.tikv.catalog.Catalog;
@@ -28,16 +27,10 @@ public class DBReader {
   private Catalog cat;
   private Snapshot snapshot;
   private RegionManager manager;
-  private final boolean isMockedData;
   private TiConfiguration conf;
   private TiDBInfo db;
-  private TiSelectRequest selectRequest;
 
-//  public DBReader(TiCluster cluster, Snapshot snapshot) {
-//    this.cat = cluster.getCatalog();
-//    this.snapshot = snapshot;
-//    this.manager = cluster.getRegionManager();
-//  }
+  public DBReader() {}
 
   public DBReader(Catalog cat, String DBName, Snapshot snapshot, RegionManager manager, TiConfiguration conf) {
     this.cat = cat;
@@ -45,12 +38,6 @@ public class DBReader {
     this.snapshot = snapshot;
     this.manager = manager;
     this.conf = conf;
-    this.isMockedData = false;
-  }
-
-  @VisibleForTesting
-  private DBReader() {
-    this.isMockedData = true;
   }
 
   private void setCurrentDB(String DBName) {
@@ -61,12 +48,24 @@ public class DBReader {
     return cat;
   }
 
+  public void setCatalog(Catalog cat) {
+    this.cat = cat;
+  }
+
   public Snapshot getSnapshot() {
     return snapshot;
   }
 
+  public void setSnapshot(Snapshot snapshot) {
+    this.snapshot = snapshot;
+  }
+
   public RegionManager getRegionManager() {
     return manager;
+  }
+
+  public void setRegionManager(RegionManager manager) {
+    this.manager = manager;
   }
 
   public TiTableInfo getTableInfo(String tableName) {
@@ -77,7 +76,7 @@ public class DBReader {
     return cat.getTable(db, tableID);
   }
 
-  public TiSelectRequest getSelectRequest(String tableName, List<TiExpr> exprs, List<String> returnFields) {
+  private TiSelectRequest getSelectRequest(String tableName, List<TiExpr> exprs, List<String> returnFields) {
     TiTableInfo tableInfo = getTableInfo(tableName);
     TiIndexInfo index = TiIndexInfo.generateFakePrimaryKeyIndex(tableInfo);
 
@@ -104,7 +103,7 @@ public class DBReader {
     return selReq;
   }
 
-  public List<Row> getSelectedRows(TiSelectRequest selReq) {
+  private List<Row> getSelectedRows(TiSelectRequest selReq) {
 
     List<RangeSplitter.RegionTask> keyWithRegionTasks =
         RangeSplitter.newSplitter(manager).
@@ -123,7 +122,11 @@ public class DBReader {
     return rowList;
   }
 
-  public void printRows(List<Row> rows, TiSelectRequest selReq) {
+  public List<Row> getSelectedRows(String tableName, List<TiExpr> exprs, List<String> returnFields) {
+    return getSelectedRows(getSelectRequest(tableName, exprs, returnFields));
+  }
+
+  private void printRows(List<Row> rows, TiSelectRequest selReq) {
     for(Row r: rows) {
       SchemaInfer schemaInfer = SchemaInfer.create(selReq);
       for (int i = 0; i < r.fieldCount(); i++) {
@@ -133,6 +136,12 @@ public class DBReader {
       }
       System.out.print("\n");
     }
+  }
+
+  public void printRows(String tableName, List<TiExpr> exprs, List<String> returnFields) {
+    TiSelectRequest selectRequest = getSelectRequest(tableName, exprs, returnFields);
+    List<Row> rows = getSelectedRows(selectRequest);
+    printRows(rows, selectRequest);
   }
 
 }

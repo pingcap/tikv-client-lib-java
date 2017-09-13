@@ -8,7 +8,6 @@ import com.pingcap.tikv.expression.scalar.Equal;
 import com.pingcap.tikv.expression.scalar.GreaterEqual;
 import com.pingcap.tikv.meta.TiColumnInfo;
 import com.pingcap.tikv.meta.TiIndexInfo;
-import com.pingcap.tikv.meta.TiSelectRequest;
 import com.pingcap.tikv.meta.TiTableInfo;
 import com.pingcap.tikv.row.Row;
 import com.pingcap.tikv.types.DataType;
@@ -61,8 +60,7 @@ public class TableStats {
     List<String> returnFields = ImmutableList.of(
         "table_id", "is_index", "hist_id", "distinct_count", "version", "null_count");
 
-    TiSelectRequest selReq = dbReader.getSelectRequest("stats_histograms", firstAnd, returnFields);
-    List<Row> result = dbReader.getSelectedRows(selReq);
+    List<Row> result = dbReader.getSelectedRows("stats_histograms", firstAnd, returnFields);
 
     for(Row row: result) {
       long histID = row.getLong(2);
@@ -122,8 +120,7 @@ public class TableStats {
     List<String> returnFields = ImmutableList.of(
         "version", "table_id", "modify_count", "count");
 
-    TiSelectRequest selReq = dbReader.getSelectRequest("stats_meta", firstAnd, returnFields);
-    List<Row> rows = dbReader.getSelectedRows(selReq);
+    List<Row> rows = dbReader.getSelectedRows("stats_meta", firstAnd, returnFields);
 
     PrevLastVersion = LastVersion;
 

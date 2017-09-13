@@ -8,10 +8,8 @@ import com.pingcap.tikv.expression.TiConstant;
 import com.pingcap.tikv.expression.TiExpr;
 import com.pingcap.tikv.expression.scalar.GreaterEqual;
 import com.pingcap.tikv.expression.scalar.NotEqual;
-import com.pingcap.tikv.meta.TiSelectRequest;
 import com.pingcap.tikv.meta.TiTableInfo;
 import com.pingcap.tikv.region.TiRegion;
-import com.pingcap.tikv.row.Row;
 import com.pingcap.tikv.statistics.Table;
 import com.pingcap.tikv.statistics.TableStats;
 import com.pingcap.tikv.util.DBReader;
@@ -48,10 +46,7 @@ public class Main {
     List<String> returnFields =
         ImmutableList.of("c1", "s1");
 
-    TiSelectRequest selReq = dbReader.getSelectRequest("t1", exprs, returnFields);
-    List<Row> sql = dbReader.getSelectedRows(selReq);
-
-    dbReader.printRows(sql, selReq);
+    dbReader.printRows("t1", exprs, returnFields);
 
     System.out.println(table.getId());
 

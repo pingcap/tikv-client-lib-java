@@ -60,36 +60,6 @@ public class DBReaderTest {
     assertEquals(42, histogramInfo.getId());
     assertEquals(DataTypeFactory.of(3).getClass(), histogramInfo.getColumns().get(0).getType().getClass());
     assertEquals(5, histogramInfo.getColumns().get(0).getSchemaState().getStateCode());
-
-//    TiTableInfo bucketInfo = dbReader.getTableInfo("stats_bucket");
-//    JsonObject json = new JsonObject();
-//
-//    json.addProperty("id", 0);
-//
-//    JsonObject item = new JsonObject();
-//    item.addProperty("O", "table_id");
-//    item.addProperty("L", "table_id");
-//    json.add("name", item);
-//
-//    json.addProperty("offset", 0);
-//
-//    item = new JsonObject();
-//    item.addProperty("Tp", 3);
-//    item.addProperty("Flag", 139);
-//    item.addProperty("Flen", 11);
-//    item.addProperty("Decimal", -1);
-//    json.add("type", item);
-//
-//    json.addProperty("state", 5);
-//    json.addProperty("comment", "");
-//
-//    System.out.println(json.toString());
-//
-//    ObjectMapper mapper = new ObjectMapper();
-//    TiColumnInfo info = mapper.readValue(json.toString(), TiColumnInfo.class);
-//    assertEquals(0, info.getId());
-//    assertEquals(3, info.getType().getTypeCode());
-//    assertEquals(11, info.getType().getLength());
   }
 
 }

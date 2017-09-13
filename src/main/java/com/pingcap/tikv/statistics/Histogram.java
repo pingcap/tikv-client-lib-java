@@ -21,7 +21,6 @@ import com.pingcap.tikv.expression.TiColumnRef;
 import com.pingcap.tikv.expression.TiConstant;
 import com.pingcap.tikv.expression.TiExpr;
 import com.pingcap.tikv.expression.scalar.Equal;
-import com.pingcap.tikv.meta.TiSelectRequest;
 import com.pingcap.tikv.meta.TiTableInfo;
 import com.pingcap.tikv.row.Row;
 import com.pingcap.tikv.types.DataType;
@@ -123,8 +122,7 @@ public class Histogram {
         );
 
     List<String> returnFields = ImmutableList.of(BUCKET_ID, COUNT, REPEATS, LOWER_BOUND, UPPER_BOUND);
-    TiSelectRequest selReq = dbReader.getSelectRequest("stats_buckets", firstAnd, returnFields);
-    List<Row> rows = dbReader.getSelectedRows(selReq);
+    List<Row> rows = dbReader.getSelectedRows("stats_buckets", firstAnd, returnFields);
 
     this.id = colID;
     this.numberOfDistinctValue = distinct;
