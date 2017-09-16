@@ -18,16 +18,19 @@ package com.pingcap.tikv.policy;
 import com.google.common.collect.ImmutableSet;
 import com.pingcap.tikv.exception.GrpcException;
 import com.pingcap.tikv.operation.ErrorHandler;
+import com.pingcap.tikv.util.BackOff;
 import io.grpc.Status;
 import java.util.concurrent.Callable;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-public abstract class RetryPolicy {
+public abstract class RetryPolicy<RespT> {
   private static final Logger logger = LogManager.getFormatterLogger(RetryPolicy.class);
 
-  // Basically a leader recheck method
-  private ErrorHandler handler;
+  BackOff backOff = BackOff.ZERO_BACKOFF;
+
+  // handles PD and TiKV's error.
+  private ErrorHandler<RespT> handler;
 
   private ImmutableSet<Status.Code> unrecoverableStatus =
       ImmutableSet.of(
@@ -36,47 +39,50 @@ public abstract class RetryPolicy {
           Status.Code.UNIMPLEMENTED, Status.Code.OUT_OF_RANGE,
           Status.Code.UNAUTHENTICATED, Status.Code.CANCELLED);
 
-  public RetryPolicy(ErrorHandler handler) {
+  RetryPolicy(ErrorHandler<RespT> handler) {
     this.handler = handler;
   }
 
-  protected abstract boolean shouldRetry(Exception e);
-
-  protected boolean checkNotLeaderException(Status status) {
-    // TODO: need a way to check this, for now all unknown exception
-    return true;
-  }
-
-  protected boolean checkNotRecoverableException(Status status) {
+  private boolean checkNotRecoverableException(Status status) {
     return unrecoverableStatus.contains(status.getCode());
   }
 
-  @SuppressWarnings("unchecked")
-  public <T> T callWithRetry(Callable<T> proc, String methodName) {
-    while (true) {
+  private void handleFailure(Exception e, String methodName, long millis) {
+    Status status = Status.fromThrowable(e);
+    if (checkNotRecoverableException(status)) {
+      logger.error("Failed to recover from last grpc error calling %s.", methodName);
+      throw new GrpcException(e);
+    }
+    doWait(millis);
+  }
+
+  private void doWait(long millis) {
+    try {
+      Thread.sleep(millis);
+    } catch (InterruptedException e) {
+      throw new GrpcException(e);
+    }
+  }
+
+  public RespT callWithRetry(Callable<RespT> proc, String methodName) {
+    for(;true ;) {
       try {
-        T result = proc.call();
-        // TODO: null check is only for temporary. In theory, every rpc call need
-        // have some mechanism to retry call. The reason we allow this having two reason:
-        // 1. Test's resp is null
-        // 2. getTimestamp pass a null error handler for now, since impl of it is not correct yet.
+        RespT result = proc.call();
         if (handler != null) {
           handler.handle(result);
         }
         return result;
       } catch (Exception e) {
-        // TODO retry is keep sending request to server, this is really bad behavior here. More refractory on the
-        // way
-        Status status = Status.fromThrowable(e);
-        if (checkNotRecoverableException(status) || !shouldRetry(e)) {
-          logger.error("Failed to recover from last grpc error calling %s.", methodName);
-          throw new GrpcException(e);
+        long nextBackMills  = this.backOff.nextBackOffMillis();
+        if(nextBackMills == BackOff.STOP) {
+          throw new GrpcException("retry is exhausted.");
         }
+        handleFailure(e, methodName, nextBackMills);
       }
     }
   }
 
-  public interface Builder {
-    RetryPolicy create(ErrorHandler handler);
+  public interface Builder<T> {
+    RetryPolicy<T> create(ErrorHandler<T> handler);
   }
 }

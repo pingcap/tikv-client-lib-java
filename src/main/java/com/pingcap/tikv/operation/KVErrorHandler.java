@@ -26,7 +26,7 @@ import io.grpc.Status.Code;
 import io.grpc.StatusRuntimeException;
 import java.util.function.Function;
 
-public class KVErrorHandler<RespT> implements ErrorHandler<RespT, Pdpb.Error> {
+public class KVErrorHandler<RespT> implements ErrorHandler<RespT> {
   private Function<RespT, Errorpb.Error> getRegionError;
   private RegionManager regionManager;
   private Kvrpcpb.Context ctx;
@@ -53,7 +53,6 @@ public class KVErrorHandler<RespT> implements ErrorHandler<RespT, Pdpb.Error> {
         // update Leader here
         // no need update here. just let retry take control of this.
         this.regionManager.updateLeader(error.getNotLeader().getLeader().getId(), error.getNotLeader().getLeader().getStoreId());
-        // TODO add sleep here
         throw new StatusRuntimeException(Status.fromCode(Status.Code.UNAVAILABLE).withDescription(error.toString()));
       }
       if (error.hasStoreNotMatch()) {
@@ -70,7 +69,6 @@ public class KVErrorHandler<RespT> implements ErrorHandler<RespT, Pdpb.Error> {
       }
 
       if (error.hasServerIsBusy()) {
-        // TODO add some sleep here.
         throw new StatusRuntimeException(Status.fromCode(Status.Code.UNAVAILABLE).withDescription(error.toString()));
       }
 

@@ -43,7 +43,7 @@ import java.net.URL;
 import java.util.List;
 import java.util.concurrent.*;
 
-public class PDClient extends AbstractGrpcClient<PDBlockingStub, PDStub>
+public class PDClient extends AbstractGRPCClient<PDBlockingStub, PDStub>
     implements ReadOnlyPDClient {
   private RequestHeader header;
   private TsoRequest tsoReq;

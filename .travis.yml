@@ -44,5 +44,6 @@ script:
       --strategy=Javac=worker \
       --strategy=Closure=worker \
       --deleted_packages=tests/external_proto_library \
+      --test_timeout=3600 \
       //src/... \
       $FLAGS \

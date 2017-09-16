@@ -266,6 +266,13 @@ public class PDClientTest {
       server.addGetStoreResp(null);
       server.addGetStoreResp(null);
       server.addGetStoreResp(null);
+//      server.addGetStoreResp(null);
+//      server.addGetStoreResp(null);
+//      server.addGetStoreResp(null);
+//      server.addGetStoreResp(null);
+//      server.addGetStoreResp(null);
+//      server.addGetStoreResp(null);
+//      server.addGetStoreResp(null);
       server.addGetStoreResp(
           GrpcUtils.makeGetStoreResponse(
               server.getClusterId(), GrpcUtils.makeStore(storeId, "", Metapb.StoreState.Up)));

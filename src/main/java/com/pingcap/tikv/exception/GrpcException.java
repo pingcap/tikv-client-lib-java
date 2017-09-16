@@ -19,4 +19,8 @@ public class GrpcException extends RuntimeException {
   public GrpcException(Exception e) {
     super(e);
   }
+
+  public GrpcException(String msg) {
+    super(msg);
+  }
 }

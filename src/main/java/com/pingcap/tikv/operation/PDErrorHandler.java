@@ -21,7 +21,7 @@ import com.pingcap.tikv.PDClient;
 import com.pingcap.tikv.kvproto.Pdpb;
 import java.util.function.Function;
 
-public class PDErrorHandler<RespT> implements ErrorHandler<RespT, Pdpb.Error> {
+public class PDErrorHandler<RespT> implements ErrorHandler<RespT> {
   private final Function<RespT, Pdpb.Error> getError;
   private final PDClient client;
 

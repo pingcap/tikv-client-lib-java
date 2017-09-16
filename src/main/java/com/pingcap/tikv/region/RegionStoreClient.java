@@ -27,7 +27,7 @@ import com.google.protobuf.ByteString;
 import com.google.protobuf.InvalidProtocolBufferException;
 import com.pingcap.tidb.tipb.SelectRequest;
 import com.pingcap.tidb.tipb.SelectResponse;
-import com.pingcap.tikv.AbstractGrpcClient;
+import com.pingcap.tikv.AbstractGRPCClient;
 import com.pingcap.tikv.TiSession;
 import com.pingcap.tikv.exception.KeyException;
 import com.pingcap.tikv.exception.RegionException;
@@ -59,9 +59,8 @@ import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
 import java.util.List;
 import java.util.concurrent.Future;
-import java.util.concurrent.TimeUnit;
 
-public class RegionStoreClient extends AbstractGrpcClient<TikvBlockingStub, TikvStub> {
+public class RegionStoreClient extends AbstractGRPCClient<TikvBlockingStub, TikvStub> {
 
   private final Context context;
   private final TikvBlockingStub blockingStub;

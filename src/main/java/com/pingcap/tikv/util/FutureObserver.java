@@ -24,7 +24,6 @@ import java.util.concurrent.Future;
 public class FutureObserver<Value, RespT> implements StreamObserver<RespT> {
   private final SettableFuture<Value> resultFuture;
   private final Getter<Value, RespT> getter;
-  private ErrorHandler<RespT, Pdpb.Error> errorHandler;
 
   public interface Getter<Value, RespT> {
     Value getValue(RespT resp);
