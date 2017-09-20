@@ -124,8 +124,6 @@ public class Histogram {
     List<String> returnFields = ImmutableList.of(BUCKET_ID, COUNT, REPEATS, LOWER_BOUND, UPPER_BOUND, TABLE_ID, IS_INDEX, HIST_ID);
     List<Row> rows = dbReader.getSelectedRows("stats_buckets", firstAnd, returnFields);
 
-    dbReader.printRows("stats_buckets", firstAnd, returnFields);
-
     this.id = colID;
     this.numberOfDistinctValue = distinct;
     this.lastUpdateVersion = lastUpdateVersion;

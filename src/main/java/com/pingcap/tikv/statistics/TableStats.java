@@ -60,8 +60,6 @@ public class TableStats {
 
     List<Row> result = dbReader.getSelectedRows("stats_histograms", firstAnd, returnFields);
 
-    dbReader.printRows("stats_histograms", firstAnd, returnFields);
-
     for(Row row: result) {
       long histID = row.getLong(2);
       long distinct = row.getLong(3);

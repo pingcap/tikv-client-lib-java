@@ -4,7 +4,9 @@ import com.google.common.collect.ImmutableList;
 import com.pingcap.tikv.expression.TiColumnRef;
 import com.pingcap.tikv.expression.TiConstant;
 import com.pingcap.tikv.expression.TiExpr;
+import com.pingcap.tikv.expression.scalar.Equal;
 import com.pingcap.tikv.expression.scalar.GreaterEqual;
+import com.pingcap.tikv.expression.scalar.NotEqual;
 import com.pingcap.tikv.meta.TiTableInfo;
 import com.pingcap.tikv.types.DataType;
 import com.pingcap.tikv.types.DataTypeFactory;
@@ -54,12 +56,12 @@ public class TableStatsTest {
     mockDBReader.addTableData("stats_buckets", statsBucketTableData, 18, 2, dataTypes);
 
 
-//    TiTableInfo tableInfo = mockDBReader.getTableInfo("stats_buckets");
-//    List<TiExpr> exprs = ImmutableList.of(
-//        new Equal(TiColumnRef.create("table_id", tableInfo), TiConstant.create(27)));
-//    List<String> returnFields = ImmutableList.of(
-//        "table_id", "is_index", "hist_id", "bucket_id", "count", "repeats", "upper_bound", "lower_bound");
-//    mockDBReader.printRows("stats_buckets", exprs, returnFields);
+    TiTableInfo tableInfo = mockDBReader.getTableInfo("stats_buckets");
+    List<TiExpr> exprs = ImmutableList.of(
+        new Equal(TiColumnRef.create("table_id", tableInfo), TiConstant.create(27)));
+    List<String> returnFields = ImmutableList.of(
+        "table_id", "is_index", "hist_id", "bucket_id", "count", "repeats", "upper_bound", "lower_bound");
+    mockDBReader.printRows("stats_buckets", exprs, returnFields);
 
     String statsMetaTableData = "\t\216\200\220\203\351\257\314\273\005\b:\b\000\t\000\t\215\200\300\211\351\257\314\273\005\b>\b\000\t" +
         "\000\t\214\200\360\225\351\257\314\273\005\bB\b\000\t\000\t\215\200\240\234\351\257\314\273\005\bF\b\000\t\000\t\213\200\320\250" +
@@ -72,11 +74,11 @@ public class TableStatsTest {
     }
     mockDBReader.addTableData("stats_meta", statsMetaTableData, 16, 11, dataTypes);
 
-//    TiTableInfo tableInfo = mockDBReader.getTableInfo("stats_meta");
-//    List<TiExpr> exprs = ImmutableList.of(
-//        new NotEqual(TiColumnRef.create("table_id", tableInfo), TiConstant.create(1)));
-//    List<String> returnFields = ImmutableList.of("version", "table_id", "modify_count", "count");
-//    mockDBReader.printRows("stats_meta", exprs, returnFields);
+    tableInfo = mockDBReader.getTableInfo("stats_meta");
+    exprs = ImmutableList.of(
+        new NotEqual(TiColumnRef.create("table_id", tableInfo), TiConstant.create(1)));
+    returnFields = ImmutableList.of("version", "table_id", "modify_count", "count");
+    mockDBReader.printRows("stats_meta", exprs, returnFields);
 
 
     String statsHistogramsData = "\bZ\b\000\b\004\b\000\b\000\b\000\t\210\200\260\331\225\246\317\273\005\b^\b\000\b\004\b\000\b\000\b" +
@@ -90,12 +92,12 @@ public class TableStatsTest {
     }
     mockDBReader.addTableData("stats_histograms", statsHistogramsData, 22, 7, dataTypes);
 
-//    TiTableInfo tableInfo = mockDBReader.getTableInfo("stats_histograms");
-//    List<TiExpr> exprs = ImmutableList.of(
-//        new NotEqual(TiColumnRef.create("table_id", tableInfo), TiConstant.create(1)));
-//    List<String> returnFields = ImmutableList.of("table_id", "is_index", "hist_id",
-//        "distinct_count", "null_count", "modify_count", "version");
-//    mockDBReader.printRows("stats_meta", exprs, returnFields);
+    tableInfo = mockDBReader.getTableInfo("stats_histograms");
+    exprs = ImmutableList.of(
+        new NotEqual(TiColumnRef.create("table_id", tableInfo), TiConstant.create(1)));
+    returnFields = ImmutableList.of("table_id", "is_index", "hist_id",
+        "distinct_count", "null_count", "modify_count", "version");
+    mockDBReader.printRows("stats_meta", exprs, returnFields);
   }
 
   @Test
@@ -105,9 +107,9 @@ public class TableStatsTest {
     TiTableInfo tableInfo = mockDBReader.getTableInfo("t1");
     Table t = tableStats.tableStatsFromStorage(mockDBReader, tableInfo);
     assertTrue(t.getColumns().size() > 0);
-    System.out.println(t.getColumns().get(0));
+    System.out.println("name=" + t.getColumns().values().iterator().next().getColumnInfo().getName());
     List<TiExpr> exprs = ImmutableList.of(
         new GreaterEqual(TiColumnRef.create("c1", tableInfo), TiConstant.create(2)));
-    System.out.println(t.Selectivity(mockDBReader, exprs));
+    assertTrue(t.Selectivity(mockDBReader, exprs) == 0.8);
   }
 }
