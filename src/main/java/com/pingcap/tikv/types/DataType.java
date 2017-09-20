@@ -98,7 +98,7 @@ public abstract class DataType implements Serializable {
     return flag == NULL_FLAG;
   }
 
-  protected void decodeValueNoNullToRow(Row row, int pos, Object value) {
+  void decodeValueNoNullToRow(Row row, int pos, Object value) {
     row.set(pos, this, value);
   }
 
@@ -121,15 +121,16 @@ public abstract class DataType implements Serializable {
     int flag = cdi.readUnsignedByte();
     if (isNullFlag(flag)) {
       row.setNull(pos);
+      return;
     }
     decodeValueNoNullToRow(row, pos, decodeNotNull(flag, cdi));
   }
 
-  public static void indexMaxValue(CodecDataOutput cdo) {
+  private static void indexMaxValue(CodecDataOutput cdo) {
     cdo.writeByte(MAX_FLAG);
   }
 
-  public static void indexMinValue(CodecDataOutput cdo) {
+  private static void indexMinValue(CodecDataOutput cdo) {
     cdo.writeByte(BYTES_FLAG);
   }
 

@@ -10,8 +10,6 @@ import com.pingcap.tikv.meta.TiColumnInfo;
 import com.pingcap.tikv.meta.TiIndexInfo;
 import com.pingcap.tikv.meta.TiTableInfo;
 import com.pingcap.tikv.row.Row;
-import com.pingcap.tikv.types.DataType;
-import com.pingcap.tikv.types.DataTypeFactory;
 import com.pingcap.tikv.util.DBReader;
 
 import java.util.ArrayList;
@@ -62,21 +60,23 @@ public class TableStats {
 
     List<Row> result = dbReader.getSelectedRows("stats_histograms", firstAnd, returnFields);
 
+    dbReader.printRows("stats_histograms", firstAnd, returnFields);
+
     for(Row row: result) {
       long histID = row.getLong(2);
       long distinct = row.getLong(3);
       long histVer = row.getLong(4);
       long nullCount = row.getLong(5);
       long is_index = row.getLong(1);
+
       if (is_index > 0) {
         IndexWithHistogram idx = table.getIndices().get(histID);
         for (TiIndexInfo idxInfo : tableInfo.getIndices()) {
           if (histID == idxInfo.getId()) {
             if (idx == null || idx.getLastUpdateVersion() < histVer) {
               Histogram hg = new Histogram();
-              DataType tp = DataTypeFactory.of(0);
               hg = hg.histogramFromStorage(id, histID, is_index, distinct, histVer,
-                  nullCount, dbReader, tp);
+                  nullCount, dbReader, null);
               idx = new IndexWithHistogram(hg, idxInfo);
             }
             break;
@@ -126,7 +126,6 @@ public class TableStats {
 
     ArrayList<Table> tables = new ArrayList<>();
     ArrayList<Long> deletedTableIDs = new ArrayList<>();
-
     for (Row row: rows) {
       long version = row.getLong(0);
       long tableID = row.getLong(1);
@@ -140,7 +139,6 @@ public class TableStats {
         deletedTableIDs.add(tableID);
         continue;
       }
-      System.out.println("We have found table " + tableInfo1.getName());
       Table tbl = tableStatsFromStorage(dbReader, tableInfo1);
       if(tbl == null) {
         deletedTableIDs.add(tableID);
@@ -154,7 +152,7 @@ public class TableStats {
     updateTableStats(tables, deletedTableIDs);
   }
 
-  private Table getTableStats(long tblID) {
+  public Table getTableStats(long tblID) {
     Table table = statsCache.get(tblID);
     if(table == null) {
       return Table.PseudoTable(tblID);
@@ -170,7 +168,7 @@ public class TableStats {
     return newCache;
   }
 
-  public void updateTableStats(ArrayList<Table> tables, ArrayList<Long> deletedTableIDs) {
+  private void updateTableStats(ArrayList<Table> tables, ArrayList<Long> deletedTableIDs) {
     ConcurrentHashMap<Long, Table> newCache = copyFromOldCache();
     for(Table t: tables) {
       if(newCache.containsKey(t.getTableID())) {

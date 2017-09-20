@@ -104,7 +104,6 @@ public class DBReader {
   }
 
   private List<Row> getSelectedRows(TiSelectRequest selReq) {
-
     List<RangeSplitter.RegionTask> keyWithRegionTasks =
         RangeSplitter.newSplitter(manager).
             splitRangeByRegion(selReq.getRanges());
@@ -118,7 +117,6 @@ public class DBReader {
         rowList.add(row);
       }
     }
-
     return rowList;
   }
 
@@ -130,8 +128,8 @@ public class DBReader {
     for(Row r: rows) {
       SchemaInfer schemaInfer = SchemaInfer.create(selReq);
       for (int i = 0; i < r.fieldCount(); i++) {
-        Object val = r.get(i, schemaInfer.getType(i));
-        System.out.print(val);
+        Object c = r.get(i, schemaInfer.getType(i));
+        System.out.print(Comparables.wrap(c));
         System.out.print(" ");
       }
       System.out.print("\n");
@@ -143,5 +141,6 @@ public class DBReader {
     List<Row> rows = getSelectedRows(selectRequest);
     printRows(rows, selectRequest);
   }
+
 
 }

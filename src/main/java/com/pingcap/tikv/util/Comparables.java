@@ -20,6 +20,7 @@ import com.google.protobuf.ByteString;
 import com.pingcap.tikv.exception.CastingException;
 
 import javax.annotation.Nonnull;
+import java.nio.charset.Charset;
 import java.util.Arrays;
 import java.util.Comparator;
 
@@ -75,6 +76,11 @@ public class Comparables {
       } else {
         return false;
       }
+    }
+
+    @Override
+    public String toString() {
+      return new String(bytes, Charset.forName("ASCII"));
     }
 
     @Override

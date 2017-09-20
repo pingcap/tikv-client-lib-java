@@ -103,11 +103,11 @@ public class Table {
     return Indices;
   }
 
-  public void putIndices(long key, IndexWithHistogram value) {
+  void putIndices(long key, IndexWithHistogram value) {
     this.Indices.put(key, value);
   }
 
-  public void putColumns(long key, ColumnWithHistogram value) {
+  void putColumns(long key, ColumnWithHistogram value) {
     this.Columns.put(key, value);
   }
 
@@ -175,7 +175,7 @@ public class Table {
   }
 
   // GetRowCountByColumnRanges estimates the row count by a slice of ColumnRange.
-  public double GetRowCountByIndexRanges(long indexID, List<IndexRange> indexRanges) {
+  double GetRowCountByIndexRanges(long indexID, List<IndexRange> indexRanges) {
     IndexWithHistogram i = Indices.get(indexID);
     Histogram hist = i.getHistogram();
     if (Pseudo || hist == null || hist.getBuckets().isEmpty()) {
@@ -184,7 +184,7 @@ public class Table {
     return i.getRowCount(indexRanges, getTableID());
   }
 
-  public static Table PseudoTable(long tableID) {
+  static Table PseudoTable(long tableID) {
     return new Table(tableID, pseudoRowCount, true);
   }
 
@@ -271,9 +271,7 @@ public class Table {
     BitSet mask;
     List<IndexRange> ranges;
 
-    public exprSet() {}
-
-    public exprSet(int _tp, long _ID, BitSet _mask, List<IndexRange> _ranges) {
+    private exprSet(int _tp, long _ID, BitSet _mask, List<IndexRange> _ranges) {
       this.tp = _tp;
       this.ID = _ID;
       this.mask = (BitSet) _mask.clone();
@@ -281,7 +279,7 @@ public class Table {
     }
   }
 
-  private boolean checkColumnConstant(List<TiExpr> exprs) {
+  public static boolean checkColumnConstant(List<TiExpr> exprs) {
     if(exprs.size() != 2) {
       return false;
     }
@@ -360,9 +358,13 @@ public class Table {
     double ret = 1.0;
     BitSet mask = new BitSet(len);
     mask.clear();
+    System.out.println("mask=" + mask.toString());
     mask.flip(0, len);
+    System.out.println("mask=" + mask.toString());
     for(exprSet set: sets) {
+      System.out.println("set_mask=" + set.mask.toString());
       mask.xor(set.mask);
+      System.out.println("mask=" + mask.toString());
       double rowCount = 1.0;
       switch(set.tp) {
         case pkType:
@@ -373,6 +375,7 @@ public class Table {
           rowCount = GetRowCountByIndexRanges(set.ID, set.ranges);
           break;
       }
+      System.out.println("Rowcount=" + rowCount + " getCount()=" + getCount());
       ret *= rowCount / getCount();
     }
     if(mask.cardinality() > 0) {
@@ -421,6 +424,7 @@ public class Table {
   private ArrayList<exprSet> getUsableSetsByGreedy(ArrayList<exprSet> sets, int len) {
     ArrayList<exprSet> newBlocks = new ArrayList<>();
     BitSet mask = new BitSet(len);
+    mask.clear();
     mask.flip(0, len);
     BitSet st;
     while (true) {
@@ -432,6 +436,7 @@ public class Table {
         st = (BitSet) set.mask.clone();
         st.and(mask);
         int bits = st.cardinality();
+        System.out.println("here set_mask=" + set.mask.toString());
         if(bestTp == colType && set.tp < colType || bestCount < bits) {
           bestID = count;
           bestCount = bits;

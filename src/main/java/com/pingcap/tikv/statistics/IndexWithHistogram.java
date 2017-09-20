@@ -22,11 +22,11 @@ public class IndexWithHistogram {
     this.info = indexInfo;
   }
 
-  protected long getLastUpdateVersion() {
+  long getLastUpdateVersion() {
     return hg.getLastUpdateVersion();
   }
 
-  protected double getRowCount(List<IndexRange> IndexRanges, long tableID) {
+  double getRowCount(List<IndexRange> IndexRanges, long tableID) {
     double totalCount = 0;
     List<KeyRange> KeyRanges = ScanBuilder.buildIndexScanKeyRange(tableID, info, IndexRanges);
     for (KeyRange range : KeyRanges) {

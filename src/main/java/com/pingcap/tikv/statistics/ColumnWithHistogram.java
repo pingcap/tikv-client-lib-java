@@ -23,12 +23,12 @@ public class ColumnWithHistogram {
     this.info = colInfo;
   }
 
-  protected long getLastUpdateVersion() {
+  long getLastUpdateVersion() {
     return hg.getLastUpdateVersion();
   }
 
   // getColumnRowCount estimates the row count by a slice of ColumnRange.
-  protected double getColumnRowCount(List<IndexRange> columnRanges) {
+  double getColumnRowCount(List<IndexRange> columnRanges) {
     double rowCount = 0.0;
     for (IndexRange range : columnRanges) {
       double cnt;

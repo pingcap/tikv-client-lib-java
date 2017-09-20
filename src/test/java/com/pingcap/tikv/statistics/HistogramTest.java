@@ -23,6 +23,7 @@ import com.pingcap.tikv.codec.CodecDataInput;
 import com.pingcap.tikv.operation.ChunkIterator;
 import com.pingcap.tikv.row.ObjectRowImpl;
 import com.pingcap.tikv.row.Row;
+import com.pingcap.tikv.types.DataType;
 import com.pingcap.tikv.types.DataTypeFactory;
 import com.pingcap.tikv.util.Bucket;
 import org.junit.Before;
@@ -50,11 +51,11 @@ public class HistogramTest {
      * +----------+----------+---------+-----------+-------+---------+-------------+-------------+
      * | table_id | is_index | hist_id | bucket_id | count | repeats | upper_bound | lower_bound |
      * +----------+----------+---------+-----------+-------+---------+-------------+-------------+
-     * |       27 |        0 |       0 |         0 |     2 |       1 | 1           | 0           |
-     * |       27 |        0 |       0 |         1 |     3 |       1 | 3           | 2           |
+     * |       27 |        0 |       1 |         0 |     2 |       1 | 1           | 0           |
+     * |       27 |        0 |       1 |         1 |     3 |       1 | 3           | 2           |
      * +----------+----------+---------+-----------+-------+---------+-------------+-------------+
      */
-    String histogramStr = "\b6\b\000\b\000\b\000\b\004\b\002\002\0021\002\0020\b6\b\000\b\000\b\002\b\006\b\002\002\0023\002\0022";
+    String histogramStr = "\b6\b\000\b\002\b\000\b\004\b\002\002\0021\002\0020\b6\b\000\b\002\b\002\b\006\b\002\002\0023\002\0022";
     Chunk chunk =
         Chunk.newBuilder()
             .setRowsData(ByteString.copyFromUtf8(histogramStr))
@@ -64,9 +65,10 @@ public class HistogramTest {
 
     chunks.add(chunk);
     ChunkIterator chunkIterator = new ChunkIterator(chunks);
-    com.pingcap.tikv.types.DataType blobs = DataTypeFactory.of(TYPE_BLOB);
-    com.pingcap.tikv.types.DataType ints = DataTypeFactory.of(TYPE_LONG);
-    Row row = ObjectRowImpl.create(24);
+    DataType blobs = DataTypeFactory.of(TYPE_BLOB);
+    DataType ints = DataTypeFactory.of(TYPE_LONG);
+    List<Row> rows = new ArrayList<>();
+    Row row = ObjectRowImpl.create(8);
     CodecDataInput cdi = new CodecDataInput(chunkIterator.next());
     ints.decodeValueToRow(cdi, row, 0);
     ints.decodeValueToRow(cdi, row, 1);
@@ -76,32 +78,36 @@ public class HistogramTest {
     ints.decodeValueToRow(cdi, row, 5);
     blobs.decodeValueToRow(cdi, row, 6);
     blobs.decodeValueToRow(cdi, row, 7);
-    cdi = new CodecDataInput(chunkIterator.next());
-    ints.decodeValueToRow(cdi, row, 8);
-    ints.decodeValueToRow(cdi, row, 9);
-    ints.decodeValueToRow(cdi, row, 10);
-    ints.decodeValueToRow(cdi, row, 11);
-    ints.decodeValueToRow(cdi, row, 12);
-    ints.decodeValueToRow(cdi, row, 13);
-    blobs.decodeValueToRow(cdi, row, 14);
-    blobs.decodeValueToRow(cdi, row, 15);
+    rows.add(row);
 
-    assertEquals(row.getLong(0), 27);
-    assertEquals(row.getLong(1), 0);
-    assertEquals(row.getLong(2), 0);
-    assertEquals(row.getLong(3), 0);
-    assertEquals(row.getLong(4), 2);
-    assertEquals(row.getLong(5), 1);
-    assertArrayEquals(row.getBytes(6), ByteString.copyFromUtf8("1").toByteArray());
-    assertArrayEquals(row.getBytes(7), ByteString.copyFromUtf8("0").toByteArray());
-    assertEquals(row.getLong(8), 27);
-    assertEquals(row.getLong(9), 0);
-    assertEquals(row.getLong(10), 0);
-    assertEquals(row.getLong(11), 1);
-    assertEquals(row.getLong(12), 3);
-    assertEquals(row.getLong(13), 1);
-    assertArrayEquals(row.getBytes(14), ByteString.copyFromUtf8("3").toByteArray());
-    assertArrayEquals(row.getBytes(15), ByteString.copyFromUtf8("2").toByteArray());
+    row = ObjectRowImpl.create(8);
+    cdi = new CodecDataInput(chunkIterator.next());
+    ints.decodeValueToRow(cdi, row, 0);
+    ints.decodeValueToRow(cdi, row, 1);
+    ints.decodeValueToRow(cdi, row, 2);
+    ints.decodeValueToRow(cdi, row, 3);
+    ints.decodeValueToRow(cdi, row, 4);
+    ints.decodeValueToRow(cdi, row, 5);
+    blobs.decodeValueToRow(cdi, row, 6);
+    blobs.decodeValueToRow(cdi, row, 7);
+    rows.add(row);
+
+    assertEquals(rows.get(0).getLong(0), 27);
+    assertEquals(rows.get(0).getLong(1), 0);
+    assertEquals(rows.get(0).getLong(2), 1);
+    assertEquals(rows.get(0).getLong(3), 0);
+    assertEquals(rows.get(0).getLong(4), 2);
+    assertEquals(rows.get(0).getLong(5), 1);
+    assertArrayEquals(rows.get(0).getBytes(6), ByteString.copyFromUtf8("1").toByteArray());
+    assertArrayEquals(rows.get(0).getBytes(7), ByteString.copyFromUtf8("0").toByteArray());
+    assertEquals(rows.get(1).getLong(0), 27);
+    assertEquals(rows.get(1).getLong(1), 0);
+    assertEquals(rows.get(1).getLong(2), 1);
+    assertEquals(rows.get(1).getLong(3), 1);
+    assertEquals(rows.get(1).getLong(4), 3);
+    assertEquals(rows.get(1).getLong(5), 1);
+    assertArrayEquals(rows.get(1).getBytes(6), ByteString.copyFromUtf8("3").toByteArray());
+    assertArrayEquals(rows.get(1).getBytes(7), ByteString.copyFromUtf8("2").toByteArray());
   }
 
   @Before

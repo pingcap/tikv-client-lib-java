@@ -109,7 +109,6 @@ public class TiColumnRef implements TiExpr {
 
   public static TiColumnRef colInfo2Col(Set<TiColumnRef> cols, TiColumnInfo col) {
     for(TiColumnRef c: cols) {
-      System.out.println("Comparing " + c.getName() + " with " + col.getName());
       if(String.CASE_INSENSITIVE_ORDER.compare(c.getName(), col.getName()) == 0) {
         return c;
       }
@@ -168,12 +167,7 @@ public class TiColumnRef implements TiExpr {
   @Override
   public int hashCode() {
     final int prime = 31;
-    int result = 1;
-    result =
-        (int)
-            (prime * result
-                + ((columnInfo == null) ? 0 : columnInfo.getId())
+    return (int) (prime * ((columnInfo == null) ? 0 : columnInfo.getId())
                 + ((tableInfo == null) ? 0 : tableInfo.getId()));
-    return result;
   }
 }
