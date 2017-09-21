@@ -23,25 +23,38 @@ import com.google.common.net.HostAndPort;
 import com.google.protobuf.ByteString;
 import com.pingcap.tikv.codec.CodecDataOutput;
 import com.pingcap.tikv.exception.GrpcException;
+import com.pingcap.tikv.exception.TiClientInternalException;
 import com.pingcap.tikv.kvproto.Kvrpcpb.IsolationLevel;
-import com.pingcap.tikv.kvproto.Metapb;
 import com.pingcap.tikv.kvproto.Metapb.Store;
 import com.pingcap.tikv.kvproto.PDGrpc;
 import com.pingcap.tikv.kvproto.PDGrpc.PDBlockingStub;
 import com.pingcap.tikv.kvproto.PDGrpc.PDStub;
-import com.pingcap.tikv.kvproto.Pdpb.*;
+import com.pingcap.tikv.kvproto.Pdpb.GetMembersRequest;
+import com.pingcap.tikv.kvproto.Pdpb.GetMembersResponse;
+import com.pingcap.tikv.kvproto.Pdpb.GetRegionByIDRequest;
+import com.pingcap.tikv.kvproto.Pdpb.GetRegionRequest;
+import com.pingcap.tikv.kvproto.Pdpb.GetRegionResponse;
+import com.pingcap.tikv.kvproto.Pdpb.GetStoreRequest;
+import com.pingcap.tikv.kvproto.Pdpb.GetStoreResponse;
+import com.pingcap.tikv.kvproto.Pdpb.Member;
+import com.pingcap.tikv.kvproto.Pdpb.RequestHeader;
+import com.pingcap.tikv.kvproto.Pdpb.Timestamp;
+import com.pingcap.tikv.kvproto.Pdpb.TsoRequest;
+import com.pingcap.tikv.kvproto.Pdpb.TsoResponse;
 import com.pingcap.tikv.meta.TiTimestamp;
 import com.pingcap.tikv.operation.PDErrorHandler;
 import com.pingcap.tikv.region.TiRegion;
 import com.pingcap.tikv.types.BytesType;
 import com.pingcap.tikv.util.FutureObserver;
 import io.grpc.ManagedChannel;
-import io.grpc.ManagedChannelBuilder;
 import io.grpc.stub.StreamObserver;
-import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.List;
-import java.util.concurrent.*;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
+import java.util.function.Supplier;
 
 public class PDClient extends AbstractGRPCClient<PDBlockingStub, PDStub>
     implements ReadOnlyPDClient {
@@ -51,21 +64,11 @@ public class PDClient extends AbstractGRPCClient<PDBlockingStub, PDStub>
   private ScheduledExecutorService service;
   private IsolationLevel isolationLevel;
 
+
   @Override
   public TiTimestamp getTimestamp() {
-    // TODO: check with Xiaoyu. This may be problematic since it is only test with PDClient.
-    // https://github.com/pingcap/pd/blob/master/pd-client/client.go#L284
-    // PD's implementation has a tsLoop which is bi-directional steam, but our impl is just call
-    // and call onComplete immediately after calling onNext. In other word, we only calling onNext one time which is
-    // not semantic correct if we are speaking bi-directional stream here.
-    // Bidirectional streaming RPCs where both sides send a sequence of messages using a read-write stream.
     FutureObserver<Timestamp, TsoResponse> responseObserver =
         new FutureObserver<>(TsoResponse::getTimestamp);
-    // Problem 1. Casting error if we take the following approach:
-    // If we store resp in FutureObserver
-    // PDErrorHandler<FutureObserver<GetRegionResponse, Timestamp>> handler = new PDErrorHandler<>(f -> f.getResp().getHead().getError());
-    // Since correctness of current impl remain unsure and we did not use any getTimestamp in our codebase. We simply supply a null
-    // error handler to bypass the method signature.
     StreamObserver<TsoRequest> requestObserver =
         callBidiStreamingWithRetry(PDGrpc.METHOD_TSO, responseObserver, null);
     requestObserver.onNext(tsoReq);
@@ -87,7 +90,7 @@ public class PDClient extends AbstractGRPCClient<PDBlockingStub, PDStub>
     BytesType.writeBytes(cdo, key.toByteArray());
     ByteString encodedKey = cdo.toByteString();
 
-    GetRegionRequest request =
+    Supplier<GetRegionRequest> request = () ->
         GetRegionRequest.newBuilder().setHeader(header).setRegionKey(encodedKey).build();
 
     PDErrorHandler<GetRegionResponse> handler =
@@ -101,7 +104,7 @@ public class PDClient extends AbstractGRPCClient<PDBlockingStub, PDStub>
   public Future<TiRegion> getRegionByKeyAsync(ByteString key) {
     FutureObserver<TiRegion, GetRegionResponse> responseObserver =
         new FutureObserver<>(resp -> new TiRegion(resp.getRegion(), resp.getLeader(), isolationLevel));
-    GetRegionRequest request =
+    Supplier<GetRegionRequest> request = () ->
         GetRegionRequest.newBuilder().setHeader(header).setRegionKey(key).build();
 
     PDErrorHandler<GetRegionResponse> handler =
@@ -112,7 +115,7 @@ public class PDClient extends AbstractGRPCClient<PDBlockingStub, PDStub>
 
   @Override
   public TiRegion getRegionByID(long id) {
-    GetRegionByIDRequest request =
+    Supplier<GetRegionByIDRequest> request = () ->
         GetRegionByIDRequest.newBuilder().setHeader(header).setRegionId(id).build();
     PDErrorHandler<GetRegionResponse> handler =
         new PDErrorHandler<>(r -> r.getHeader().hasError() ? r.getHeader().getError() : null, this);
@@ -134,7 +137,7 @@ public class PDClient extends AbstractGRPCClient<PDBlockingStub, PDStub>
     FutureObserver<TiRegion, GetRegionResponse> responseObserver =
         new FutureObserver<>(resp -> new TiRegion(resp.getRegion(), resp.getLeader(), isolationLevel));
 
-    GetRegionByIDRequest request =
+    Supplier<GetRegionByIDRequest> request = () ->
         GetRegionByIDRequest.newBuilder().setHeader(header).setRegionId(id).build();
     PDErrorHandler<GetRegionResponse> handler =
         new PDErrorHandler<>(r -> r.getHeader().hasError() ? r.getHeader().getError() : null, this);
@@ -144,31 +147,20 @@ public class PDClient extends AbstractGRPCClient<PDBlockingStub, PDStub>
 
   @Override
   public Store getStore(long storeId) {
-    GetStoreRequest request =
+    Supplier<GetStoreRequest> request = () ->
         GetStoreRequest.newBuilder().setHeader(header).setStoreId(storeId).build();
     PDErrorHandler<GetStoreResponse> handler =
         new PDErrorHandler<>(r -> r.getHeader().hasError() ? r.getHeader().getError() : null, this);
     GetStoreResponse resp = callWithRetry(PDGrpc.METHOD_GET_STORE, request, handler);
-    Store store = resp.getStore();
-    if (store.getState() == Metapb.StoreState.Tombstone) {
-      return null;
-    }
-    return store;
+    return resp.getStore();
   }
 
   @Override
   public Future<Store> getStoreAsync(long storeId) {
     FutureObserver<Store, GetStoreResponse> responseObserver =
-        new FutureObserver<>(
-            (GetStoreResponse resp) -> {
-              Store store = resp.getStore();
-              if (store.getState() == Metapb.StoreState.Tombstone) {
-                return null;
-              }
-              return store;
-            });
+        new FutureObserver<>((GetStoreResponse resp) -> resp.getStore());
 
-    GetStoreRequest request =
+    Supplier<GetStoreRequest> request = () ->
         GetStoreRequest.newBuilder().setHeader(header).setStoreId(storeId).build();
     PDErrorHandler<GetStoreResponse> handler =
         new PDErrorHandler<>(r -> r.getHeader().hasError() ? r.getHeader().getError() : null, this);
@@ -201,26 +193,23 @@ public class PDClient extends AbstractGRPCClient<PDBlockingStub, PDStub>
   }
 
   class LeaderWrapper {
-    private final HostAndPort leaderInfo;
+    private final String leaderInfo;
     private final PDBlockingStub blockingStub;
     private final PDStub asyncStub;
-    private final ManagedChannel channel;
     private final long createTime;
 
     LeaderWrapper(
-        HostAndPort leaderInfo,
+        String leaderInfo,
         PDGrpc.PDBlockingStub blockingStub,
         PDGrpc.PDStub asyncStub,
-        ManagedChannel channel,
         long createTime) {
       this.leaderInfo = leaderInfo;
       this.blockingStub = blockingStub;
       this.asyncStub = asyncStub;
-      this.channel = channel;
       this.createTime = createTime;
     }
 
-    HostAndPort getLeaderInfo() {
+    String getLeaderInfo() {
       return leaderInfo;
     }
 
@@ -237,33 +226,20 @@ public class PDClient extends AbstractGRPCClient<PDBlockingStub, PDStub>
     }
 
     void close() {
-      channel.shutdown();
     }
-  }
-
-  private ManagedChannel getManagedChannel(HostAndPort url) {
-    return ManagedChannelBuilder.forAddress(url.getHostText(), url.getPort())
-        .usePlaintext(true)
-        .build();
   }
 
   public GetMembersResponse getMembers() {
     List<HostAndPort> pdAddrs = getConf().getPdAddrs();
     checkArgument(pdAddrs.size() > 0, "No PD address specified.");
     for (HostAndPort url : pdAddrs) {
-      ManagedChannel probChan = null;
       try {
-        probChan = getManagedChannel(url);
+        ManagedChannel probChan = getChannel(url.getHostText() + ":" + url.getPort());
         PDGrpc.PDBlockingStub stub = PDGrpc.newBlockingStub(probChan);
         GetMembersRequest request =
             GetMembersRequest.newBuilder().setHeader(RequestHeader.getDefaultInstance()).build();
         return stub.getMembers(request);
-      } catch (Exception ignore) {
-      } finally {
-        if (probChan != null) {
-          probChan.shutdownNow();
-        }
-      }
+      } catch (Exception ignore) {}
     }
     return null;
   }
@@ -284,26 +260,24 @@ public class PDClient extends AbstractGRPCClient<PDBlockingStub, PDStub>
         List<String> leaderUrls = leader.getClientUrlsList();
         if (leaderUrls.isEmpty()) return;
         leaderUrlStr = leaderUrls.get(0);
-        // TODO: Why not strip protocol info on server side since grpc does not need it
         URL tURL = new URL(leaderUrlStr);
         HostAndPort newLeader = HostAndPort.fromParts(tURL.getHost(), tURL.getPort());
-        if (leaderWrapper != null && newLeader.equals(leaderWrapper.getLeaderInfo())) {
+        leaderUrlStr = newLeader.toString();
+        // TODO: Why not strip protocol info on server side since grpc does not need it
+        if (leaderWrapper != null && leaderUrlStr.equals(leaderWrapper.getLeaderInfo())) {
           return;
         }
 
         // switch leader
-        ManagedChannel clientChannel = getManagedChannel(newLeader);
+        ManagedChannel clientChannel = getChannel(leaderUrlStr);
         leaderWrapper =
             new LeaderWrapper(
-                newLeader,
+                leaderUrlStr,
                 PDGrpc.newBlockingStub(clientChannel),
                 PDGrpc.newStub(clientChannel),
-                clientChannel,
                 System.nanoTime());
-        logger.info("Switched to new leader: %s", newLeader.toString());
+        logger.info(String.format("Switched to new leader: %s", leaderWrapper));
       }
-    } catch (MalformedURLException e) {
-      logger.error("Client URL is not valid: %s", leaderUrlStr, e);
     } catch (Exception e) {
       logger.error("Error updating leader.", e);
     }
@@ -334,6 +308,9 @@ public class PDClient extends AbstractGRPCClient<PDBlockingStub, PDStub>
     header = RequestHeader.newBuilder().setClusterId(clusterId).build();
     tsoReq = TsoRequest.newBuilder().setHeader(header).build();
     updateLeader(resp);
+    if (leaderWrapper == null) {
+      throw new TiClientInternalException("Error Updating leader.");
+    }
     service = Executors.newSingleThreadScheduledExecutor();
     service.scheduleAtFixedRate(() -> updateLeader(null), 1, 1, TimeUnit.MINUTES);
   }

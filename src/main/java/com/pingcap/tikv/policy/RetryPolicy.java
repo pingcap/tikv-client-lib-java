@@ -21,11 +21,10 @@ import com.pingcap.tikv.operation.ErrorHandler;
 import com.pingcap.tikv.util.BackOff;
 import io.grpc.Status;
 import java.util.concurrent.Callable;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
+import org.apache.log4j.Logger;
 
 public abstract class RetryPolicy<RespT> {
-  private static final Logger logger = LogManager.getFormatterLogger(RetryPolicy.class);
+  private static final Logger logger = Logger.getLogger(RetryPolicy.class);
 
   BackOff backOff = BackOff.ZERO_BACKOFF;
 
@@ -50,7 +49,7 @@ public abstract class RetryPolicy<RespT> {
   private void handleFailure(Exception e, String methodName, long millis) {
     Status status = Status.fromThrowable(e);
     if (checkNotRecoverableException(status)) {
-      logger.error("Failed to recover from last grpc error calling %s.", methodName);
+      logger.error(String.format("Failed to recover from last grpc error calling %s.", methodName));
       throw new GrpcException(e);
     }
     doWait(millis);
@@ -75,7 +74,7 @@ public abstract class RetryPolicy<RespT> {
       } catch (Exception e) {
         long nextBackMills  = this.backOff.nextBackOffMillis();
         if(nextBackMills == BackOff.STOP) {
-          throw new GrpcException("retry is exhausted.");
+          throw new GrpcException("retry is exhausted.", e);
         }
         handleFailure(e, methodName, nextBackMills);
       }

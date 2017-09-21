@@ -15,7 +15,9 @@
 
 package com.pingcap.tikv;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
@@ -30,9 +32,9 @@ import com.pingcap.tikv.kvproto.Metapb;
 import com.pingcap.tikv.region.RegionManager;
 import com.pingcap.tikv.region.RegionStoreClient;
 import com.pingcap.tikv.region.TiRegion;
+import com.pingcap.tikv.util.ZeroBackOff;
 import java.util.List;
 import java.util.Set;
-import java.util.concurrent.Future;
 import java.util.stream.Collectors;
 import org.junit.After;
 import org.junit.Before;
@@ -40,13 +42,24 @@ import org.junit.Test;
 
 public class RegionStoreClientTest {
   private KVMockServer server;
+  private PDMockServer pdServer;
   private static final String LOCAL_ADDR = "127.0.0.1";
+  private static final long CLUSTER_ID = 1024;
   private int port;
   private TiSession session;
   private TiRegion region;
 
   @Before
   public void setUp() throws Exception {
+    pdServer = new PDMockServer();
+    pdServer.start(CLUSTER_ID);
+    pdServer.addGetMemberResp(
+        GrpcUtils.makeGetMembersResponse(
+            pdServer.getClusterId(),
+            GrpcUtils.makeMember(1, "http://" + LOCAL_ADDR + ":" + pdServer.port),
+            GrpcUtils.makeMember(2, "http://" + LOCAL_ADDR + ":" + (pdServer.port + 1)),
+            GrpcUtils.makeMember(2, "http://" + LOCAL_ADDR + ":" + (pdServer.port + 2))));
+
     Metapb.Region r =
         Metapb.Region.newBuilder()
             .setRegionEpoch(Metapb.RegionEpoch.newBuilder().setConfVer(1).setVersion(2))
@@ -59,8 +72,10 @@ public class RegionStoreClientTest {
     server = new KVMockServer();
     port = server.start(region);
     // No PD needed in this test
-    TiConfiguration conf = TiConfiguration.createDefault(ImmutableList.of(""));
+    TiConfiguration conf = TiConfiguration.createDefault(ImmutableList.of("127.0.0.1:" + pdServer.port));
     session = TiSession.create(conf);
+    conf.setRetryTimes(3);
+    conf.setBackOffClass(ZeroBackOff.class);
   }
 
   private RegionStoreClient createClient() {
@@ -129,63 +144,6 @@ public class RegionStoreClientTest {
   }
 
   @Test
-  public void getAsync() throws Exception {
-    RegionStoreClient client = createClient();
-
-    server.put("key1", "value1");
-    Future<ByteString> value = client.getAsync(ByteString.copyFromUtf8("key1"), 1);
-    assertEquals(value.get(), ByteString.copyFromUtf8("value1"));
-
-    boolean futureSet = false;
-    server.putError("error1", KVMockServer.ABORT);
-    try {
-      value = client.getAsync(ByteString.copyFromUtf8("error1"), 1);
-      futureSet = true;
-      value.get();
-      fail();
-    } catch (Exception e) {
-      assertTrue(futureSet);
-    }
-    server.clearAllMap();
-    client.close();
-  }
-
-  @Test
-  public void batchGetAsync() throws Exception {
-    RegionStoreClient client = createClient();
-
-    server.put("key1", "value1");
-    server.put("key2", "value2");
-    server.put("key4", "value4");
-    server.put("key5", "value5");
-    Future<List<Kvrpcpb.KvPair>> kvsFuture =
-        client.batchGetAsync(
-            ImmutableList.of(ByteString.copyFromUtf8("key1"), ByteString.copyFromUtf8("key2")), 1);
-    List<Kvrpcpb.KvPair> kvs = kvsFuture.get();
-    assertEquals(2, kvs.size());
-    kvs.forEach(
-        kv ->
-            assertEquals(
-                kv.getKey().toStringUtf8().replace("key", "value"), kv.getValue().toStringUtf8()));
-
-    server.putError("error1", KVMockServer.ABORT);
-    boolean futureSet = false;
-    try {
-      kvsFuture =
-          client.batchGetAsync(
-              ImmutableList.of(ByteString.copyFromUtf8("key1"), ByteString.copyFromUtf8("error1")),
-              1);
-      futureSet = true;
-      kvsFuture.get();
-      fail();
-    } catch (Exception e) {
-      assertTrue(futureSet);
-    }
-    server.clearAllMap();
-    client.close();
-  }
-
-  @Test
   public void batchGet() throws Exception {
     RegionStoreClient client = createClient();
 
@@ -240,36 +198,6 @@ public class RegionStoreClientTest {
     client.close();
   }
 
-  @Test
-  public void scanAsync() throws Exception {
-    RegionStoreClient client = createClient();
-
-    server.put("key1", "value1");
-    server.put("key2", "value2");
-    server.put("key4", "value4");
-    server.put("key5", "value5");
-    Future<List<Kvrpcpb.KvPair>> kvsFuture = client.scanAsync(ByteString.copyFromUtf8("key2"), 1);
-    List<Kvrpcpb.KvPair> kvs = kvsFuture.get();
-    assertEquals(3, kvs.size());
-    kvs.forEach(
-        kv ->
-            assertEquals(
-                kv.getKey().toStringUtf8().replace("key", "value"), kv.getValue().toStringUtf8()));
-
-    server.putError("error1", KVMockServer.ABORT);
-    boolean futureSet = false;
-    try {
-      kvsFuture = client.scanAsync(ByteString.copyFromUtf8("error1"), 1);
-      futureSet = true;
-      kvsFuture.get();
-      fail();
-    } catch (Exception e) {
-      assertTrue(futureSet);
-    }
-    server.clearAllMap();
-    client.close();
-  }
-
   private static KeyRange createByteStringRange(ByteString sKey, ByteString eKey) {
     return KeyRange.newBuilder().setStart(sKey).setEnd(eKey).build();
   }
@@ -318,58 +246,6 @@ public class RegionStoreClientTest {
       fail();
     } catch (Exception e) {
       assertTrue(true);
-    }
-    server.clearAllMap();
-    client.close();
-  }
-
-  @Test
-  public void coprocessAsync() throws Exception {
-    RegionStoreClient client = createClient();
-
-    server.put("key1", "value1");
-    server.put("key2", "value2");
-    server.put("key4", "value4");
-    server.put("key5", "value5");
-    server.put("key6", "value6");
-    server.put("key7", "value7");
-    SelectRequest.Builder builder = SelectRequest.newBuilder();
-    builder.setStartTs(1);
-    List<KeyRange> keyRanges =
-        ImmutableList.of(
-            createByteStringRange(ByteString.copyFromUtf8("key1"), ByteString.copyFromUtf8("key4")),
-            createByteStringRange(
-                ByteString.copyFromUtf8("key6"), ByteString.copyFromUtf8("key7")));
-
-    Future<SelectResponse> respFuture = client.coprocessAsync(builder.build(), keyRanges);
-    SelectResponse resp = respFuture.get();
-    assertEquals(5, resp.getChunksCount());
-    Set<String> results =
-        ImmutableSet.copyOf(
-            resp.getChunksList()
-                .stream()
-                .map(c -> c.getRowsData().toStringUtf8())
-                .collect(Collectors.toList()));
-    assertTrue(
-        Iterables.all(
-            ImmutableList.of("value1", "value2", "value4", "value6", "value7"), results::contains));
-
-    builder = SelectRequest.newBuilder();
-    builder.setStartTs(1);
-    keyRanges =
-        ImmutableList.of(
-            createByteStringRange(
-                ByteString.copyFromUtf8("error1"), ByteString.copyFromUtf8("error2")));
-
-    server.putError("error1", KVMockServer.ABORT);
-    boolean futureSet = false;
-    try {
-      Future<SelectResponse> future = client.coprocessAsync(builder.build(), keyRanges);
-      futureSet = true;
-      future.get();
-      fail();
-    } catch (Exception e) {
-      assertTrue(futureSet);
     }
     server.clearAllMap();
     client.close();

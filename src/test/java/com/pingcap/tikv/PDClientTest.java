@@ -16,16 +16,19 @@
 package com.pingcap.tikv;
 
 import static com.pingcap.tikv.GrpcUtils.encodeKey;
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 import com.google.common.collect.ImmutableList;
-import com.google.common.net.HostAndPort;
 import com.google.protobuf.ByteString;
 import com.pingcap.tikv.exception.GrpcException;
 import com.pingcap.tikv.kvproto.Metapb;
 import com.pingcap.tikv.kvproto.Metapb.Store;
+import com.pingcap.tikv.kvproto.Metapb.StoreState;
 import com.pingcap.tikv.meta.TiTimestamp;
 import com.pingcap.tikv.region.TiRegion;
+import com.pingcap.tikv.util.ZeroBackOff;
 import java.io.IOException;
 import org.junit.After;
 import org.junit.Before;
@@ -57,6 +60,8 @@ public class PDClientTest {
             GrpcUtils.makeMember(2, "http://" + LOCAL_ADDR + ":" + (server.port + 2))));
     TiConfiguration conf =
         TiConfiguration.createDefault(ImmutableList.of("127.0.0.1:" + server.port));
+    conf.setRetryTimes(3);
+    conf.setBackOffClass(ZeroBackOff.class);
     return PDClient.createRaw(TiSession.create(conf));
   }
 
@@ -65,7 +70,7 @@ public class PDClientTest {
     try (PDClient client = createClient()) {
       assertEquals(
           client.getLeaderWrapper().getLeaderInfo(),
-          HostAndPort.fromParts(LOCAL_ADDR, server.port));
+          LOCAL_ADDR + ":" + server.port);
       assertEquals(client.getHeader().getClusterId(), CLUSTER_ID);
     }
   }
@@ -215,7 +220,7 @@ public class PDClientTest {
           GrpcUtils.makeGetStoreResponse(
               server.getClusterId(),
               GrpcUtils.makeStore(storeId, testAddress, Metapb.StoreState.Tombstone)));
-      assertNull(client.getStore(0));
+      assertEquals(StoreState.Tombstone, client.getStore(0).getState());
     }
   }
 
@@ -246,7 +251,7 @@ public class PDClientTest {
           GrpcUtils.makeGetStoreResponse(
               server.getClusterId(),
               GrpcUtils.makeStore(storeId, testAddress, Metapb.StoreState.Tombstone)));
-      assertNull(client.getStoreAsync(0).get());
+      assertEquals(StoreState.Tombstone, client.getStoreAsync(0).get().getState());
     }
   }
 
@@ -266,13 +271,7 @@ public class PDClientTest {
       server.addGetStoreResp(null);
       server.addGetStoreResp(null);
       server.addGetStoreResp(null);
-//      server.addGetStoreResp(null);
-//      server.addGetStoreResp(null);
-//      server.addGetStoreResp(null);
-//      server.addGetStoreResp(null);
-//      server.addGetStoreResp(null);
-//      server.addGetStoreResp(null);
-//      server.addGetStoreResp(null);
+
       server.addGetStoreResp(
           GrpcUtils.makeGetStoreResponse(
               server.getClusterId(), GrpcUtils.makeStore(storeId, "", Metapb.StoreState.Up)));

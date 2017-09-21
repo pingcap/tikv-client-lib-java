@@ -18,24 +18,28 @@
 package com.pingcap.tikv.operation;
 
 import com.pingcap.tikv.kvproto.Errorpb;
-import com.pingcap.tikv.kvproto.Kvrpcpb;
-import com.pingcap.tikv.kvproto.Pdpb;
+import com.pingcap.tikv.region.RegionErrorReceiver;
 import com.pingcap.tikv.region.RegionManager;
+import com.pingcap.tikv.region.TiRegion;
 import io.grpc.Status;
-import io.grpc.Status.Code;
 import io.grpc.StatusRuntimeException;
 import java.util.function.Function;
+import org.apache.log4j.Logger;
 
 public class KVErrorHandler<RespT> implements ErrorHandler<RespT> {
+  private static final Logger logger = Logger.getLogger(KVErrorHandler.class);
   private Function<RespT, Errorpb.Error> getRegionError;
   private RegionManager regionManager;
-  private Kvrpcpb.Context ctx;
+  private RegionErrorReceiver recv;
+  private TiRegion ctxRegion;
 
   public KVErrorHandler(
       RegionManager regionManager,
-      Kvrpcpb.Context ctx,
+      RegionErrorReceiver recv,
+      TiRegion ctxRegion,
       Function<RespT, Errorpb.Error> getRegionError) {
-    this.ctx = ctx;
+    this.ctxRegion = ctxRegion;
+    this.recv = recv;
     this.regionManager = regionManager;
     this.getRegionError = getRegionError;
   }
@@ -43,7 +47,7 @@ public class KVErrorHandler<RespT> implements ErrorHandler<RespT> {
   public void handle(RespT resp) {
     // if resp is null, then region maybe out of dated. we need handle this on RegionManager.
     if (resp == null) {
-      this.regionManager.onRequestFail(ctx.getRegionId(), ctx.getPeer().getStoreId());
+      regionManager.onRequestFail(ctxRegion.getId(), ctxRegion.getLeader().getStoreId());
       return;
     }
 
@@ -51,20 +55,35 @@ public class KVErrorHandler<RespT> implements ErrorHandler<RespT> {
     if (error != null) {
       if (error.hasNotLeader()) {
         // update Leader here
-        // no need update here. just let retry take control of this.
-        this.regionManager.updateLeader(error.getNotLeader().getLeader().getId(), error.getNotLeader().getLeader().getStoreId());
+        logger.warn(String.format("Thread %s: NotLeader Error with region id %d",
+                                  Thread.currentThread().getId(), error.getNotLeader().getRegionId()));
+        logger.warn(String.format("Thread %s: origin call with region id %d and store id %d",
+                                  Thread.currentThread().getId(),
+                                  ctxRegion.getId(),
+            ctxRegion.getLeader().getStoreId()));
+        long newStoreId = error.getNotLeader().getLeader().getStoreId();
+        regionManager.updateLeader(ctxRegion.getId(), newStoreId);
+
+        recv.onNotLeader(this.regionManager.getRegionById(ctxRegion.getId()),
+                         this.regionManager.getStoreById(newStoreId));
         throw new StatusRuntimeException(Status.fromCode(Status.Code.UNAVAILABLE).withDescription(error.toString()));
       }
       if (error.hasStoreNotMatch()) {
-        this.regionManager.invalidateStore(ctx.getPeer().getStoreId());
+        logger.warn(String.format("Thread %s: Store Not Match happened with region id %d, store id %d",
+                                  Thread.currentThread().getId(), ctxRegion.getId(),
+                                  ctxRegion.getLeader().getStoreId()));
+
+        regionManager.invalidateRegion(ctxRegion.getId());
+        regionManager.invalidateStore(ctxRegion.getLeader().getStoreId());
+        recv.onStoreNotMatch();
         throw new StatusRuntimeException(Status.fromCode(Status.Code.UNAVAILABLE).withDescription(error.toString()));
       }
 
       // no need retry. NewRegions is returned in this response. we just need update RegionManage's region cache.
       if (error.hasStaleEpoch()) {
-        regionManager.onRegionStale(ctx.getRegionId(), error.getStaleEpoch().getNewRegionsList());
+        regionManager.onRegionStale(ctxRegion.getId(), error.getStaleEpoch().getNewRegionsList());
         this.regionManager.onRegionStale(
-            ctx.getRegionId(), error.getStaleEpoch().getNewRegionsList());
+            ctxRegion.getId(), error.getStaleEpoch().getNewRegionsList());
         throw new StatusRuntimeException(Status.fromCode(Status.Code.CANCELLED).withDescription(error.toString()));
       }
 
@@ -80,7 +99,7 @@ public class KVErrorHandler<RespT> implements ErrorHandler<RespT> {
         throw new StatusRuntimeException(Status.fromCode(Status.Code.UNAVAILABLE).withDescription(error.toString()));
       }
       // for other errors, we only drop cache here and throw a retryable exception.
-      this.regionManager.invalidateRegion(ctx.getRegionId());
+      regionManager.invalidateRegion(ctxRegion.getId());
     }
   }
 }

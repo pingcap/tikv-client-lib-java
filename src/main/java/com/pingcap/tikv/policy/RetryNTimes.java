@@ -15,10 +15,9 @@
 
 package com.pingcap.tikv.policy;
 
-import com.google.common.base.Preconditions;
+import com.pingcap.tikv.exception.TiClientInternalException;
 import com.pingcap.tikv.operation.ErrorHandler;
 import com.pingcap.tikv.util.BackOff;
-import com.pingcap.tikv.util.ExponentialBackOff;
 
 public class RetryNTimes<T> extends RetryPolicy<T> {
   private RetryNTimes(ErrorHandler<T> handler, BackOff backOff) {
@@ -26,15 +25,15 @@ public class RetryNTimes<T> extends RetryPolicy<T> {
     this.backOff = backOff;
   }
 
-  public static Builder newBuilder(int n) {
-    return new Builder(n);
-  }
-
   public static class Builder<T> implements RetryPolicy.Builder<T> {
     private BackOff backOff;
 
-    public Builder(int n) {
-      this.backOff = new ExponentialBackOff(n);
+    public Builder(int n, Class<? extends BackOff> backoffClass) {
+      try {
+        this.backOff = backoffClass.getConstructor(int.class).newInstance(n);
+      } catch (Exception e) {
+        throw new TiClientInternalException("failed to create backoff object", e);
+      }
     }
 
     @Override

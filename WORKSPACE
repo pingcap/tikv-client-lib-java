@@ -14,13 +14,23 @@ maven_jar(
 )
 
 maven_jar(
-    name = "org_apache_logging_log4j_log4j_api",
-    artifact = "org.apache.logging.log4j:log4j-api:2.8.1",
+    name = "org_slf4j_slf4j_api",
+    artifact = "org.slf4j:slf4j-api:1.7.16",
 )
 
 maven_jar(
-    name = "org_apache_logging_log4j_log4j_core",
-    artifact = "org.apache.logging.log4j:log4j-core:2.8.1",
+    name = "org_slf4j_jcl_over_slf4j",
+    artifact = "org.slf4j:jcl-over-slf4j:1.7.16",
+)
+
+maven_jar(
+    name = "org_slf4j_jul_to_slf4j",
+    artifact = "org.slf4j:jul-to-slf4j:1.7.16",
+)
+
+maven_jar(
+    name = "log4j_log4j",
+    artifact = "log4j:log4j:1.2.17",
 )
 
 maven_jar(

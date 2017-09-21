@@ -27,6 +27,7 @@ import com.pingcap.tikv.kvproto.Metapb.Region;
 import com.pingcap.tikv.types.BytesType;
 import java.io.Serializable;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
 public class TiRegion implements Serializable {
@@ -97,16 +98,14 @@ public class TiRegion implements Serializable {
    * @return false if no peers matches the store id.
    */
   boolean switchPeer(long leaderStoreID) {
-    return meta.getPeersList()
-        .stream()
-        .anyMatch(
-            p -> {
-              if (p.getStoreId() == leaderStoreID) {
-                this.peer = p;
-                return true;
-              }
-              return false;
-            });
+    List<Peer> peers = meta.getPeersList();
+    for (Peer p : peers) {
+      if (p.getStoreId() == leaderStoreID) {
+        this.peer = p;
+        return true;
+      }
+    }
+    return false;
   }
 
   public boolean contains(ByteString key) {
