@@ -1,9 +1,11 @@
 package com.pingcap.tikv.statistics;
 
 import com.google.common.collect.Range;
+import com.google.protobuf.ByteString;
 import com.pingcap.tikv.expression.TiColumnRef;
 import com.pingcap.tikv.meta.TiColumnInfo;
 import com.pingcap.tikv.predicates.RangeBuilder.IndexRange;
+import com.pingcap.tikv.types.DataType;
 import com.pingcap.tikv.util.Comparables;
 
 import java.util.List;
@@ -40,18 +42,17 @@ public class ColumnWithHistogram {
         cnt = hg.equalRowCount(Comparables.wrap(points.get(0)));
       } else {
         Range rg = range.getRange();
-        Objects.requireNonNull(rg.lowerEndpoint(), "LowerBound must not be null");
-        Objects.requireNonNull(rg.upperEndpoint(), "UpperBound must not be null");
+        Comparable lowerBound = rg.hasLowerBound() ?
+            Comparables.wrap(ByteString.copyFrom(rg.lowerEndpoint().toString().getBytes())):
+            Comparables.wrap(DataType.indexMinValue());
+        Comparable upperBound = rg.hasUpperBound() ?
+            Comparables.wrap(ByteString.copyFrom(rg.upperEndpoint().toString().getBytes())):
+            Comparables.wrap(DataType.indexMaxValue());
+//        System.out.println(rg.lowerEndpoint() + " and " + rg.upperEndpoint());
+        Objects.requireNonNull(lowerBound, "LowerBound must not be null");
+        Objects.requireNonNull(upperBound, "UpperBound must not be null");
 
-        cnt = hg.betweenRowCount(rg.lowerEndpoint(), rg.upperEndpoint());
-        if (!rg.hasLowerBound()) {
-          double lowCnt = hg.equalRowCount(rg.lowerEndpoint());
-          cnt -= lowCnt;
-        }
-        if (rg.hasUpperBound()) {
-          double highCnt = hg.equalRowCount(rg.upperEndpoint());
-          cnt += highCnt;
-        }
+        cnt = hg.betweenRowCount(lowerBound, upperBound);
       }
       rowCount += cnt;
     }

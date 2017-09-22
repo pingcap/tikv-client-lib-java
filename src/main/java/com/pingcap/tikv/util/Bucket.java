@@ -28,14 +28,13 @@ public class Bucket implements Comparable<Bucket> {
     this.repeats = repeats;
     this.lowerBound = lowerBound;
     this.upperBound = upperBound;
+    assert upperBound != null;
   }
 
   // used for binary search only
   public Bucket(Comparable upperBound) {
     this.upperBound = upperBound;
-  }
-
-  public Bucket() {
+    assert upperBound != null;
   }
 
   @Override

@@ -102,19 +102,19 @@ public class TiTableInfo implements Serializable {
     return comment;
   }
 
-  public long getAutoIncId() {
+  long getAutoIncId() {
     return autoIncId;
   }
 
-  public long getMaxColumnId() {
+  long getMaxColumnId() {
     return maxColumnId;
   }
 
-  public long getMaxIndexId() {
+  long getMaxIndexId() {
     return maxIndexId;
   }
 
-  public long getOldSchemaId() {
+  long getOldSchemaId() {
     return oldSchemaId;
   }
 
@@ -128,7 +128,7 @@ public class TiTableInfo implements Serializable {
 
   // Only Integer Column will be a PK column
   // and there exists only one PK column
-  public TiColumnInfo getPrimaryKeyColumn() {
+  TiColumnInfo getPrimaryKeyColumn() {
     if (isPkHandle()) {
       for (TiColumnInfo col : getColumns()) {
         if (col.isPrimaryKey()) {
@@ -137,6 +137,17 @@ public class TiTableInfo implements Serializable {
       }
     }
     return null;
+  }
+
+  public void printIndices() {
+    System.out.println("->index size=" + (getIndices() == null ? 0 : getIndices().size()));
+    for(TiIndexInfo idx: getIndices()) {
+      System.out.print("->index " + idx.getName() + "#" + idx.getId() + ": ");
+      for(TiIndexColumn idxCol: idx.getIndexColumns()) {
+        System.out.print(idxCol.getName() + ", ");
+      }
+      System.out.println();
+    }
   }
 
   @Override

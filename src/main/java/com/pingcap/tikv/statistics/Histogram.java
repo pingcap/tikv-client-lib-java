@@ -17,6 +17,8 @@
 package com.pingcap.tikv.statistics;
 
 import com.google.common.collect.ImmutableList;
+import com.google.protobuf.ByteString;
+import com.pingcap.tikv.exception.HistogramException;
 import com.pingcap.tikv.expression.TiColumnRef;
 import com.pingcap.tikv.expression.TiConstant;
 import com.pingcap.tikv.expression.TiExpr;
@@ -54,6 +56,16 @@ public class Histogram {
 
 
   public Histogram() {
+  }
+
+  public Histogram(long id,
+                   long numberOfDistinctValue,
+                   List<Bucket> buckets) {
+    this.id = id;
+    this.numberOfDistinctValue = numberOfDistinctValue;
+    this.buckets = buckets;
+    this.nullCount = 0;
+    this.lastUpdateVersion = 0;
   }
 
   public Histogram(long id,
@@ -130,9 +142,8 @@ public class Histogram {
     this.nullCount = nullCount;
 
     int len = 0;
-    ArrayList<Bucket> tmpBuckets = new ArrayList<>(4096);
-    for(int i = 0; i < 4096; i ++) tmpBuckets.add(new Bucket());
-
+    List<Bucket> tmpBuckets = new ArrayList<>(rows.size());
+    for(int i = 0; i < rows.size(); i ++) tmpBuckets.add(new Bucket(1));
 
     for (Row row: rows) {
       long bucketID = row.getLong(0);
@@ -140,23 +151,17 @@ public class Histogram {
       long repeats = row.getLong(2);
       Comparable lowerBound, upperBound;
       try {
-        Bucket bucket = tmpBuckets.get((int) bucketID);
-        bucket.setCount(count);
-        bucket.setRepeats(repeats);
 
         if (isIndex == 1) {
           lowerBound = Comparables.wrap(row.get(3, DataTypeFactory.of(Types.TYPE_BLOB)));
           upperBound = Comparables.wrap(row.get(4, DataTypeFactory.of(Types.TYPE_BLOB)));
         } else {
-          lowerBound = Comparables.wrap(row.get(3, type));
-          upperBound = Comparables.wrap(row.get(4, type));
+          lowerBound = Comparables.wrap(ByteString.copyFrom(row.get(3, type).toString().getBytes()));
+          upperBound = Comparables.wrap(ByteString.copyFrom(row.get(4, type).toString().getBytes()));
         }
-        bucket.setLowerBound(lowerBound);
-        bucket.setLowerBound(upperBound);
-        System.out.println(lowerBound + " and " + upperBound);
-      } catch (IndexOutOfBoundsException e) {
-        e.printStackTrace();
-        throw e;
+        tmpBuckets.add((int) bucketID, new Bucket(count, repeats, lowerBound, upperBound));
+      } catch (HistogramException e) {
+        throw new HistogramException("Bucket size too large");
       }
       ++ len;
     }
@@ -228,7 +233,13 @@ public class Histogram {
       preCount = buckets.get(index - 1).count;
     }
     double lessThanBucketValueCount = curCount - buckets.get(index).repeats;
-    int c = values.compareTo(buckets.get(index).lowerBound);
+    Comparable lowerBound = buckets.get(index).lowerBound;
+    int c;
+    if(lowerBound != null) {
+      c = values.compareTo(lowerBound);
+    } else {
+      c = 1;
+    }
     if (c <= 0) {
       return preCount;
     }
@@ -272,13 +283,14 @@ public class Histogram {
   //and returns (-[insertion point] - 1) if the key is not found in buckets
   //where [insertion point] denotes the index of the first element greater than the key
   protected int lowerBound(Comparable key) {
-    assert key.getClass() == buckets.get(0).upperBound.getClass();
+    System.out.println(key.getClass() + " ;; " + buckets.get(0).getUpperBound().getClass());
+    assert key.getClass() == buckets.get(0).getUpperBound().getClass();
     return Arrays.binarySearch(buckets.toArray(), new Bucket(key));
   }
 
   // mergeBuckets is used to merge every two neighbor buckets.
   // parameters: bucketIdx is the index of the last bucket
-  void mergeBlock(long bucketIdx) {
+  void mergeBlock(int bucketIdx) {
     int curBuck = 0;
     for (int i = 0; i + 1 <= bucketIdx; i += 2) {
       buckets.set(curBuck++, new Bucket(buckets.get(i + 1).count,
@@ -287,7 +299,7 @@ public class Histogram {
           buckets.get(i).upperBound));
     }
     if (bucketIdx % 2 == 0) {
-      buckets.set(curBuck++, buckets.get((int) bucketIdx));
+      buckets.set(curBuck++, buckets.get(bucketIdx));
     }
     buckets = buckets.subList(0, curBuck);
   }

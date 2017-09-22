@@ -48,7 +48,7 @@ public class Main {
 
     dbReader.printRows("t1", exprs, returnFields);
 
-
+//    System.out.println(table.getIndices().get(0).getId());
 
     System.out.println(table.getId());
 
@@ -66,32 +66,8 @@ public class Main {
     System.out.println(myExprs.size());
     System.out.println(t.Selectivity(dbReader, myExprs));
 
-
-//    TiTableInfo table = dbReader.getTableInfo("stats_meta");
-//    List<TiExpr> exprs = ImmutableList.of(
-//        new NotEqual(TiColumnRef.create("table_id", table), TiConstant.create(1))
-//    );
-//    List<String> returnFields = ImmutableList.of("version", "table_id", "modify_count", "count");
-//    dbReader.printRows("stats_meta", exprs, returnFields);
-//
-//
-//    table = dbReader.getTableInfo("stats_buckets");
-//    exprs = ImmutableList.of(
-//        new NotEqual(TiColumnRef.create("table_id", table), TiConstant.create(1))
-//    );
-//    returnFields = ImmutableList.of(
-//        "table_id", "is_index", "hist_id", "bucket_id", "count", "repeats", "upper_bound", "lower_bound");
-//    dbReader.printRows("stats_buckets", exprs, returnFields);
-
-//    TiTableInfo table = dbReader.getTableInfo("stats_histograms");
-//    List<TiExpr> exprs = ImmutableList.of(
-//        new NotEqual(TiColumnRef.create("table_id", table), TiConstant.create(1))
-//    );
-//    List<String> returnFields = ImmutableList.of(
-//        "table_id", "is_index", "hist_id", "distinct_count", "null_count", "modify_count", "version");
-//    dbReader.printRows("stats_histograms", exprs, returnFields);
-
     cluster.close();
     client.close();
   }
+
 }

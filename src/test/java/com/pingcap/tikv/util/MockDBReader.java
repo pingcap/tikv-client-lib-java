@@ -8,10 +8,7 @@ import com.pingcap.tikv.expression.TiBinaryFunctionExpresson;
 import com.pingcap.tikv.expression.TiColumnRef;
 import com.pingcap.tikv.expression.TiConstant;
 import com.pingcap.tikv.expression.TiExpr;
-import com.pingcap.tikv.meta.MetaUtils;
-import com.pingcap.tikv.meta.TiColumnInfo;
-import com.pingcap.tikv.meta.TiIndexInfo;
-import com.pingcap.tikv.meta.TiTableInfo;
+import com.pingcap.tikv.meta.*;
 import com.pingcap.tikv.operation.ChunkIterator;
 import com.pingcap.tikv.row.ObjectRowImpl;
 import com.pingcap.tikv.row.Row;
@@ -152,22 +149,82 @@ public class MockDBReader extends DBReader {
     getTable(tableName).setTableInfo(tableInfo);
   }
 
-  public TiTableInfo buildTable(String tableName, List<String> columnName, List<DataType> dataTypes, long tableID) {
+  private class MockColumn {
+    private String columnName;
+    private DataType dataType;
+    private boolean isPrimaryKey;
+
+    private MockColumn(String columnName, int dataType, boolean isPrimaryKey) {
+      this.columnName = columnName;
+      this.dataType = DataTypeFactory.of(dataType);
+      this.isPrimaryKey = isPrimaryKey;
+    }
+  }
+
+  public MockColumn createMockColumn(String columnName, int dataType, boolean isPrimaryKey) {
+    return new MockColumn(columnName, dataType, isPrimaryKey);
+  }
+
+  public MockColumn createMockColumn(String columnName, int dataType) {
+    return new MockColumn(columnName, dataType, false);
+  }
+
+  private class MockIndex {
+    private String indexName;
+    private List<String> columnNames;
+    private boolean isPrimaryKey;
+
+    private MockIndex(String indexName, List<String> columnNames, boolean isPrimaryKey) {
+      this.indexName = indexName;
+      this.columnNames = columnNames;
+      this.isPrimaryKey = isPrimaryKey;
+    }
+  }
+
+  public MockIndex createMockIndex(String indexName, List<String> columnNames, boolean isPrimaryKey) {
+    return new MockIndex(indexName, columnNames, isPrimaryKey);
+  }
+
+  public MockIndex createMockIndex(String indexName, List<String> columnNames) {
+    return new MockIndex(indexName, columnNames, false);
+  }
+
+  private List<TiIndexColumn> buildIndexColumns(table t, List<String> columNames) {
+    List<TiIndexColumn> ret = new ArrayList<>();
+    for(String columnName: columNames) {
+      TiColumnInfo columnInfo = t.getColumnInfo(columnName);
+      if(columnInfo != null) {
+        ret.add(columnInfo.toIndexColumn());
+      }
+    }
+    return ret;
+  }
+
+  public TiTableInfo buildTable(String tableName, List<MockColumn> mockColumns, List<MockIndex> mockIndices, long tableID) {
     MetaUtils.TableBuilder tableBuilder = buildTableInfo(tableName).name(tableName);
-    table t = getTable(tableName);
-    for(int i = 0; i < columnName.size(); i ++) {
-      tableBuilder = tableBuilder.addColumn(columnName.get(i), dataTypes.get(i));
+    for(MockColumn mockColumn: mockColumns) {
+      tableBuilder = tableBuilder.addColumn(mockColumn.columnName, mockColumn.dataType, mockColumn.isPrimaryKey);
+    }
+    for(MockIndex mockIndex: mockIndices) {
+      tableBuilder = tableBuilder.appendIndex(mockIndex.indexName, mockIndex.columnNames, mockIndex.isPrimaryKey);
     }
     TiTableInfo tableInfo = tableBuilder.build(tableID);
     setTableInfo(tableName, tableInfo);
-    TiColumnInfo columnInfo;
-    for(int i = 0; i < columnName.size(); i ++) {
-      columnInfo = new TiColumnInfo(i + 1, columnName.get(i), 0, dataTypes.get(i), false);
+    int i = 0;
+    for(MockColumn mockColumn: mockColumns) {
+      TiColumnInfo columnInfo =
+          new TiColumnInfo(i + 1, mockColumn.columnName, i, mockColumn.dataType, mockColumn.isPrimaryKey);
       addColumn(tableName, columnInfo);
+      i ++;
     }
-    addIndex(tableName, TiIndexInfo.generateFakePrimaryKeyIndex(tableInfo));
-//    t.setColumnInfoList(tableBuilder.getColumns());
-//    t.setIndexInfoList(tableBuilder.getIndices());
+    i = 0;
+    table t = getTable(tableName);
+    for(MockIndex mockIndex: mockIndices) {
+      TiIndexInfo indexInfo = new TiIndexInfo(i + 1, mockIndex.indexName, tableName,
+          buildIndexColumns(t, mockIndex.columnNames), mockIndex.isPrimaryKey);
+      addIndex(tableName, indexInfo);
+      i ++;
+    }
     return tableInfo;
   }
 
@@ -189,19 +246,19 @@ public class MockDBReader extends DBReader {
     TiColumnInfo columnInfo;
     columnInfo = new TiColumnInfo(1, "table_id", 0, DataTypeFactory.of(TYPE_LONG), false);
     addColumn("stats_buckets", columnInfo);
-    columnInfo = new TiColumnInfo(2, "is_index", 0, DataTypeFactory.of(TYPE_LONG), false);
+    columnInfo = new TiColumnInfo(2, "is_index", 1, DataTypeFactory.of(TYPE_LONG), false);
     addColumn("stats_buckets", columnInfo);
-    columnInfo = new TiColumnInfo(3, "hist_id", 0, DataTypeFactory.of(TYPE_LONG), false);
+    columnInfo = new TiColumnInfo(3, "hist_id", 2, DataTypeFactory.of(TYPE_LONG), false);
     addColumn("stats_buckets", columnInfo);
-    columnInfo = new TiColumnInfo(4, "bucket_id", 0, DataTypeFactory.of(TYPE_LONG), false);
+    columnInfo = new TiColumnInfo(4, "bucket_id", 3, DataTypeFactory.of(TYPE_LONG), false);
     addColumn("stats_buckets", columnInfo);
-    columnInfo = new TiColumnInfo(5, "count", 0, DataTypeFactory.of(TYPE_LONG), false);
+    columnInfo = new TiColumnInfo(5, "count", 4, DataTypeFactory.of(TYPE_LONG), false);
     addColumn("stats_buckets", columnInfo);
-    columnInfo = new TiColumnInfo(6, "repeats", 0, DataTypeFactory.of(TYPE_LONG), false);
+    columnInfo = new TiColumnInfo(6, "repeats", 5, DataTypeFactory.of(TYPE_LONG), false);
     addColumn("stats_buckets", columnInfo);
-    columnInfo = new TiColumnInfo(7, "upper_bound", 0, DataTypeFactory.of(TYPE_BLOB), false);
+    columnInfo = new TiColumnInfo(7, "upper_bound", 6, DataTypeFactory.of(TYPE_BLOB), false);
     addColumn("stats_buckets", columnInfo);
-    columnInfo = new TiColumnInfo(8, "lower_bound", 0, DataTypeFactory.of(TYPE_BLOB), false);
+    columnInfo = new TiColumnInfo(8, "lower_bound", 7, DataTypeFactory.of(TYPE_BLOB), false);
     addColumn("stats_buckets", columnInfo);
     return tableInfo;
   }
@@ -222,17 +279,17 @@ public class MockDBReader extends DBReader {
     TiColumnInfo columnInfo;
     columnInfo = new TiColumnInfo(1, "table_id", 0, DataTypeFactory.of(TYPE_LONG), false);
     addColumn("stats_histograms", columnInfo);
-    columnInfo = new TiColumnInfo(2, "is_index", 0, DataTypeFactory.of(TYPE_LONG), false);
+    columnInfo = new TiColumnInfo(2, "is_index", 1, DataTypeFactory.of(TYPE_LONG), false);
     addColumn("stats_histograms", columnInfo);
-    columnInfo = new TiColumnInfo(3, "hist_id", 0, DataTypeFactory.of(TYPE_LONG), false);
+    columnInfo = new TiColumnInfo(3, "hist_id", 2, DataTypeFactory.of(TYPE_LONG), false);
     addColumn("stats_histograms", columnInfo);
-    columnInfo = new TiColumnInfo(4, "distinct_count", 0, DataTypeFactory.of(TYPE_LONG), false);
+    columnInfo = new TiColumnInfo(4, "distinct_count", 3, DataTypeFactory.of(TYPE_LONG), false);
     addColumn("stats_histograms", columnInfo);
-    columnInfo = new TiColumnInfo(5, "null_count", 0, DataTypeFactory.of(TYPE_LONG), false);
+    columnInfo = new TiColumnInfo(5, "null_count", 4, DataTypeFactory.of(TYPE_LONG), false);
     addColumn("stats_histograms", columnInfo);
-    columnInfo = new TiColumnInfo(6, "modify_count", 0, DataTypeFactory.of(TYPE_LONG), false);
+    columnInfo = new TiColumnInfo(6, "modify_count", 5, DataTypeFactory.of(TYPE_LONG), false);
     addColumn("stats_histograms", columnInfo);
-    columnInfo = new TiColumnInfo(7, "version", 0, DataTypeFactory.of(TYPE_LONG), false);
+    columnInfo = new TiColumnInfo(7, "version", 6, DataTypeFactory.of(TYPE_LONG), false);
     addColumn("stats_histograms", columnInfo);
     return tableInfo;
   }
@@ -250,11 +307,11 @@ public class MockDBReader extends DBReader {
     TiColumnInfo columnInfo;
     columnInfo = new TiColumnInfo(1, "version", 0, DataTypeFactory.of(TYPE_LONG), false);
     addColumn("stats_meta", columnInfo);
-    columnInfo = new TiColumnInfo(2, "table_id", 0, DataTypeFactory.of(TYPE_LONG), false);
+    columnInfo = new TiColumnInfo(2, "table_id", 1, DataTypeFactory.of(TYPE_LONG), false);
     addColumn("stats_meta", columnInfo);
-    columnInfo = new TiColumnInfo(3, "modify_count", 0, DataTypeFactory.of(TYPE_LONG), false);
+    columnInfo = new TiColumnInfo(3, "modify_count", 2, DataTypeFactory.of(TYPE_LONG), false);
     addColumn("stats_meta", columnInfo);
-    columnInfo = new TiColumnInfo(4, "count", 0, DataTypeFactory.of(TYPE_LONG), false);
+    columnInfo = new TiColumnInfo(4, "count", 3, DataTypeFactory.of(TYPE_LONG), false);
     addColumn("stats_meta", columnInfo);
     return tableInfo;
   }
@@ -272,7 +329,6 @@ public class MockDBReader extends DBReader {
     if(t == null) {
       throw new NullPointerException("table" + tableName + "not found.");
     } else {
-//      System.out.println("Column " + columnInfo.getName() + " added to table " + tableName);
       t.columnInfoList.add(columnInfo);
     }
   }
@@ -453,6 +509,7 @@ public class MockDBReader extends DBReader {
     table t = getTable(tableName);
     System.out.println(">>>>>>>>>>>>>" + tableName);
     if(t != null) {
+      System.out.println(returnFields);
       for (Row r : t.rows) {
         for(String s: returnFields) {
           for (int i = 0; i < r.fieldCount(); i++) {

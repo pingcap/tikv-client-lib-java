@@ -83,7 +83,7 @@ public class Table {
     return ModifyCount;
   }
 
-  public void setModifyCount(long modifyCount) { this.ModifyCount = modifyCount; }
+  void setModifyCount(long modifyCount) { this.ModifyCount = modifyCount; }
 
   public long getVersion() {
     return Version;
@@ -165,7 +165,7 @@ public class Table {
   }
 
   // GetRowCountByColumnRanges estimates the row count by a slice of ColumnRange.
-  public double GetRowCountByColumnRanges(long columnID, List<IndexRange> columnRanges) {
+  private double GetRowCountByColumnRanges(long columnID, List<IndexRange> columnRanges) {
     ColumnWithHistogram c = Columns.get(columnID);
     Histogram hist = c.getHistogram();
     if (Pseudo || hist == null || hist.getBuckets().isEmpty()) {
@@ -175,7 +175,7 @@ public class Table {
   }
 
   // GetRowCountByColumnRanges estimates the row count by a slice of ColumnRange.
-  double GetRowCountByIndexRanges(long indexID, List<IndexRange> indexRanges) {
+  private double GetRowCountByIndexRanges(long indexID, List<IndexRange> indexRanges) {
     IndexWithHistogram i = Indices.get(indexID);
     Histogram hist = i.getHistogram();
     if (Pseudo || hist == null || hist.getBuckets().isEmpty()) {
@@ -358,13 +358,9 @@ public class Table {
     double ret = 1.0;
     BitSet mask = new BitSet(len);
     mask.clear();
-    System.out.println("mask=" + mask.toString());
     mask.flip(0, len);
-    System.out.println("mask=" + mask.toString());
     for(exprSet set: sets) {
-      System.out.println("set_mask=" + set.mask.toString());
       mask.xor(set.mask);
-      System.out.println("mask=" + mask.toString());
       double rowCount = 1.0;
       switch(set.tp) {
         case pkType:
@@ -388,7 +384,7 @@ public class Table {
                                             TiTableInfo table) {
     List<TiExpr> exprsClone = new ArrayList<>();
     exprsClone.addAll(exprs);
-    IndexMatchingResult result = ScanBuilder.extractConditions(exprsClone, table, null);
+    IndexMatchingResult result = ScanBuilder.extractConditions(exprsClone, table, table.getIndices().get(0));
     List<TiExpr> accessConditions = result.getAccessConditions();
     int i = 0;
     for(TiExpr x: exprsClone) {
@@ -436,7 +432,6 @@ public class Table {
         st = (BitSet) set.mask.clone();
         st.and(mask);
         int bits = st.cardinality();
-        System.out.println("here set_mask=" + set.mask.toString());
         if(bestTp == colType && set.tp < colType || bestCount < bits) {
           bestID = count;
           bestCount = bits;

@@ -15,15 +15,16 @@
 
 package com.pingcap.tikv.predicates;
 
-import static java.util.Objects.requireNonNull;
-
 import com.pingcap.tikv.expression.TiColumnRef;
 import com.pingcap.tikv.expression.TiExpr;
 import com.pingcap.tikv.expression.TiFunctionExpression;
 import com.pingcap.tikv.expression.scalar.And;
+
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+
+import static java.util.Objects.requireNonNull;
 
 public class PredicateUtils {
   public static TiExpr mergeCNFExpressions(List<TiExpr> exprs) {
@@ -42,6 +43,8 @@ public class PredicateUtils {
         if (arg instanceof TiColumnRef) {
           TiColumnRef tiCR = (TiColumnRef) arg;
           columnRefs.add(tiCR);
+        } else {
+          columnRefs.addAll(extractColumnRefFromExpr(arg));
         }
       }
     } else if (expr instanceof TiColumnRef) {

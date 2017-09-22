@@ -1,15 +1,17 @@
 package com.pingcap.tikv.statistics;
 
 import com.google.common.collect.ImmutableList;
+import com.google.protobuf.ByteString;
+import com.pingcap.tikv.codec.CodecDataOutput;
 import com.pingcap.tikv.expression.TiColumnRef;
 import com.pingcap.tikv.expression.TiConstant;
 import com.pingcap.tikv.expression.TiExpr;
-import com.pingcap.tikv.expression.scalar.Equal;
-import com.pingcap.tikv.expression.scalar.GreaterEqual;
-import com.pingcap.tikv.expression.scalar.NotEqual;
+import com.pingcap.tikv.expression.scalar.*;
 import com.pingcap.tikv.meta.TiTableInfo;
 import com.pingcap.tikv.types.DataType;
 import com.pingcap.tikv.types.DataTypeFactory;
+import com.pingcap.tikv.util.Bucket;
+import com.pingcap.tikv.util.Comparables;
 import com.pingcap.tikv.util.MockDBReader;
 import org.junit.Before;
 import org.junit.Test;
@@ -41,8 +43,21 @@ public class TableStatsTest {
     mockDBReader.buildStatsBuckets();
     mockDBReader.buildStatsHistograms();
     mockDBReader.buildStatsMeta();
-    mockDBReader.buildTable("t1", ImmutableList.of("c1", "s1"),
-        ImmutableList.of(DataTypeFactory.of(TYPE_LONG), DataTypeFactory.of(TYPE_LONG)), 47);
+    mockDBReader.buildTable(
+        "t1",
+        ImmutableList.of(
+            mockDBReader.createMockColumn("c1", TYPE_LONG, true),
+            mockDBReader.createMockColumn("s1", TYPE_LONG)
+        ),
+        ImmutableList.of(
+            mockDBReader.createMockIndex("idx_c1", ImmutableList.of("c1"), true),
+            mockDBReader.createMockIndex("idx_s1", ImmutableList.of("s1"))
+        ),
+        47);
+    String t1TableData = "\b\002\b\002\b\004\b\004\b\006\b\006";
+    mockDBReader.addTableData("t1", t1TableData, 4, 3,
+        ImmutableList.of(DataTypeFactory.of(TYPE_LONG), DataTypeFactory.of(TYPE_LONG)));
+
 
     String statsBucketTableData = "\b^\b\000\b\002\b\000\b\004\b\002\002\0021\002\0020\b^\b\000\b\002\b\002\b\006\b\002\002\0023\002\0022";
 
@@ -97,11 +112,17 @@ public class TableStatsTest {
         new NotEqual(TiColumnRef.create("table_id", tableInfo), TiConstant.create(1)));
     returnFields = ImmutableList.of("table_id", "is_index", "hist_id",
         "distinct_count", "null_count", "modify_count", "version");
-    mockDBReader.printRows("stats_meta", exprs, returnFields);
+    mockDBReader.printRows("stats_histograms", exprs, returnFields);
   }
 
   @Test
   public void testBuild() {
+    TiTableInfo tableInfoTest = mockDBReader.getTableInfo("t1");
+    List<TiExpr> exprsTest = ImmutableList.of(
+        new NotEqual(TiColumnRef.create("c1", tableInfoTest), TiConstant.create(1)));
+    List<String> returnFieldsTest = ImmutableList.of("c1", "s1");
+    mockDBReader.printRows("t1", exprsTest, returnFieldsTest);
+
     TableStats tableStats = new TableStats();
     tableStats.build(mockDBReader);
     TiTableInfo tableInfo = mockDBReader.getTableInfo("t1");
@@ -109,7 +130,132 @@ public class TableStatsTest {
     assertTrue(t.getColumns().size() > 0);
     System.out.println("name=" + t.getColumns().values().iterator().next().getColumnInfo().getName());
     List<TiExpr> exprs = ImmutableList.of(
-        new GreaterEqual(TiColumnRef.create("c1", tableInfo), TiConstant.create(2)));
-    assertTrue(t.Selectivity(mockDBReader, exprs) == 0.8);
+        new GreaterEqual(TiColumnRef.create("c1", tableInfo), TiConstant.create(1)));
+    System.out.println("selectivity = " + t.Selectivity(mockDBReader, exprs));
   }
+
+  private ByteString[] generateData(int dimension, int num) {
+    int len = ((int) Math.round(Math.pow(num, dimension)));
+    ByteString[] ret = new ByteString[len];
+    DataType t = DataTypeFactory.of(TYPE_LONG);
+    if(dimension == 1) {
+      CodecDataOutput cdo = new CodecDataOutput();
+      for(int i = 0; i < num; i ++) {
+        cdo.reset();
+        t.encode(cdo, DataType.EncodeType.KEY, i);
+        ret[i] = cdo.toByteString();
+      }
+    } else {
+      for(int i = 0; i < len; i ++) {
+        int j = i;
+        CodecDataOutput cdo = new CodecDataOutput();
+        long tmp[] = new long[dimension];
+        for(int k = 0; k < dimension; k ++) {
+          tmp[dimension-k-1] = j % num;
+          j = j / num;
+        }
+        for(int k = 0; k < dimension; k ++) {
+          t.encode(cdo, DataType.EncodeType.KEY, tmp[k]);
+        }
+        ret[i] = cdo.toByteString();
+      }
+    }
+    return ret;
+  }
+
+  // mockStatsHistogram will create a statistics.Histogram, of which the data is uniform distribution.
+  private Histogram mockStatsHistogram(long id, ByteString[] values, long repeat) {
+    int ndv = values.length;
+    Histogram histogram = new Histogram(id, ndv, new ArrayList<>());
+    for(int i = 0; i < ndv; i ++) {
+      Bucket bucket = new Bucket(Comparables.wrap(ByteString.copyFrom(values[i].toString().getBytes())));
+      bucket.setRepeats(repeat);
+      bucket.setCount(repeat * (i + 1));
+      histogram.getBuckets().add(bucket);
+    }
+    return histogram;
+  }
+
+  private Table mockStatsTable(TiTableInfo tbl, long rowCount) {
+    return new Table(tbl.getId(), rowCount, false);
+  }
+
+  private class test{
+    private List<TiExpr> exprs;
+    private double selectivity;
+    private test(List<TiExpr> e, double d) {
+      exprs = new ArrayList<>();
+      exprs.addAll(e);
+      selectivity = d;
+    }
+  }
+
+  @Test
+  public void testSelectivity() {
+
+    System.out.println("========SelectivityTest=======");
+
+    mockDBReader.addTable("mysql", "t");
+    mockDBReader.buildTable(
+        "t",
+        ImmutableList.of(
+            mockDBReader.createMockColumn("a", TYPE_LONG, true),
+            mockDBReader.createMockColumn("b", TYPE_LONG),
+            mockDBReader.createMockColumn("c", TYPE_LONG),
+            mockDBReader.createMockColumn("d", TYPE_LONG),
+            mockDBReader.createMockColumn("e", TYPE_LONG)
+        ),
+        ImmutableList.of(
+          mockDBReader.createMockIndex("pk_idx", ImmutableList.of("a"), true),
+          mockDBReader.createMockIndex("idx_cd", ImmutableList.of("c", "d"), false),
+          mockDBReader.createMockIndex("idx_de", ImmutableList.of("d", "e"), false)
+        ),
+        51);
+
+    TiTableInfo tableInfoTest = mockDBReader.getTableInfo("t");
+    List<TiExpr> exprsTest = ImmutableList.of(
+        new NotEqual(TiColumnRef.create("a", tableInfoTest), TiConstant.create(1)));
+    List<String> returnFieldsTest = ImmutableList.of("a", "b", "c", "d", "e");
+    mockDBReader.printRows("t", exprsTest, returnFieldsTest);
+
+
+    TiTableInfo tbl = mockDBReader.getTableInfo("t");
+
+    final test[] tests = {
+        new test(
+            ImmutableList.of(
+                new GreaterThan(TiColumnRef.create("a", tbl), TiConstant.create(0)),
+                new LessThan(TiColumnRef.create("a", tbl), TiConstant.create(2))
+            ),
+            0.01851851851
+        ),
+        new test(
+            ImmutableList.of(
+                new GreaterThan(TiColumnRef.create("a", tbl), TiConstant.create(0)),
+                new LessThan(TiColumnRef.create("a", tbl), TiConstant.create(2))
+            ),
+            0.01851851851
+        ),
+    };
+
+    Table statsTbl = mockStatsTable(tbl, 540);
+
+    ByteString[] colValues = generateData(1, 54);
+    for(int i = 1; i <= 5; i ++) {
+      statsTbl.putColumns(i, new ColumnWithHistogram(mockStatsHistogram(i, colValues, 10), tbl.getColumns().get(i - 1)));
+    }
+
+    ByteString[] idxValues = generateData(2, 3);
+    statsTbl.putIndices(1, new IndexWithHistogram(mockStatsHistogram(1, idxValues, 60), tbl.getIndices().get(0)));
+    statsTbl.putIndices(2, new IndexWithHistogram(mockStatsHistogram(2, idxValues, 60), tbl.getIndices().get(1)));
+
+    for(test g: tests) {
+      double selectivity = statsTbl.Selectivity(mockDBReader, g.exprs);
+      System.out.println("selectivity = " + selectivity);
+//      assertEquals(selectivity, g.selectivity, 0.000001);
+    }
+
+
+  }
+
 }

@@ -98,7 +98,7 @@ public abstract class DataType implements Serializable {
     return flag == NULL_FLAG;
   }
 
-  void decodeValueNoNullToRow(Row row, int pos, Object value) {
+  private void decodeValueNoNullToRow(Row row, int pos, Object value) {
     row.set(pos, this, value);
   }
 

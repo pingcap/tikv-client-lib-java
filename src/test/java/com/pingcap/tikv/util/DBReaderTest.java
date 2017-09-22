@@ -49,7 +49,7 @@ public class DBReaderTest {
     TiCluster cluster = TiCluster.getCluster(conf);
     Catalog cat = cluster.getCatalog();
 
-    RefelctionWrapper wrapper = new RefelctionWrapper(cat);
+    ReflectionWrapper wrapper = new ReflectionWrapper(cat);
     wrapper.call("reloadCache");
 
     Snapshot snapshot = cluster.createSnapshot();
