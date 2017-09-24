@@ -31,10 +31,17 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
 
-public class Catalog {
+public class Catalog implements AutoCloseable {
   private Supplier<Snapshot> snapshotProvider;
   private ScheduledExecutorService service;
   private CatalogCache metaCache;
+
+  @Override
+  public void close() throws Exception {
+    if(service != null) {
+      service.shutdown();
+    }
+  }
 
   private static class CatalogCache {
     private CatalogCache(CatalogTransaction transaction) {
@@ -107,7 +114,7 @@ public class Catalog {
                                                    "Snapshot Provider is null");
     metaCache = new CatalogCache(new CatalogTransaction(snapshotProvider.get()));
     service = Executors.newSingleThreadScheduledExecutor();
-    service.scheduleAtFixedRate(() -> reloadCache(), refreshPeriod, refreshPeriod, periodUnit);
+    service.scheduleAtFixedRate(this::reloadCache, refreshPeriod, refreshPeriod, periodUnit);
   }
 
   public Catalog(Supplier<Snapshot> snapshotProvider) {

@@ -36,7 +36,7 @@ public class PDErrorHandler<RespT> implements ErrorHandler<RespT> {
     }
     Pdpb.Error error = getError.apply(resp);
     if (error != null) {
-      client.updateLeader(client.getMembers());
+      client.updateLeader();
     }
   }
 }
