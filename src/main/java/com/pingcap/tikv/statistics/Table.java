@@ -111,7 +111,7 @@ public class Table {
     this.Columns.put(key, value);
   }
 
-  // ColumnIsInvalid checks if this column is invalid.
+  /** ColumnIsInvalid checks if this column is invalid. */
   private boolean ColumnIsInvalid(ColumnInfo info) {
     if (Pseudo) {
       return true;
@@ -120,7 +120,7 @@ public class Table {
     return column.getHistogram() == null || column.getHistogram().getBuckets().isEmpty();
   }
 
-  // ColumnGreaterRowCount estimates the row count where the column greater than value.
+  /** ColumnGreaterRowCount estimates the row count where the column greater than value. */
   public double ColumnGreaterRowCount(Comparable value, ColumnInfo columnInfo) {
     if (ColumnIsInvalid(columnInfo)) {
       return (double) (Count) / pseudoLessRate;
@@ -131,7 +131,7 @@ public class Table {
     return result;
   }
 
-  // ColumnLessRowCount estimates the row count where the column less than value.
+  /** ColumnLessRowCount estimates the row count where the column less than value. */
   public double ColumnLessRowCount(Comparable value, ColumnInfo columnInfo) {
     if (ColumnIsInvalid(columnInfo)) {
       return (double) (Count) / pseudoLessRate;
@@ -142,7 +142,7 @@ public class Table {
     return result;
   }
 
-  // ColumnBetweenRowCount estimates the row count where column greater or equal to a and less than b.
+  /** ColumnBetweenRowCount estimates the row count where column greater or equal to a and less than b. */
   public double ColumnBetweenRowCount(Comparable a, Comparable b, ColumnInfo columnInfo) {
     if (ColumnIsInvalid(columnInfo)) {
       return (double) (Count) / pseudoBetweenRate;
@@ -153,7 +153,7 @@ public class Table {
     return result;
   }
 
-  // ColumnEqualRowCount estimates the row count where the column equals to value.
+  /** ColumnEqualRowCount estimates the row count where the column equals to value. */
   public double ColumnEqualRowCount(Comparable value, ColumnInfo columnInfo) {
     if (ColumnIsInvalid(columnInfo)) {
       return (double) (Count) / pseudoEqualRate;
@@ -164,7 +164,7 @@ public class Table {
     return result;
   }
 
-  // GetRowCountByColumnRanges estimates the row count by a slice of ColumnRange.
+  /** GetRowCountByColumnRanges estimates the row count by a slice of ColumnRange. */
   private double GetRowCountByColumnRanges(long columnID, List<IndexRange> columnRanges) {
     ColumnWithHistogram c = Columns.get(columnID);
     Histogram hist = c.getHistogram();
@@ -174,7 +174,7 @@ public class Table {
     return c.getColumnRowCount(columnRanges);
   }
 
-  // GetRowCountByColumnRanges estimates the row count by a slice of ColumnRange.
+  /** GetRowCountByColumnRanges estimates the row count by a slice of ColumnRange. */
   private double GetRowCountByIndexRanges(long indexID, List<IndexRange> indexRanges) {
     IndexWithHistogram i = Indices.get(indexID);
     Histogram hist = i.getHistogram();
@@ -306,6 +306,7 @@ public class Table {
           case "<":
             minFactor = Math.min(minFactor, 1.0/pseudoLessRate);
             break;
+          default:
           // FIXME: To resolve the between case.
         }
       }
@@ -370,6 +371,7 @@ public class Table {
         case indexType:
           rowCount = GetRowCountByIndexRanges(set.ID, set.ranges);
           break;
+        default:
       }
       System.out.println("Rowcount=" + rowCount + " getCount()=" + getCount());
       ret *= rowCount / getCount();

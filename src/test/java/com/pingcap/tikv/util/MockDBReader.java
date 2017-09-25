@@ -333,7 +333,7 @@ public class MockDBReader extends DBReader {
     }
   }
 
-  public void addIndex(String tableName, TiIndexInfo indexInfo) {
+  private void addIndex(String tableName, TiIndexInfo indexInfo) {
     table t = getTable(tableName);
     if(t == null) {
       throw new NullPointerException("table" + tableName + "not found.");

@@ -62,7 +62,7 @@ public class Main {
     System.out.println();
 
     List<TiExpr> myExprs = ImmutableList.of(
-        new GreaterEqual(TiColumnRef.create("s1", table), TiConstant.create(2)));
+        new GreaterEqual(TiColumnRef.create("s1", table), TiConstant.create(1)));
     System.out.println(myExprs.size());
     System.out.println(t.Selectivity(dbReader, myExprs));
 

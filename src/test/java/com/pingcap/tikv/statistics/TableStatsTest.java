@@ -32,6 +32,11 @@ public class TableStatsTest {
   private DataType blobs = DataTypeFactory.of(TYPE_BLOB);
   private DataType ints = DataTypeFactory.of(TYPE_LONG);
 
+  private static TiTableInfo t1TableInfo;
+  private static TiTableInfo histogramInfo;
+  private static TiTableInfo metaInfo;
+  private static TiTableInfo bucketsInfo;
+
   @Before
   public void setUp() {
     mockDBReader = new MockDBReader("mysql");
@@ -58,6 +63,8 @@ public class TableStatsTest {
     mockDBReader.addTableData("t1", t1TableData, 4, 3,
         ImmutableList.of(DataTypeFactory.of(TYPE_LONG), DataTypeFactory.of(TYPE_LONG)));
 
+    t1TableInfo = mockDBReader.getTableInfo("t1");
+
 
     String statsBucketTableData = "\b^\b\000\b\002\b\000\b\004\b\002\002\0021\002\0020\b^\b\000\b\002\b\002\b\006\b\002\002\0023\002\0022";
 
@@ -70,13 +77,13 @@ public class TableStatsTest {
     }
     mockDBReader.addTableData("stats_buckets", statsBucketTableData, 18, 2, dataTypes);
 
-
-    TiTableInfo tableInfo = mockDBReader.getTableInfo("stats_buckets");
+    bucketsInfo = mockDBReader.getTableInfo("stats_buckets");
     List<TiExpr> exprs = ImmutableList.of(
-        new Equal(TiColumnRef.create("table_id", tableInfo), TiConstant.create(27)));
+        new Equal(TiColumnRef.create("table_id", bucketsInfo), TiConstant.create(27)));
     List<String> returnFields = ImmutableList.of(
         "table_id", "is_index", "hist_id", "bucket_id", "count", "repeats", "upper_bound", "lower_bound");
     mockDBReader.printRows("stats_buckets", exprs, returnFields);
+
 
     String statsMetaTableData = "\t\216\200\220\203\351\257\314\273\005\b:\b\000\t\000\t\215\200\300\211\351\257\314\273\005\b>\b\000\t" +
         "\000\t\214\200\360\225\351\257\314\273\005\bB\b\000\t\000\t\215\200\240\234\351\257\314\273\005\bF\b\000\t\000\t\213\200\320\250" +
@@ -89,9 +96,9 @@ public class TableStatsTest {
     }
     mockDBReader.addTableData("stats_meta", statsMetaTableData, 16, 11, dataTypes);
 
-    tableInfo = mockDBReader.getTableInfo("stats_meta");
+    metaInfo = mockDBReader.getTableInfo("stats_meta");
     exprs = ImmutableList.of(
-        new NotEqual(TiColumnRef.create("table_id", tableInfo), TiConstant.create(1)));
+        new NotEqual(TiColumnRef.create("table_id", metaInfo), TiConstant.create(1)));
     returnFields = ImmutableList.of("version", "table_id", "modify_count", "count");
     mockDBReader.printRows("stats_meta", exprs, returnFields);
 
@@ -107,9 +114,9 @@ public class TableStatsTest {
     }
     mockDBReader.addTableData("stats_histograms", statsHistogramsData, 22, 7, dataTypes);
 
-    tableInfo = mockDBReader.getTableInfo("stats_histograms");
+    histogramInfo = mockDBReader.getTableInfo("stats_histograms");
     exprs = ImmutableList.of(
-        new NotEqual(TiColumnRef.create("table_id", tableInfo), TiConstant.create(1)));
+        new NotEqual(TiColumnRef.create("table_id", histogramInfo), TiConstant.create(1)));
     returnFields = ImmutableList.of("table_id", "is_index", "hist_id",
         "distinct_count", "null_count", "modify_count", "version");
     mockDBReader.printRows("stats_histograms", exprs, returnFields);
@@ -231,7 +238,7 @@ public class TableStatsTest {
         ),
         new test(
             ImmutableList.of(
-                new GreaterThan(TiColumnRef.create("a", tbl), TiConstant.create(0)),
+                new GreaterEqual(TiColumnRef.create("a", tbl), TiConstant.create(1)),
                 new LessThan(TiColumnRef.create("a", tbl), TiConstant.create(2))
             ),
             0.01851851851

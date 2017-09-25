@@ -29,18 +29,19 @@ public class ColumnWithHistogram {
     return hg.getLastUpdateVersion();
   }
 
-  // getColumnRowCount estimates the row count by a slice of ColumnRange.
+  /** getColumnRowCount estimates the row count by a slice of ColumnRange. */
   double getColumnRowCount(List<IndexRange> columnRanges) {
     double rowCount = 0.0;
     for (IndexRange range : columnRanges) {
-      double cnt;
+      double cnt = 0.0;
       List<Object> points = range.getAccessPoints();
-      if (points.size() > 0) {
-        if (points.size() != 1) {
+      if (!points.isEmpty()) {
+        if (points.size() > 1) {
           System.out.println("Warning: ColumnRowCount should only contain one attribute.");
         }
         cnt = hg.equalRowCount(Comparables.wrap(points.get(0)));
-      } else {
+        assert range.getRange() == null;
+      } else if (range.getRange() != null){
         Range rg = range.getRange();
         Comparable lowerBound = rg.hasLowerBound() ?
             Comparables.wrap(ByteString.copyFrom(rg.lowerEndpoint().toString().getBytes())):
@@ -48,11 +49,11 @@ public class ColumnWithHistogram {
         Comparable upperBound = rg.hasUpperBound() ?
             Comparables.wrap(ByteString.copyFrom(rg.upperEndpoint().toString().getBytes())):
             Comparables.wrap(DataType.indexMaxValue());
-//        System.out.println(rg.lowerEndpoint() + " and " + rg.upperEndpoint());
         Objects.requireNonNull(lowerBound, "LowerBound must not be null");
         Objects.requireNonNull(upperBound, "UpperBound must not be null");
 
-        cnt = hg.betweenRowCount(lowerBound, upperBound);
+        cnt += hg.betweenRowCount(lowerBound, upperBound);
+
       }
       rowCount += cnt;
     }

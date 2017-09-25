@@ -40,7 +40,13 @@ public class Bucket implements Comparable<Bucket> {
   @Override
   @ParametersAreNonnullByDefault
   public int compareTo(Bucket b) {
-    return upperBound.compareTo(b.upperBound);
+    if(upperBound instanceof Comparables.ComparableBytes && b.upperBound instanceof Comparables.ComparableBytes) {
+      return ((Comparables.ComparableBytes) upperBound).compareTo(((Comparables.ComparableBytes) b.upperBound));
+    } else if(upperBound instanceof Comparables.ComparableByteString && b.upperBound instanceof Comparables.ComparableByteString) {
+      return ((Comparables.ComparableByteString) upperBound).compareTo(((Comparables.ComparableByteString) b.upperBound));
+    } else {
+      return upperBound.compareTo(b.upperBound);
+    }
   }
 
   public long getCount() {
