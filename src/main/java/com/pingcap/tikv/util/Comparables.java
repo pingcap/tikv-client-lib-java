@@ -139,6 +139,11 @@ public class Comparables {
     }
 
     @Override
+    public String toString() {
+      return new String(bytes.toByteArray(), Charset.forName("ASCII"));
+    }
+
+    @Override
     public int hashCode() {
       return bytes.hashCode();
     }

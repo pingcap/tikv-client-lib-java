@@ -214,21 +214,30 @@ public class TableStatsTest {
         ),
         ImmutableList.of(
           mockDBReader.createMockIndex("pk_idx", ImmutableList.of("a"), true),
-          mockDBReader.createMockIndex("idx_cd", ImmutableList.of("c", "d"), false),
-          mockDBReader.createMockIndex("idx_de", ImmutableList.of("d", "e"), false)
+          mockDBReader.createMockIndex("idx_cd", ImmutableList.of("c", "d")),
+          mockDBReader.createMockIndex("idx_de", ImmutableList.of("d", "e"))
         ),
         51);
 
-    TiTableInfo tableInfoTest = mockDBReader.getTableInfo("t");
-    List<TiExpr> exprsTest = ImmutableList.of(
-        new NotEqual(TiColumnRef.create("a", tableInfoTest), TiConstant.create(1)));
-    List<String> returnFieldsTest = ImmutableList.of("a", "b", "c", "d", "e");
-    mockDBReader.printRows("t", exprsTest, returnFieldsTest);
-
-
     TiTableInfo tbl = mockDBReader.getTableInfo("t");
+    Table statsTbl = mockStatsTable(tbl, 540);
+
+    ByteString[] colValues = generateData(1, 54);
+    for(int i = 1; i <= 5; i ++) {
+      statsTbl.putColumns(i, new ColumnWithHistogram(mockStatsHistogram(i, colValues, 10), tbl.getColumns().get(i - 1)));
+    }
+
+    ByteString[] idxValues = generateData(2, 3);
+    statsTbl.putIndices(1, new IndexWithHistogram(mockStatsHistogram(1, idxValues, 60), tbl.getIndices().get(0)));
+    statsTbl.putIndices(2, new IndexWithHistogram(mockStatsHistogram(2, idxValues, 60), tbl.getIndices().get(1)));
 
     final test[] tests = {
+        new test(
+            ImmutableList.of(
+                new Equal(TiColumnRef.create("a", tbl), TiConstant.create(1))
+            ),
+            0.01851851851
+        ),
         new test(
             ImmutableList.of(
                 new GreaterThan(TiColumnRef.create("a", tbl), TiConstant.create(0)),
@@ -244,17 +253,6 @@ public class TableStatsTest {
             0.01851851851
         ),
     };
-
-    Table statsTbl = mockStatsTable(tbl, 540);
-
-    ByteString[] colValues = generateData(1, 54);
-    for(int i = 1; i <= 5; i ++) {
-      statsTbl.putColumns(i, new ColumnWithHistogram(mockStatsHistogram(i, colValues, 10), tbl.getColumns().get(i - 1)));
-    }
-
-    ByteString[] idxValues = generateData(2, 3);
-    statsTbl.putIndices(1, new IndexWithHistogram(mockStatsHistogram(1, idxValues, 60), tbl.getIndices().get(0)));
-    statsTbl.putIndices(2, new IndexWithHistogram(mockStatsHistogram(2, idxValues, 60), tbl.getIndices().get(1)));
 
     for(test g: tests) {
       double selectivity = statsTbl.Selectivity(mockDBReader, g.exprs);

@@ -31,7 +31,7 @@ public class Bucket implements Comparable<Bucket> {
     assert upperBound != null;
   }
 
-  // used for binary search only
+  /** used for binary search only */
   public Bucket(Comparable upperBound) {
     this.upperBound = upperBound;
     assert upperBound != null;
@@ -79,6 +79,12 @@ public class Bucket implements Comparable<Bucket> {
 
   public void setUpperBound(Comparable upperBound) {
     this.upperBound = upperBound;
+  }
+
+  @Override
+  public String toString() {
+    return "{count=" + count + ", repeats=" + repeats + ", range=[" + lowerBound + ", "
+        + upperBound.toString() + "]}";
   }
 
 }

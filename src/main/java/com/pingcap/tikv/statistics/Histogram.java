@@ -285,6 +285,11 @@ public class Histogram {
    */
   protected int lowerBound(Comparable key) {
     assert key.getClass() == buckets.get(0).getUpperBound().getClass();
+    System.out.println(">>>>>>>>>>>>");
+    for(Bucket bucket: buckets) {
+      System.out.println(bucket.toString());
+    }
+    System.out.println("<<<<<<<<<<<<");
     return Arrays.binarySearch(buckets.toArray(), new Bucket(key));
   }
 
