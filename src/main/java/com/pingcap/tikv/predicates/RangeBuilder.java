@@ -15,24 +15,20 @@
 
 package com.pingcap.tikv.predicates;
 
-import com.google.common.collect.ImmutableList;
-import com.google.common.collect.Range;
-import com.google.common.collect.RangeSet;
-import com.google.common.collect.TreeRangeSet;
+import static com.google.common.base.Preconditions.checkArgument;
+import static java.util.Objects.requireNonNull;
+
+import com.google.common.collect.*;
 import com.pingcap.tikv.exception.TiClientInternalException;
 import com.pingcap.tikv.expression.TiConstant;
 import com.pingcap.tikv.expression.TiExpr;
 import com.pingcap.tikv.expression.TiFunctionExpression;
 import com.pingcap.tikv.expression.scalar.*;
+import com.pingcap.tikv.meta.TiKey;
 import com.pingcap.tikv.predicates.AccessConditionNormalizer.NormalizedCondition;
 import com.pingcap.tikv.types.DataType;
-import com.pingcap.tikv.util.Comparables;
-
 import java.util.ArrayList;
 import java.util.List;
-
-import static com.google.common.base.Preconditions.checkArgument;
-import static java.util.Objects.requireNonNull;
 
 // TODO: reconsider class design and organization
 public class RangeBuilder {
@@ -115,17 +111,16 @@ public class RangeBuilder {
    * @param type index column type
    * @return access ranges
    */
-  @SuppressWarnings("unchecked")
-  public static List<Range> exprToRanges(List<TiExpr> accessConditions, DataType type) {
+  List<Range> exprToRanges(List<TiExpr> accessConditions, DataType type) {
     if (accessConditions == null || accessConditions.size() == 0) {
       return ImmutableList.of();
     }
-    RangeSet ranges = TreeRangeSet.create();
+    RangeSet<TiKey> ranges = TreeRangeSet.create();
     ranges.add(Range.all());
     for (TiExpr ac : accessConditions) {
       NormalizedCondition cond = AccessConditionNormalizer.normalize(ac);
       TiConstant constVal = cond.constantVals.get(0);
-      Comparable<?> comparableVal = Comparables.wrap(constVal.getValue());
+      TiKey comparableVal = new TiKey<>(constVal.getValue());
       TiExpr expr = cond.condition;
 
       if (expr instanceof GreaterThan) {
@@ -139,8 +134,8 @@ public class RangeBuilder {
       } else if (expr instanceof Equal) {
         ranges = ranges.subRangeSet(Range.singleton(comparableVal));
       } else if (expr instanceof NotEqual) {
-        RangeSet left = ranges.subRangeSet(Range.lessThan(comparableVal));
-        RangeSet right = ranges.subRangeSet(Range.greaterThan(comparableVal));
+        RangeSet<TiKey> left = ranges.subRangeSet(Range.lessThan(comparableVal));
+        RangeSet<TiKey> right = ranges.subRangeSet(Range.greaterThan(comparableVal));
         ranges = TreeRangeSet.create(left);
         ranges.addAll(right);
       } else {
@@ -151,7 +146,7 @@ public class RangeBuilder {
     return ImmutableList.copyOf(ranges.asRanges());
   }
 
-  public static List<IndexRange> appendRanges(
+  static List<IndexRange> appendRanges(
       List<IndexRange> indexRanges, List<Range> ranges, DataType rangeType) {
     requireNonNull(ranges);
     List<IndexRange> resultRanges = new ArrayList<>();
@@ -179,7 +174,7 @@ public class RangeBuilder {
     private Range range;
     private DataType rangeType;
 
-    public IndexRange(
+    private IndexRange(
         List<Object> accessPoints, List<DataType> types, Range range, DataType rangeType) {
       this.accessPoints = accessPoints;
       this.types = types;
@@ -230,7 +225,7 @@ public class RangeBuilder {
       return result;
     }
 
-    public List<Object> getAccessPoints() {
+    List<Object> getAccessPoints() {
       return accessPoints;
     }
 
@@ -250,7 +245,7 @@ public class RangeBuilder {
       return types;
     }
 
-    public DataType getRangeType() {
+    DataType getRangeType() {
       return rangeType;
     }
   }

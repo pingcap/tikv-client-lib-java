@@ -15,7 +15,7 @@
 
 package com.pingcap.tikv;
 
-import static com.pingcap.tikv.util.KeyRangeUtils.makeRange;
+import static com.pingcap.tikv.meta.TiKey.makeRange;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Range;
@@ -23,6 +23,7 @@ import com.google.protobuf.ByteString;
 import com.pingcap.tikv.exception.TiClientInternalException;
 import com.pingcap.tikv.kvproto.Kvrpcpb.KvPair;
 import com.pingcap.tikv.kvproto.Metapb.Store;
+import com.pingcap.tikv.meta.TiKey;
 import com.pingcap.tikv.meta.TiSelectRequest;
 import com.pingcap.tikv.meta.TiTimestamp;
 import com.pingcap.tikv.operation.IndexScanIterator;
@@ -32,7 +33,6 @@ import com.pingcap.tikv.region.RegionManager;
 import com.pingcap.tikv.region.RegionStoreClient;
 import com.pingcap.tikv.region.TiRegion;
 import com.pingcap.tikv.row.Row;
-import com.pingcap.tikv.util.Comparables;
 import com.pingcap.tikv.util.Pair;
 import com.pingcap.tikv.util.RangeSplitter.RegionTask;
 import java.util.ArrayList;
@@ -79,7 +79,7 @@ public class Snapshot {
   }
 
   /**
-   * Issue a select request to TiKV and PD.
+   * Issue a table scan select request to TiKV and PD.
    *
    * @param selReq is SelectRequest.
    * @return a Iterator that contains all result from this select request.
@@ -88,6 +88,11 @@ public class Snapshot {
     return new SelectIterator(selReq, getSession(), regionCache, false);
   }
 
+  /**
+   * Issue a index scan select request to TiKV and PD.
+   * @param selReq is SelectRequest
+   * @return a Iterator that contains all result from this select request
+   */
   public Iterator<Row> selectByIndex(TiSelectRequest selReq) {
     Iterator<Row> iter = new SelectIterator(selReq, getSession(), regionCache, true);
     return new IndexScanIterator(this, selReq, iter);
@@ -134,7 +139,7 @@ public class Snapshot {
     List<ByteString> keyBuffer = new ArrayList<>();
     List<KvPair> result = new ArrayList<>(keys.size());
     for (ByteString key : keys) {
-      if (curRegion == null || !curKeyRange.contains(Comparables.wrap(key))) {
+      if (curRegion == null || !curKeyRange.contains(new TiKey<>(key))) {
         Pair<TiRegion, Store> pair = regionCache.getRegionStorePairByKey(key);
         lastPair = pair;
         curRegion = pair.first;

@@ -25,6 +25,7 @@ import com.pingcap.tikv.expression.TiConstant;
 import com.pingcap.tikv.expression.TiExpr;
 import com.pingcap.tikv.expression.scalar.*;
 import com.pingcap.tikv.meta.MetaUtils;
+import com.pingcap.tikv.meta.TiKey;
 import com.pingcap.tikv.meta.TiTableInfo;
 import com.pingcap.tikv.types.DataType;
 import com.pingcap.tikv.types.DataTypeFactory;
@@ -66,6 +67,7 @@ public class RangeBuilderTest {
   }
 
   @Test
+  @SuppressWarnings("unchecked")
   public void exprsToPoints() throws Exception {
     TiTableInfo table = createTable();
     List<TiExpr> conds =
@@ -115,6 +117,7 @@ public class RangeBuilderTest {
   }
 
   @Test
+  @SuppressWarnings("unchecked")
   public void exprToRanges() throws Exception {
     TiTableInfo table = createTable();
     List<TiExpr> conds =
@@ -128,8 +131,8 @@ public class RangeBuilderTest {
     RangeBuilder builder = new RangeBuilder();
     List<Range> ranges = builder.exprToRanges(conds, type);
     assertEquals(2, ranges.size());
-    assertEquals(Range.closedOpen(0L, 50L), ranges.get(0));
-    assertEquals(Range.open(50L, 100L), ranges.get(1));
+    assertEquals(Range.closedOpen(new TiKey<>(0L), new TiKey<>(50L)), ranges.get(0));
+    assertEquals(Range.open(new TiKey<>(50L), new TiKey<>(100L)), ranges.get(1));
 
     // Test points and string range
     List<TiExpr> ac =
@@ -158,9 +161,9 @@ public class RangeBuilderTest {
     indexRanges = RangeBuilder.appendRanges(indexRanges, ranges, type);
     assertEquals(4, indexRanges.size());
 
-    assertEquals(Range.closedOpen("a", "g"), indexRanges.get(0).getRange());
-    assertEquals(Range.closedOpen("a", "g"), indexRanges.get(2).getRange());
-    assertEquals(Range.open("g", "z"), indexRanges.get(1).getRange());
-    assertEquals(Range.open("g", "z"), indexRanges.get(3).getRange());
+    assertEquals(Range.closedOpen(new TiKey<>("a"), new TiKey<>("g")), indexRanges.get(0).getRange());
+    assertEquals(Range.closedOpen(new TiKey<>("a"), new TiKey<>("g")), indexRanges.get(2).getRange());
+    assertEquals(Range.open(new TiKey<>("g"), new TiKey<>("z")), indexRanges.get(1).getRange());
+    assertEquals(Range.open(new TiKey<>("g"), new TiKey<>("z")), indexRanges.get(3).getRange());
   }
 }

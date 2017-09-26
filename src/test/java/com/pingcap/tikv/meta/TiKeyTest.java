@@ -1,4 +1,5 @@
 /*
+ *
  * Copyright 2017 PingCAP, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -11,17 +12,20 @@
  * distributed under the License is distributed on an "AS IS" BASIS,
  * See the License for the specific language governing permissions and
  * limitations under the License.
+ *
  */
 
-package com.pingcap.tikv.util;
+package com.pingcap.tikv.meta;
 
 import static org.junit.Assert.assertTrue;
 
 import com.google.protobuf.ByteString;
+import com.pingcap.tikv.meta.TiKey;
 import java.util.function.Function;
 import org.junit.Test;
 
-public class ComparablesTest {
+@SuppressWarnings("unchecked")
+public class TiKeyTest {
   @Test
   public void wrapTest() throws Exception {
     // compared as unsigned
@@ -39,20 +43,20 @@ public class ComparablesTest {
     ByteString lhsBS = ByteString.copyFrom(lhs);
     ByteString rhsBS = ByteString.copyFrom(rhs);
 
-    Comparable lhsComp = Comparables.wrap(lhsBS);
-    Comparable rhsComp = Comparables.wrap(rhsBS);
+    Comparable lhsComp = new TiKey<>(lhsBS);
+    Comparable rhsComp = new TiKey<>(rhsBS);
 
     assertTrue(tester.apply(lhsComp.compareTo(rhsComp)));
 
-    lhsComp = Comparables.wrap(lhs);
-    rhsComp = Comparables.wrap(rhs);
+    lhsComp = new TiKey<>(lhs);
+    rhsComp = new TiKey<>(rhs);
 
     assertTrue(tester.apply(lhsComp.compareTo(rhsComp)));
   }
 
   private void testComparable(Object lhs, Object rhs, Function<Integer, Boolean> tester) {
-    Comparable lhsComp = Comparables.wrap(lhs);
-    Comparable rhsComp = Comparables.wrap(rhs);
+    Comparable lhsComp = new TiKey<>(lhs);
+    Comparable rhsComp = new TiKey<>(rhs);
 
     assertTrue(tester.apply(lhsComp.compareTo(rhsComp)));
   }

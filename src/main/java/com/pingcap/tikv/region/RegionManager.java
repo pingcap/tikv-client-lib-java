@@ -17,7 +17,7 @@
 
 package com.pingcap.tikv.region;
 
-import static com.pingcap.tikv.util.KeyRangeUtils.makeRange;
+import static com.pingcap.tikv.meta.TiKey.makeRange;
 
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
@@ -34,7 +34,7 @@ import com.pingcap.tikv.kvproto.Kvrpcpb.IsolationLevel;
 import com.pingcap.tikv.kvproto.Metapb.Peer;
 import com.pingcap.tikv.kvproto.Metapb.Region;
 import com.pingcap.tikv.kvproto.Metapb.Store;
-import com.pingcap.tikv.util.Comparables;
+import com.pingcap.tikv.meta.TiKey;
 import com.pingcap.tikv.util.Pair;
 import java.util.List;
 import java.util.Optional;
@@ -47,7 +47,7 @@ public class RegionManager {
   private final ReadOnlyPDClient pdClient;
   private final LoadingCache<Long, Future<TiRegion>> regionCache;
   private final LoadingCache<Long, Future<Store>> storeCache;
-  private final RangeMap<Comparable, Long> keyToRegionIdCache;
+  private final RangeMap<TiKey, Long> keyToRegionIdCache;
   private final ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
 
   private static final int MAX_CACHE_CAPACITY = 4096;
@@ -88,7 +88,7 @@ public class RegionManager {
     Long regionId;
     lock.readLock().lock();
     try {
-      regionId = keyToRegionIdCache.get(Comparables.wrap(key));
+      regionId = keyToRegionIdCache.get(new TiKey<>(key));
     } finally {
       lock.readLock().unlock();
     }
@@ -103,7 +103,6 @@ public class RegionManager {
     return getRegionById(regionId);
   }
 
-  @SuppressWarnings("unchecked")
   public void invalidateRegion(long regionId) {
     lock.writeLock().lock();
     try {
