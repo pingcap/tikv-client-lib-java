@@ -1,12 +1,15 @@
 package com.pingcap.tikv.statistics;
 
 import com.google.common.collect.Range;
+import com.google.protobuf.ByteString;
 import com.pingcap.tidb.tipb.ColumnInfo;
-import com.pingcap.tikv.expression.TiBinaryFunctionExpresson;
+import com.pingcap.tikv.expression.TiBinaryFunctionExpression;
 import com.pingcap.tikv.expression.TiColumnRef;
 import com.pingcap.tikv.expression.TiConstant;
 import com.pingcap.tikv.expression.TiExpr;
+import com.pingcap.tikv.expression.scalar.*;
 import com.pingcap.tikv.meta.TiIndexInfo;
+import com.pingcap.tikv.meta.TiKey;
 import com.pingcap.tikv.meta.TiTableInfo;
 import com.pingcap.tikv.predicates.PredicateUtils;
 import com.pingcap.tikv.predicates.RangeBuilder;
@@ -14,7 +17,6 @@ import com.pingcap.tikv.predicates.RangeBuilder.IndexRange;
 import com.pingcap.tikv.predicates.ScanBuilder;
 import com.pingcap.tikv.predicates.ScanBuilder.IndexMatchingResult;
 import com.pingcap.tikv.types.DataType;
-import com.pingcap.tikv.util.Comparables;
 import com.pingcap.tikv.util.DBReader;
 
 import java.util.*;
@@ -24,12 +26,12 @@ import java.util.*;
  *
  */
 public class Table {
-  private static final long pseudoRowCount = 10000;
-  private static final long pseudoEqualRate = 1000;
-  private static final long pseudoLessRate = 3;
-  private static final long pseudoBetweenRate = 40;
+  private static final long PSEUDO_ROW_COUNT = 10000;
+  private static final double EQUAL_RATE = 1.0 / 1000.0;
+  private static final double LESS_RATE = 1.0 / 3.0;
+  private static final double PSEUDO_BETWEEN_RATE = 1.0 / 40;
   // If one condition can't be calculated, we will assume that the selectivity of this condition is 0.8.
-  private static final double selectionFactor = 0.8;
+  private static final double SELECTION_FACTOR = 0.8;
 
   private static final int indexType = 0;
   private static final int pkType = 1;
@@ -121,9 +123,9 @@ public class Table {
   }
 
   /** ColumnGreaterRowCount estimates the row count where the column greater than value. */
-  public double ColumnGreaterRowCount(Comparable value, ColumnInfo columnInfo) {
+  public double ColumnGreaterRowCount(TiKey value, ColumnInfo columnInfo) {
     if (ColumnIsInvalid(columnInfo)) {
-      return (double) (Count) / pseudoLessRate;
+      return (double) (Count) * LESS_RATE;
     }
     Histogram hist = Columns.get(columnInfo.getColumnId()).getHistogram();
     double result = hist.greaterRowCount(value);
@@ -132,9 +134,9 @@ public class Table {
   }
 
   /** ColumnLessRowCount estimates the row count where the column less than value. */
-  public double ColumnLessRowCount(Comparable value, ColumnInfo columnInfo) {
+  public double ColumnLessRowCount(TiKey value, ColumnInfo columnInfo) {
     if (ColumnIsInvalid(columnInfo)) {
-      return (double) (Count) / pseudoLessRate;
+      return (double) (Count) * LESS_RATE;
     }
     Histogram hist = Columns.get(columnInfo.getColumnId()).getHistogram();
     double result = hist.lessRowCount(value);
@@ -143,9 +145,9 @@ public class Table {
   }
 
   /** ColumnBetweenRowCount estimates the row count where column greater or equal to a and less than b. */
-  public double ColumnBetweenRowCount(Comparable a, Comparable b, ColumnInfo columnInfo) {
+  public double ColumnBetweenRowCount(TiKey a, TiKey b, ColumnInfo columnInfo) {
     if (ColumnIsInvalid(columnInfo)) {
-      return (double) (Count) / pseudoBetweenRate;
+      return (double) (Count) * PSEUDO_BETWEEN_RATE;
     }
     Histogram hist = Columns.get(columnInfo.getColumnId()).getHistogram();
     double result = hist.betweenRowCount(a, b);
@@ -154,9 +156,9 @@ public class Table {
   }
 
   /** ColumnEqualRowCount estimates the row count where the column equals to value. */
-  public double ColumnEqualRowCount(Comparable value, ColumnInfo columnInfo) {
+  public double ColumnEqualRowCount(TiKey value, ColumnInfo columnInfo) {
     if (ColumnIsInvalid(columnInfo)) {
-      return (double) (Count) / pseudoEqualRate;
+      return (double) (Count) * EQUAL_RATE;
     }
     Histogram hist = Columns.get(columnInfo.getColumnId()).getHistogram();
     double result = hist.equalRowCount(value);
@@ -181,11 +183,13 @@ public class Table {
     if (Pseudo || hist == null || hist.getBuckets().isEmpty()) {
       return getPseudoRowCountByIndexRanges(indexRanges, Count);
     }
-    return i.getRowCount(indexRanges, getTableID());
+    double ret = i.getRowCount(indexRanges, getTableID());
+    ret *= hist.getIncreaseFactor(Count);
+    return ret;
   }
 
   static Table PseudoTable(long tableID) {
-    return new Table(tableID, pseudoRowCount, true);
+    return new Table(tableID, PSEUDO_ROW_COUNT, true);
   }
 
   private double getPseudoRowCountByIndexRanges(List<IndexRange> indexRanges, double tableRowCount) {
@@ -230,32 +234,32 @@ public class Table {
     double rowCount = 0;
     for (IndexRange columnRange : columnRanges) {
       List<Object> points = columnRange.getAccessPoints();
-      Comparable lowerBound, upperBound;
+      TiKey<ByteString> lowerBound, upperBound;
       Range rg = columnRange.getRange();
       if (points.size() > 0) {
-        lowerBound = Comparables.wrap(points.get(0));
-        upperBound = Comparables.wrap(lowerBound);
+        lowerBound = TiKey.encode(points.get(0));
+        upperBound = TiKey.encode(points.get(0));
       } else {
-        lowerBound = Comparables.wrap(rg.lowerEndpoint());
-        upperBound = Comparables.wrap(rg.upperEndpoint());
+        lowerBound = TiKey.encode(rg.hasLowerBound()? rg.lowerEndpoint(): DataType.encodeIndexMinValue());
+        upperBound = TiKey.encode(rg.hasUpperBound()? rg.upperEndpoint(): DataType.encodeIndexMaxValue());
       }
-      if (lowerBound == null && upperBound.compareTo(DataType.indexMaxValue()) == 0) {
+      if (!rg.hasLowerBound() && upperBound.compareTo(TiKey.encode(DataType.encodeIndexMaxValue())) == 0) {
         rowCount += tableRowCount;
-      } else if (lowerBound != null && lowerBound.compareTo(DataType.indexMinValue()) == 0) {
-        double nullCount = tableRowCount / pseudoEqualRate;
-        if (upperBound.compareTo(DataType.indexMaxValue()) == 0) {
+      } else if (rg.hasLowerBound() && lowerBound.compareTo(TiKey.encode(DataType.encodeIndexMinValue())) == 0) {
+        double nullCount = tableRowCount * EQUAL_RATE;
+        if (upperBound.compareTo(TiKey.encode(DataType.encodeIndexMaxValue())) == 0) {
           rowCount += tableRowCount - nullCount;
         } else {
-          double lessCount = tableRowCount / pseudoLessRate;
+          double lessCount = tableRowCount * LESS_RATE;
           rowCount += lessCount - nullCount;
         }
-      } else if (upperBound.compareTo(DataType.indexMaxValue()) == 0) {
-        rowCount += tableRowCount / pseudoLessRate;
+      } else if (upperBound.compareTo(TiKey.encode(DataType.encodeIndexMaxValue())) == 0) {
+        rowCount += tableRowCount * LESS_RATE;
       } else {
         if (lowerBound.compareTo(upperBound) == 0) {
-          rowCount += tableRowCount / pseudoEqualRate;
+          rowCount += tableRowCount * EQUAL_RATE;
         } else {
-          rowCount += tableRowCount / pseudoBetweenRate;
+          rowCount += tableRowCount * PSEUDO_BETWEEN_RATE;
         }
       }
     }
@@ -277,6 +281,30 @@ public class Table {
       this.mask = (BitSet) _mask.clone();
       this.ranges = _ranges;
     }
+
+    private String retrieve(int x) {
+      switch(x) {
+        case 0: return "index";
+        case 1: return "pk";
+        case 2: return "column";
+        default: return "";
+      }
+    }
+
+    @Override
+    public String toString() {
+      String ans = retrieve(tp) + "#" + String.valueOf(ID) + "_" + mask + "_";
+      for(IndexRange ir: ranges) {
+        ans = ans.concat("," + ir);
+      }
+      return ans;
+    }
+  }
+
+  private class exprSetCompare implements Comparator<exprSet> {
+    public int compare(exprSet a, exprSet b) {
+      return (int) (b.ID - a.ID);
+    }
   }
 
   public static boolean checkColumnConstant(List<TiExpr> exprs) {
@@ -292,22 +320,17 @@ public class Table {
   }
 
   private double pseudoSelectivity(List<TiExpr> exprs) {
-    double minFactor = selectionFactor;
+    double minFactor = SELECTION_FACTOR;
     for(TiExpr expr: exprs) {
-      if(expr instanceof TiBinaryFunctionExpresson && checkColumnConstant(((TiBinaryFunctionExpresson) expr).getArgs())) {
-        switch (((TiBinaryFunctionExpresson) expr).getName()) {
-          case "=":
-          case "NullEqual":
-            minFactor = Math.min(minFactor, 1.0/pseudoEqualRate);
-            break;
-          case ">=":
-          case ">":
-          case "<=":
-          case "<":
-            minFactor = Math.min(minFactor, 1.0/pseudoLessRate);
-            break;
-          default:
-          // FIXME: To resolve the between case.
+      if(expr instanceof TiBinaryFunctionExpression && checkColumnConstant(((TiBinaryFunctionExpression) expr).getArgs())) {
+        if(expr instanceof Equal || expr instanceof NullEqual) {
+          minFactor *= EQUAL_RATE;;
+        } else if(
+            expr instanceof GreaterEqual ||
+            expr instanceof GreaterThan ||
+            expr instanceof LessEqual ||
+            expr instanceof LessThan) {
+          minFactor *= LESS_RATE;
         }
       }
     }
@@ -326,7 +349,7 @@ public class Table {
     }
     int len = exprs.size();
     TiTableInfo table = dbReader.getTableInfo(getTableID());
-    ArrayList<exprSet> sets = new ArrayList<>();
+    List<exprSet> sets = new ArrayList<>();
     Set<TiColumnRef> extractedCols = PredicateUtils.extractColumnRefFromExpr(PredicateUtils.mergeCNFExpressions(exprs));
     for(ColumnWithHistogram colInfo: Columns.values()) {
       TiColumnRef col = TiColumnRef.colInfo2Col(extractedCols, colInfo.getColumnInfo());
@@ -354,8 +377,10 @@ public class Table {
         sets.add(tmp);
       }
     }
-
+    sets.sort(new exprSetCompare());
+//    System.out.println(">>>" + sets + "<<<");
     sets = getUsableSetsByGreedy(sets, len);
+//    System.out.println("<<<" + sets + ">>>");
     double ret = 1.0;
     BitSet mask = new BitSet(len);
     mask.clear();
@@ -373,11 +398,11 @@ public class Table {
           break;
         default:
       }
-      System.out.println("Rowcount=" + rowCount + " getCount()=" + getCount());
+//      System.out.println("Rowcount=" + rowCount + " getCount()=" + getCount());
       ret *= rowCount / getCount();
     }
     if(mask.cardinality() > 0) {
-      ret *= selectionFactor;
+      ret *= SELECTION_FACTOR;
     }
     return ret;
   }
@@ -386,18 +411,19 @@ public class Table {
                                             TiTableInfo table) {
     List<TiExpr> exprsClone = new ArrayList<>();
     exprsClone.addAll(exprs);
-    IndexMatchingResult result = ScanBuilder.extractConditions(exprsClone, table, table.getIndices().get(0));
+    IndexMatchingResult result = ScanBuilder.extractConditions(exprsClone, table, columnRef.getColumnInfo());
     List<TiExpr> accessConditions = result.getAccessConditions();
+    List<TiExpr> accessPoints = result.getAccessPoints();
     int i = 0;
     for(TiExpr x: exprsClone) {
-      for(TiExpr y: accessConditions) {
-        if(x.equals(y)) {
-          mask.set(i);
-        }
+      if(accessConditions.contains(x) || accessPoints.contains(x)) {
+        mask.set(i);
       }
       i ++;
     }
-    return RangeBuilder.appendRanges(ranges, RangeBuilder.exprToRanges(accessConditions, columnRef.getType()), columnRef.getType());
+    ranges = RangeBuilder.exprsToIndexRanges(accessPoints,
+        result.getAccessPointTypes(), result.getAccessConditions(), result.getRangeType());
+    return ranges;
   }
 
   private List<IndexRange> getMaskAndRanges(List<TiExpr> exprs, List<TiColumnRef> indexColumnRef, BitSet mask, List<IndexRange> ranges,
@@ -406,21 +432,21 @@ public class Table {
     exprsClone.addAll(exprs);
     IndexMatchingResult result = ScanBuilder.extractConditions(exprsClone, table, index);
     List<TiExpr> accessConditions = result.getAccessConditions();
+    List<TiExpr> accessPoints = result.getAccessPoints();
     int i = 0;
     for(TiExpr x: exprsClone) {
-      for(TiExpr y: accessConditions) {
-        if(x.equals(y)) {
-          mask.set(i);
-        }
+      if(accessConditions.contains(x) || accessPoints.contains(x)) {
+        mask.set(i);
       }
       i ++;
     }
-    return RangeBuilder.appendRanges(ranges, RangeBuilder.exprToRanges(accessConditions,
-        indexColumnRef.get(0).getType()), indexColumnRef.get(0).getType());
+    ranges = RangeBuilder.exprsToIndexRanges(accessPoints,
+        result.getAccessPointTypes(), result.getAccessConditions(), result.getRangeType());
+    return ranges;
   }
 
-  private ArrayList<exprSet> getUsableSetsByGreedy(ArrayList<exprSet> sets, int len) {
-    ArrayList<exprSet> newBlocks = new ArrayList<>();
+  private List<exprSet> getUsableSetsByGreedy(List<exprSet> sets, int len) {
+    List<exprSet> newBlocks = new ArrayList<>();
     BitSet mask = new BitSet(len);
     mask.clear();
     mask.flip(0, len);
@@ -429,17 +455,17 @@ public class Table {
       int bestID = -1;
       int bestCount = 0;
       int bestTp = colType;
-      int count = 0;
+      int id = 0;
       for(exprSet set: sets) {
         st = (BitSet) set.mask.clone();
         st.and(mask);
         int bits = st.cardinality();
-        if(bestTp == colType && set.tp < colType || bestCount < bits) {
-          bestID = count;
+        if((bestTp == colType && set.tp < colType && bestCount <= bits) || bestCount < bits) {
+          bestID = id;
           bestCount = bits;
           bestTp = set.tp;
         }
-        count ++;
+        id ++;
       }
       if(bestCount == 0) {
         break;
@@ -448,7 +474,11 @@ public class Table {
         st.xor(sets.get(bestID).mask);
         mask.and(st);
         newBlocks.add(sets.get(bestID));
-        sets.remove(bestID);
+        //sets should have at least one object
+        for(int i = bestID; i < sets.size() - 1; i ++) {
+          sets.set(i, sets.get(i + 1));
+        }
+        sets.remove(sets.size() - 1);
       }
     }
     return newBlocks;

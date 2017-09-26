@@ -31,8 +31,7 @@ import com.pingcap.tikv.meta.TiTableInfo;
 import com.pingcap.tikv.types.BytesType;
 import com.pingcap.tikv.types.IntegerType;
 import com.pingcap.tikv.util.Pair;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
+import org.apache.log4j.Logger;
 
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
@@ -43,7 +42,7 @@ import java.util.Objects;
 import static com.google.common.base.Preconditions.checkArgument;
 
 public class CatalogTransaction {
-  protected static final Logger logger = LogManager.getFormatterLogger(Catalog.class);
+  protected static final Logger logger = Logger.getLogger(Catalog.class);
   private final Snapshot snapshot;
   private final byte[] prefix;
 
@@ -129,13 +128,13 @@ public class CatalogTransaction {
     return ByteString.copyFrom(String.format("%s:%d", DB_PREFIX, id).getBytes());
   }
 
-  long getLatestSchemaVersion() {
+  public long getLatestSchemaVersion() {
     ByteString versionBytes = bytesGet(KEY_SCHEMA_VERSION);
     CodecDataInput cdi = new CodecDataInput(versionBytes.toByteArray());
     return Long.parseLong(new String(cdi.toByteArray(), StandardCharsets.UTF_8));
   }
 
-  List<TiDBInfo> getDatabases() {
+  public List<TiDBInfo> getDatabases() {
     List<Pair<ByteString, ByteString>> fields = hashGetFields(KEY_DB);
     ImmutableList.Builder<TiDBInfo> builder = ImmutableList.builder();
     for (Pair<ByteString, ByteString> pair : fields) {
@@ -153,7 +152,7 @@ public class CatalogTransaction {
     return parseFromJson(json, TiDBInfo.class);
   }
 
-  List<TiTableInfo> getTables(long dbId) {
+  public List<TiTableInfo> getTables(long dbId) {
     ByteString dbKey = encodeDatabaseID(dbId);
     List<Pair<ByteString, ByteString>> fields = hashGetFields(dbKey);
     ImmutableList.Builder<TiTableInfo> builder = ImmutableList.builder();
@@ -169,7 +168,7 @@ public class CatalogTransaction {
     Objects.requireNonNull(json, "json is null");
     Objects.requireNonNull(cls, "cls is null");
 
-    logger.debug("Parse Json %s : %s", cls.getSimpleName(), json.toStringUtf8());
+    logger.debug(String.format("Parse Json %s : %s", cls.getSimpleName(), json.toStringUtf8()));
     ObjectMapper mapper = new ObjectMapper();
     try {
       return mapper.readValue(json.toStringUtf8(), cls);

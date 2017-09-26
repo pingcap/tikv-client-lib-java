@@ -15,37 +15,30 @@
 
 package com.pingcap.tikv.policy;
 
-import com.google.common.base.Preconditions;
+import com.pingcap.tikv.exception.TiClientInternalException;
 import com.pingcap.tikv.operation.ErrorHandler;
+import com.pingcap.tikv.util.BackOff;
 
-public class RetryNTimes extends RetryPolicy {
-  private int n;
-
-  private RetryNTimes(int n, ErrorHandler handler) {
+public class RetryNTimes<T> extends RetryPolicy<T> {
+  private RetryNTimes(ErrorHandler<T> handler, BackOff backOff) {
     super(handler);
-    Preconditions.checkArgument(n >= 1, "Retry count cannot be less than 1.");
-    this.n = n;
+    this.backOff = backOff;
   }
 
-  @Override
-  protected boolean shouldRetry(Exception e) {
-    return --n != 0;
-  }
+  public static class Builder<T> implements RetryPolicy.Builder<T> {
+    private BackOff backOff;
 
-  public static Builder newBuilder(int n) {
-    return new Builder(n);
-  }
-
-  public static class Builder implements RetryPolicy.Builder {
-    private int n;
-
-    public Builder(int n) {
-      this.n = n;
+    public Builder(int n, Class<? extends BackOff> backoffClass) {
+      try {
+        this.backOff = backoffClass.getConstructor(int.class).newInstance(n);
+      } catch (Exception e) {
+        throw new TiClientInternalException("failed to create backoff object", e);
+      }
     }
 
     @Override
-    public RetryPolicy create(ErrorHandler handler) {
-      return new RetryNTimes(n, handler);
+    public RetryPolicy<T> create(ErrorHandler<T> handler) {
+      return new RetryNTimes<>(handler, backOff);
     }
   }
 }

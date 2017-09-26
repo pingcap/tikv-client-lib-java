@@ -17,12 +17,12 @@
 
 package com.pingcap.tikv.meta;
 
-import static org.junit.Assert.assertTrue;
-
 import com.google.protobuf.ByteString;
-import com.pingcap.tikv.meta.TiKey;
-import java.util.function.Function;
 import org.junit.Test;
+
+import java.util.function.Function;
+
+import static org.junit.Assert.assertTrue;
 
 @SuppressWarnings("unchecked")
 public class TiKeyTest {
@@ -43,20 +43,20 @@ public class TiKeyTest {
     ByteString lhsBS = ByteString.copyFrom(lhs);
     ByteString rhsBS = ByteString.copyFrom(rhs);
 
-    Comparable lhsComp = new TiKey<>(lhsBS);
-    Comparable rhsComp = new TiKey<>(rhsBS);
+    Comparable lhsComp = TiKey.create(lhsBS);
+    Comparable rhsComp = TiKey.create(rhsBS);
 
     assertTrue(tester.apply(lhsComp.compareTo(rhsComp)));
 
-    lhsComp = new TiKey<>(lhs);
-    rhsComp = new TiKey<>(rhs);
+    lhsComp = TiKey.create(lhs);
+    rhsComp = TiKey.create(rhs);
 
     assertTrue(tester.apply(lhsComp.compareTo(rhsComp)));
   }
 
   private void testComparable(Object lhs, Object rhs, Function<Integer, Boolean> tester) {
-    Comparable lhsComp = new TiKey<>(lhs);
-    Comparable rhsComp = new TiKey<>(rhs);
+    Comparable lhsComp = TiKey.create(lhs);
+    Comparable rhsComp = TiKey.create(rhs);
 
     assertTrue(tester.apply(lhsComp.compareTo(rhsComp)));
   }

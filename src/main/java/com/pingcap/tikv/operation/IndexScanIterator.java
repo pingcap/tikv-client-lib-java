@@ -15,44 +15,92 @@
 
 package com.pingcap.tikv.operation;
 
-import com.google.common.collect.ImmutableList;
-import com.google.protobuf.ByteString;
 import com.pingcap.tikv.Snapshot;
-import com.pingcap.tikv.codec.KeyUtils;
-import com.pingcap.tikv.codec.TableCodec;
-import com.pingcap.tikv.kvproto.Coprocessor.KeyRange;
+import com.pingcap.tikv.TiConfiguration;
+import com.pingcap.tikv.TiSession;
+import com.pingcap.tikv.exception.TiClientInternalException;
 import com.pingcap.tikv.meta.TiSelectRequest;
 import com.pingcap.tikv.row.Row;
+import com.pingcap.tikv.util.RangeSplitter;
+import com.pingcap.tikv.util.RangeSplitter.RegionTask;
+import gnu.trove.list.array.TLongArrayList;
 
 import java.util.Iterator;
+import java.util.List;
+import java.util.NoSuchElementException;
+import java.util.concurrent.ExecutorCompletionService;
 
-// A very bad implementation of Index Scanner barely made work
-// TODO: need to make it parallel and group indexes
+
 public class IndexScanIterator implements Iterator<Row> {
-  private final Iterator<Row> iter;
+  private final Iterator<Long> handleIterator;
   private final TiSelectRequest selReq;
   private final Snapshot snapshot;
+  private Iterator<Row> rowIterator;
+  private final ExecutorCompletionService<Iterator<Row>> completionService;
 
-  public IndexScanIterator(Snapshot snapshot, TiSelectRequest req, Iterator<Row> iter) {
-    this.iter = iter;
+  private int batchCount = 0;
+  private final int batchSize;
+
+  public IndexScanIterator(Snapshot snapshot, TiSelectRequest req, Iterator<Long> handleIterator) {
+    TiSession session = snapshot.getSession();
+    TiConfiguration conf = session.getConf();
     this.selReq = req;
+    this.handleIterator = handleIterator;
     this.snapshot = snapshot;
+    this.batchSize = conf.getIndexScanBatchSize();
+    this.completionService = new ExecutorCompletionService(session.getThreadPoolForIndexScan());
+  }
+
+  private TLongArrayList feedBatch() {
+    TLongArrayList handles = new TLongArrayList(512);
+    while (handleIterator.hasNext()) {
+      handles.add(handleIterator.next());
+      if (batchSize <= handles.size()) {
+        break;
+      }
+    }
+    return handles;
   }
 
   @Override
   public boolean hasNext() {
-    return iter.hasNext();
+    try {
+      if (rowIterator == null) {
+        TiSession session = snapshot.getSession();
+        while (handleIterator.hasNext()) {
+          TLongArrayList handles = feedBatch();
+          batchCount++;
+          completionService.submit(() -> {
+            List<RegionTask> tasks = RangeSplitter
+                .newSplitter(session.getRegionManager())
+                .splitHandlesByRegion(selReq.getTableInfo().getId(), handles);
+            return SelectIterator.getRowIterator(selReq, tasks, session);
+          });
+        }
+        while (batchCount > 0) {
+          rowIterator = completionService.take().get();
+          batchCount--;
+
+          if (rowIterator.hasNext()) {
+            return true;
+          }
+        }
+      }
+      if (rowIterator == null) {
+        return false;
+      }
+    } catch (Exception e) {
+      throw new TiClientInternalException("Error reading rows from handle", e);
+    }
+    return rowIterator.hasNext();
   }
 
   @Override
   public Row next() {
-    Row r = iter.next();
-    long handle = r.getLong(0);
-    ByteString startKey = TableCodec.encodeRowKeyWithHandle(selReq.getTableInfo().getId(), handle);
-    ByteString endKey = ByteString.copyFrom(KeyUtils.prefixNext(startKey.toByteArray()));
-    selReq.resetRanges(
-        ImmutableList.of(KeyRange.newBuilder().setStart(startKey).setEnd(endKey).build()));
-    Iterator<Row> it = snapshot.select(selReq);
-    return it.next();
+    if (hasNext()) {
+      return rowIterator.next();
+    } else {
+      throw new NoSuchElementException();
+    }
   }
 }

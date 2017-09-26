@@ -17,13 +17,14 @@ package com.pingcap.tikv.meta;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.google.common.annotations.VisibleForTesting;
+import com.google.common.base.Joiner;
 import com.google.common.collect.ImmutableList;
 import com.pingcap.tidb.tipb.ColumnInfo;
 import com.pingcap.tidb.tipb.IndexInfo;
 
 import java.io.Serializable;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import static java.util.Objects.requireNonNull;
 
@@ -65,7 +66,6 @@ public class TiIndexInfo implements Serializable {
     this.isFakePrimaryKey = isFakePrimaryKey;
   }
 
-  @VisibleForTesting
   public TiIndexInfo(long id, String indexName, String tableName, List<TiIndexColumn> indexColumns, boolean isPrimary) {
     this.id = id;
     this.name = indexName;
@@ -178,5 +178,19 @@ public class TiIndexInfo implements Serializable {
 
   public boolean isFakePrimaryKey() {
     return isFakePrimaryKey;
+  }
+
+  @Override
+  public String toString() {
+    return String.format("%s[%s]",
+        name,
+        Joiner.on(",")
+            .skipNulls()
+            .join(indexColumns
+                .stream()
+                .map(column -> column.getName())
+                .collect(Collectors.toList())
+            )
+    );
   }
 }

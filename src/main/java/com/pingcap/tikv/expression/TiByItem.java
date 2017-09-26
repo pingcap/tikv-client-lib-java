@@ -15,10 +15,11 @@
 
 package com.pingcap.tikv.expression;
 
-import static com.google.common.base.Preconditions.checkNotNull;
-
 import com.pingcap.tidb.tipb.ByItem;
+
 import java.io.Serializable;
+
+import static com.google.common.base.Preconditions.checkNotNull;
 
 public class TiByItem implements Serializable {
   private TiExpr expr;
@@ -42,5 +43,10 @@ public class TiByItem implements Serializable {
 
   public TiExpr getExpr() {
     return expr;
+  }
+
+  @Override
+  public String toString() {
+    return String.format("[%s %s]", expr.toString(), desc ? "DESC" : "ASC");
   }
 }

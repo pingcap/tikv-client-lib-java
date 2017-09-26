@@ -19,9 +19,10 @@ package com.pingcap.tikv.operation;
 
 import com.pingcap.tikv.PDClient;
 import com.pingcap.tikv.kvproto.Pdpb;
+
 import java.util.function.Function;
 
-public class PDErrorHandler<RespT> implements ErrorHandler<RespT, Pdpb.Error> {
+public class PDErrorHandler<RespT> implements ErrorHandler<RespT> {
   private final Function<RespT, Pdpb.Error> getError;
   private final PDClient client;
 
@@ -36,7 +37,7 @@ public class PDErrorHandler<RespT> implements ErrorHandler<RespT, Pdpb.Error> {
     }
     Pdpb.Error error = getError.apply(resp);
     if (error != null) {
-      client.updateLeader(client.getMembers());
+      client.updateLeader();
     }
   }
 }

@@ -15,9 +15,6 @@
 
 package com.pingcap.tikv;
 
-import static com.pingcap.tikv.meta.TiKey.makeRange;
-
-import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Range;
 import com.google.protobuf.ByteString;
 import com.pingcap.tikv.exception.TiClientInternalException;
@@ -29,25 +26,26 @@ import com.pingcap.tikv.meta.TiTimestamp;
 import com.pingcap.tikv.operation.IndexScanIterator;
 import com.pingcap.tikv.operation.ScanIterator;
 import com.pingcap.tikv.operation.SelectIterator;
-import com.pingcap.tikv.region.RegionManager;
 import com.pingcap.tikv.region.RegionStoreClient;
 import com.pingcap.tikv.region.TiRegion;
 import com.pingcap.tikv.row.Row;
 import com.pingcap.tikv.util.Pair;
+import com.pingcap.tikv.util.RangeSplitter;
 import com.pingcap.tikv.util.RangeSplitter.RegionTask;
+
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 
+import static com.pingcap.tikv.util.KeyRangeUtils.makeRange;
+
 public class Snapshot {
   private final TiTimestamp timestamp;
-  private final RegionManager regionCache;
   private final TiSession session;
   private final TiConfiguration conf;
 
-  public Snapshot(TiTimestamp timestamp, RegionManager regionCache, TiSession session) {
+  public Snapshot(TiTimestamp timestamp, TiSession session) {
     this.timestamp = timestamp;
-    this.regionCache = regionCache;
     this.session = session;
     this.conf = session.getConf();
   }
@@ -71,62 +69,60 @@ public class Snapshot {
   }
 
   public ByteString get(ByteString key) {
-    Pair<TiRegion, Store> pair = regionCache.getRegionStorePairByKey(key);
+    Pair<TiRegion, Store> pair = session.getRegionManager().getRegionStorePairByKey(key);
     RegionStoreClient client =
-        RegionStoreClient.create(pair.first, pair.second, getSession(), regionCache);
+        RegionStoreClient.create(pair.first, pair.second, getSession());
     // TODO: Need to deal with lock error after grpc stable
     return client.get(key, timestamp.getVersion());
   }
 
   /**
-   * Issue a table scan select request to TiKV and PD.
+   * Issue a table read request
    *
-   * @param selReq is SelectRequest.
+   * @param selReq select request for coprocessor
    * @return a Iterator that contains all result from this select request.
    */
-  public Iterator<Row> select(TiSelectRequest selReq) {
-    return new SelectIterator(selReq, getSession(), regionCache, false);
-  }
-
-  /**
-   * Issue a index scan select request to TiKV and PD.
-   * @param selReq is SelectRequest
-   * @return a Iterator that contains all result from this select request
-   */
-  public Iterator<Row> selectByIndex(TiSelectRequest selReq) {
-    Iterator<Row> iter = new SelectIterator(selReq, getSession(), regionCache, true);
-    return new IndexScanIterator(this, selReq, iter);
+  public Iterator<Row> tableRead(TiSelectRequest selReq) {
+    if (selReq.isIndexScan()) {
+      Iterator<Long> iter = SelectIterator.getHandleIterator(
+          selReq,
+          RangeSplitter.newSplitter(session.getRegionManager()).splitRangeByRegion(selReq.getRanges()),
+          session);
+      return new IndexScanIterator(this, selReq, iter);
+    } else {
+      return SelectIterator.getRowIterator(
+          selReq,
+          RangeSplitter.newSplitter(session.getRegionManager()).splitRangeByRegion(selReq.getRanges()),
+          session);
+    }
   }
 
   /**
    * Below is lower level API for env like Spark which already did key range split Perform table
    * scan
    *
-   * @param req SelectRequest for coprocessor
+   * @param selReq SelectRequest for coprocessor
    * @param task RegionTask of the coprocessor request to send
    * @return Row iterator to iterate over resulting rows
    */
-  public Iterator<Row> select(TiSelectRequest req, RegionTask task) {
-    return new SelectIterator(req, ImmutableList.of(task), getSession(), regionCache, false);
-  }
-
-  /**
-   * Below is lower level API for env like Spark which already did key range split Perform index
-   * double read
-   *
-   * @param req SelectRequest for coprocessor
-   * @param task RegionTask of the coprocessor request to send
-   * @return Row iterator to iterate over resulting rows
-   */
-  public Iterator<Row> selectByIndex(TiSelectRequest req, RegionTask task) {
-    Iterator<Row> iter =
-        new SelectIterator(req, ImmutableList.of(task), getSession(), regionCache, true);
-    return new IndexScanIterator(this, req, iter);
+  public Iterator<Row> tableRead(TiSelectRequest selReq, List<RegionTask> task) {
+    if (selReq.isIndexScan()) {
+      Iterator<Long> iter = SelectIterator.getHandleIterator(
+          selReq,
+          task,
+          session);
+      return new IndexScanIterator(this, selReq, iter);
+    } else {
+      return SelectIterator.getRowIterator(
+          selReq,
+          task,
+          session);
+    }
   }
 
   public Iterator<KvPair> scan(ByteString startKey) {
     return new ScanIterator(
-        startKey, conf.getScanBatchSize(), null, session, regionCache, timestamp.getVersion());
+        startKey, conf.getScanBatchSize(), null, session, session.getRegionManager(), timestamp.getVersion());
   }
 
   // TODO: Need faster implementation, say concurrent version
@@ -139,14 +135,14 @@ public class Snapshot {
     List<ByteString> keyBuffer = new ArrayList<>();
     List<KvPair> result = new ArrayList<>(keys.size());
     for (ByteString key : keys) {
-      if (curRegion == null || !curKeyRange.contains(new TiKey<>(key))) {
-        Pair<TiRegion, Store> pair = regionCache.getRegionStorePairByKey(key);
+      if (curRegion == null || !curKeyRange.contains(TiKey.create(key))) {
+        Pair<TiRegion, Store> pair = session.getRegionManager().getRegionStorePairByKey(key);
         lastPair = pair;
         curRegion = pair.first;
         curKeyRange = makeRange(curRegion.getStartKey(), curRegion.getEndKey());
 
         try (RegionStoreClient client =
-            RegionStoreClient.create(lastPair.first, lastPair.second, getSession(), regionCache)) {
+            RegionStoreClient.create(lastPair.first, lastPair.second, getSession())) {
           List<KvPair> partialResult = client.batchGet(keyBuffer, timestamp.getVersion());
           // TODO: Add lock check
           result.addAll(partialResult);

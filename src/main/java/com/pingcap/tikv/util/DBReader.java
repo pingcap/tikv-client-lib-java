@@ -9,7 +9,6 @@ import com.pingcap.tikv.meta.TiDBInfo;
 import com.pingcap.tikv.meta.TiIndexInfo;
 import com.pingcap.tikv.meta.TiSelectRequest;
 import com.pingcap.tikv.meta.TiTableInfo;
-import com.pingcap.tikv.operation.SchemaInfer;
 import com.pingcap.tikv.predicates.PredicateUtils;
 import com.pingcap.tikv.predicates.ScanBuilder;
 import com.pingcap.tikv.region.RegionManager;
@@ -88,7 +87,7 @@ public class DBReader {
     selReq.addRanges(scanPlan.getKeyRanges()).setTableInfo(tableInfo);
     //add fields
     for(String s: returnFields) {
-      selReq.addField(TiColumnRef.create(s, tableInfo));
+      selReq.addRequiredColumn(TiColumnRef.create(s, tableInfo));
     }
     selReq.setStartTs(snapshot.getVersion());
 
@@ -110,12 +109,10 @@ public class DBReader {
 
     List<Row> rowList = new ArrayList<>();
 
-    for (RangeSplitter.RegionTask task : keyWithRegionTasks) {
-      Iterator<Row> it = snapshot.select(selReq, task);
-      while (it.hasNext()) {
-        Row row = it.next();
-        rowList.add(row);
-      }
+    Iterator<Row> it = snapshot.tableRead(selReq, keyWithRegionTasks);
+    while (it.hasNext()) {
+      Row row = it.next();
+      rowList.add(row);
     }
     return rowList;
   }
@@ -123,24 +120,5 @@ public class DBReader {
   public List<Row> getSelectedRows(String tableName, List<TiExpr> exprs, List<String> returnFields) {
     return getSelectedRows(getSelectRequest(tableName, exprs, returnFields));
   }
-
-  private void printRows(List<Row> rows, TiSelectRequest selReq) {
-    for(Row r: rows) {
-      SchemaInfer schemaInfer = SchemaInfer.create(selReq);
-      for (int i = 0; i < r.fieldCount(); i++) {
-        Object c = r.get(i, schemaInfer.getType(i));
-        System.out.print(Comparables.wrap(c));
-        System.out.print(" ");
-      }
-      System.out.print("\n");
-    }
-  }
-
-  public void printRows(String tableName, List<TiExpr> exprs, List<String> returnFields) {
-    TiSelectRequest selectRequest = getSelectRequest(tableName, exprs, returnFields);
-    List<Row> rows = getSelectedRows(selectRequest);
-    printRows(rows, selectRequest);
-  }
-
 
 }

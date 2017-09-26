@@ -18,8 +18,11 @@ java_library(
         # the following are defined in rules_protobuf
         "@org_pubref_rules_protobuf//java:grpc_compiletime_deps",
         "@org_pubref_rules_protobuf//java:netty_runtime_deps",
-        "@org_apache_logging_log4j_log4j_api//jar",
-        "@org_apache_logging_log4j_log4j_core//jar",
+
+        "@org_slf4j_slf4j_api//jar",
+        "@org_slf4j_jcl_over_slf4j//jar",
+        "@org_slf4j_jul_to_slf4j//jar",
+        "@log4j_log4j//jar",
         "@net_sf_trove4j_trove4j//jar",
     ],
 )

@@ -20,6 +20,7 @@ import com.google.protobuf.ByteString;
 import com.pingcap.tidb.tipb.Chunk;
 import com.pingcap.tidb.tipb.RowMeta;
 import com.pingcap.tikv.codec.CodecDataInput;
+import com.pingcap.tikv.meta.TiKey;
 import com.pingcap.tikv.operation.ChunkIterator;
 import com.pingcap.tikv.row.ObjectRowImpl;
 import com.pingcap.tikv.row.Row;
@@ -64,7 +65,7 @@ public class HistogramTest {
             .build();
 
     chunks.add(chunk);
-    ChunkIterator chunkIterator = new ChunkIterator(chunks);
+    ChunkIterator<ByteString> chunkIterator = ChunkIterator.getRawBytesChunkIterator(chunks);
     DataType blobs = DataTypeFactory.of(TYPE_BLOB);
     DataType ints = DataTypeFactory.of(TYPE_LONG);
     List<Row> rows = new ArrayList<>();
@@ -119,9 +120,9 @@ public class HistogramTest {
      * | hist_id | bucket_id | count | repeats | upper_bound | lower_bound |
      * +---------+-----------+-------+---------+-------------+-------------+
      * |      10 |         0 |     5 |       2 | 3           | 0           |
-     * |      10 |         1 |    10 |       1 | 7           | 4           |
-     * |      10 |         2 |    25 |       4 | 11          | 8           |
-     * |      10 |         3 |    30 |       0 | 15          | 12          |
+     * |      10 |         1 |     5 |       1 | 7           | 4           |
+     * |      10 |         2 |    15 |       4 | 11          | 8           |
+     * |      10 |         3 |     5 |       0 | 15          | 12          |
      * +---------+-----------+-------+---------+-------------+-------------+
      */
 
@@ -139,25 +140,25 @@ public class HistogramTest {
 
   @Test
   public void testEqualRowCount() throws Exception {
-    assertEquals(histogram.equalRowCount(4), 3.0, 0.000001);
-    assertEquals(histogram.equalRowCount(11), 4.0, 0.000001);
+    assertEquals(histogram.equalRowCount(TiKey.encode(4)), 3.0, 0.000001);
+    assertEquals(histogram.equalRowCount(TiKey.encode(11)), 4.0, 0.000001);
   }
 
   @Test
   public void testGreaterRowCount() throws Exception {
-    assertEquals(histogram.greaterRowCount(-1), 30.0, 0.000001);
-    assertEquals(histogram.greaterRowCount(0), 27.0, 0.000001);
-    assertEquals(histogram.greaterRowCount(4), 22.0, 0.000001);
-    assertEquals(histogram.greaterRowCount(9), 11.5, 0.000001);
-    assertEquals(histogram.greaterRowCount(11), 10.5, 0.000001); //shouldn't this be 5.0?
-    assertEquals(histogram.greaterRowCount(12), 2.0, 0.000001);
-    assertEquals(histogram.greaterRowCount(19), 0.0, 0.000001);
+    assertEquals(histogram.greaterRowCount(TiKey.encode(-1)), 30.0, 0.000001);
+    assertEquals(histogram.greaterRowCount(TiKey.encode(0)), 27.0, 0.000001);
+    assertEquals(histogram.greaterRowCount(TiKey.encode(4)), 22.0, 0.000001);
+    assertEquals(histogram.greaterRowCount(TiKey.encode(9)), 11.5, 0.000001);
+    assertEquals(histogram.greaterRowCount(TiKey.encode(11)), 10.5, 0.000001); //shouldn't this be 5.0?
+    assertEquals(histogram.greaterRowCount(TiKey.encode(12)), 2.0, 0.000001);
+    assertEquals(histogram.greaterRowCount(TiKey.encode(19)), 0.0, 0.000001);
   }
 
   @Test
   public void testBetweenRowCount() throws Exception {
-    assertEquals(histogram.betweenRowCount(2, 6), 5.5, 0.000001);
-    assertEquals(histogram.betweenRowCount(8, 10), 5.5, 0.000001);
+    assertEquals(histogram.betweenRowCount(TiKey.encode(2), TiKey.encode(6)), 5.5, 0.000001);
+    assertEquals(histogram.betweenRowCount(TiKey.encode(8), TiKey.encode(10)), 5.5, 0.000001);
   }
 
   @Test
@@ -167,25 +168,25 @@ public class HistogramTest {
 
   @Test
   public void testLessRowCount() throws Exception {
-    assertEquals(histogram.lessRowCount(0), 0.0, 0.000001);
-    assertEquals(histogram.lessRowCount(3), 1.5, 0.000001);
-    assertEquals(histogram.lessRowCount(4), 5.0, 0.000001);
-    assertEquals(histogram.lessRowCount(7), 7.0, 0.000001);
-    assertEquals(histogram.lessRowCount(9), 15.5, 0.000001);
-    assertEquals(histogram.lessRowCount(12), 25.0, 0.000001);
-    assertEquals(histogram.lessRowCount(15), 27.5, 0.000001); //shouldn't this be 30.0?
+    assertEquals(histogram.lessRowCount(TiKey.encode(0)), 0.0, 0.000001);
+    assertEquals(histogram.lessRowCount(TiKey.encode(3)), 1.5, 0.000001);
+    assertEquals(histogram.lessRowCount(TiKey.encode(4)), 5.0, 0.000001);
+    assertEquals(histogram.lessRowCount(TiKey.encode(7)), 7.0, 0.000001);
+    assertEquals(histogram.lessRowCount(TiKey.encode(9)), 15.5, 0.000001);
+    assertEquals(histogram.lessRowCount(TiKey.encode(12)), 25.0, 0.000001);
+    assertEquals(histogram.lessRowCount(TiKey.encode(15)), 27.5, 0.000001); //shouldn't this be 30.0?
   }
 
   @Test
   public void testLowerBound() throws Exception {
-    assertEquals(histogram.lowerBound(0), -1);
-    assertEquals(histogram.lowerBound(3), 0);
-    assertEquals(histogram.lowerBound(4), -2);
-    assertEquals(histogram.lowerBound(7), 1);
-    assertEquals(histogram.lowerBound(9), -3);
-    assertEquals(histogram.lowerBound(11), 2);
-    assertEquals(histogram.lowerBound(13), -4);
-    assertEquals(histogram.lowerBound(19), -5);
+    assertEquals(histogram.lowerBound(TiKey.encode(0)), -1);
+    assertEquals(histogram.lowerBound(TiKey.encode(3)), 0);
+    assertEquals(histogram.lowerBound(TiKey.encode(4)), -2);
+    assertEquals(histogram.lowerBound(TiKey.encode(7)), 1);
+    assertEquals(histogram.lowerBound(TiKey.encode(9)), -3);
+    assertEquals(histogram.lowerBound(TiKey.encode(11)), 2);
+    assertEquals(histogram.lowerBound(TiKey.encode(13)), -4);
+    assertEquals(histogram.lowerBound(TiKey.encode(19)), -5);
   }
 
   @Test

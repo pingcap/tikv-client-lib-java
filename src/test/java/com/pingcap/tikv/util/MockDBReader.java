@@ -4,7 +4,7 @@ import com.google.protobuf.ByteString;
 import com.pingcap.tidb.tipb.Chunk;
 import com.pingcap.tidb.tipb.RowMeta;
 import com.pingcap.tikv.codec.CodecDataInput;
-import com.pingcap.tikv.expression.TiBinaryFunctionExpresson;
+import com.pingcap.tikv.expression.TiBinaryFunctionExpression;
 import com.pingcap.tikv.expression.TiColumnRef;
 import com.pingcap.tikv.expression.TiConstant;
 import com.pingcap.tikv.expression.TiExpr;
@@ -357,7 +357,7 @@ public class MockDBReader extends DBReader {
     Chunk chunk = builder.build();
     chunks.add(chunk);
 
-    ChunkIterator chunkIterator = new ChunkIterator(chunks);
+    ChunkIterator<ByteString> chunkIterator = ChunkIterator.getRawBytesChunkIterator(chunks);
     DataType blobs = DataTypeFactory.of(TYPE_BLOB);
     DataType ints = DataTypeFactory.of(TYPE_LONG);
 
@@ -410,12 +410,12 @@ public class MockDBReader extends DBReader {
       boolean ok = false;
 
       if(e0 instanceof TiConstant && e1 instanceof TiColumnRef && ((TiColumnRef) e1).getName().equalsIgnoreCase(columnName)) {
-        Comparable r = Comparables.wrap(row.get(i, e0.getType()));
-        Comparable c = Comparables.wrap(((TiConstant) e0).getValue());
+        TiKey<ByteString> r = TiKey.encode(row.get(i, e0.getType()));
+        TiKey<ByteString> c = TiKey.encode(((TiConstant) e0).getValue());
 
         switch (Op) {
           case "=":
-            ok = r.equals(c);
+            ok = r.compareTo(c) == 0;
             break;
           case "NullEqual":
             // not done
@@ -431,18 +431,21 @@ public class MockDBReader extends DBReader {
             break;
           case "<":
             ok = r.compareTo(c) > 0;
+            break;
+          case "<>":
+            ok = r.compareTo(c) != 0;
             break;
           default:
             // shouldn't be here
             System.out.println("unknown or unsupported operator " + Op);
         }
       } else if(e1 instanceof TiConstant && e0 instanceof TiColumnRef && ((TiColumnRef) e0).getName().equalsIgnoreCase(columnName)) {
-        Comparable r = Comparables.wrap(row.get(i, e1.getType()));
-        Comparable c = Comparables.wrap(((TiConstant) e1).getValue());
+        TiKey<ByteString> r = TiKey.encode(row.get(i, e1.getType()));
+        TiKey<ByteString> c = TiKey.encode(((TiConstant) e1).getValue());
 
         switch (Op) {
           case "=":
-            ok = r.equals(c);
+            ok = r.compareTo(c) == 0;
             break;
           case "NullEqual":
             // not done
@@ -458,6 +461,9 @@ public class MockDBReader extends DBReader {
             break;
           case "<":
             ok = r.compareTo(c) < 0;
+            break;
+          case "<>":
+            ok = r.compareTo(c) != 0;
             break;
           default:
             // shouldn't be here
@@ -471,17 +477,15 @@ public class MockDBReader extends DBReader {
     return false;
   }
 
-
-  // TODO: it is a rough implementation, should make it elegant
   private List<Row> getSelectedRows(table t, List<TiExpr> exprs, List<String> returnFields) {
     List<Row> ret = new ArrayList<>();
     int n = returnFields.size();
     next: for(Row row: t.rows) {
       for(TiExpr expr: exprs) {
-        if (expr instanceof TiBinaryFunctionExpresson) {
-          List<TiExpr> e = ((TiBinaryFunctionExpresson) expr).getArgs();
+        if (expr instanceof TiBinaryFunctionExpression) {
+          List<TiExpr> e = ((TiBinaryFunctionExpression) expr).getArgs();
           if (Table.checkColumnConstant(e)) {
-            if(!checkOps(e, row, t.columnInfoList, ((TiBinaryFunctionExpresson) expr).getName())) {
+            if(!checkOps(e, row, t.columnInfoList, ((TiBinaryFunctionExpression) expr).getName())) {
               continue next;
             }
           }
@@ -500,22 +504,34 @@ public class MockDBReader extends DBReader {
       }
       ret.add(cur);
     }
-    System.out.println("altogether " + ret.size() + " rows from " + t.getTableInfo().getName());
+    System.out.println("altogether " + ret.size() + " rows from "
+        + t.getTableInfo().getName() + "#" + t.getTableInfo().getId());
     return ret;
   }
 
-  @Override
+  // TODO: will be extremely slow on large data set
   public void printRows(String tableName, List<TiExpr> exprs, List<String> returnFields) {
     table t = getTable(tableName);
     System.out.println(">>>>>>>>>>>>>" + tableName);
     if(t != null) {
       System.out.println(returnFields);
+      next:
       for (Row r : t.rows) {
+        for(TiExpr expr: exprs) {
+          if (expr instanceof TiBinaryFunctionExpression) {
+            List<TiExpr> e = ((TiBinaryFunctionExpression) expr).getArgs();
+            if (Table.checkColumnConstant(e)) {
+              if(!checkOps(e, r, t.columnInfoList, ((TiBinaryFunctionExpression) expr).getName())) {
+                continue next;
+              }
+            }
+          }
+        }
         for(String s: returnFields) {
           for (int i = 0; i < r.fieldCount(); i++) {
             Object val = r.get(i, t.getType(i));
             if(s.equalsIgnoreCase(t.getTableInfo().getColumns().get(i).getName())) {
-              System.out.print(Comparables.wrap(val) + " ");
+              System.out.print(TiKey.create(val) + " ");
             }
           }
         }

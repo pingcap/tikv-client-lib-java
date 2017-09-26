@@ -7,11 +7,11 @@ import com.pingcap.tikv.expression.TiColumnRef;
 import com.pingcap.tikv.expression.TiConstant;
 import com.pingcap.tikv.expression.TiExpr;
 import com.pingcap.tikv.expression.scalar.*;
+import com.pingcap.tikv.meta.TiKey;
 import com.pingcap.tikv.meta.TiTableInfo;
 import com.pingcap.tikv.types.DataType;
 import com.pingcap.tikv.types.DataTypeFactory;
 import com.pingcap.tikv.util.Bucket;
-import com.pingcap.tikv.util.Comparables;
 import com.pingcap.tikv.util.MockDBReader;
 import org.junit.Before;
 import org.junit.Test;
@@ -21,6 +21,7 @@ import java.util.List;
 
 import static com.pingcap.tikv.types.Types.TYPE_BLOB;
 import static com.pingcap.tikv.types.Types.TYPE_LONG;
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 /**
@@ -79,7 +80,7 @@ public class TableStatsTest {
 
     bucketsInfo = mockDBReader.getTableInfo("stats_buckets");
     List<TiExpr> exprs = ImmutableList.of(
-        new Equal(TiColumnRef.create("table_id", bucketsInfo), TiConstant.create(27)));
+        new NotEqual(TiColumnRef.create("table_id", bucketsInfo), TiConstant.create(1)));
     List<String> returnFields = ImmutableList.of(
         "table_id", "is_index", "hist_id", "bucket_id", "count", "repeats", "upper_bound", "lower_bound");
     mockDBReader.printRows("stats_buckets", exprs, returnFields);
@@ -124,20 +125,20 @@ public class TableStatsTest {
 
   @Test
   public void testBuild() {
-    TiTableInfo tableInfoTest = mockDBReader.getTableInfo("t1");
     List<TiExpr> exprsTest = ImmutableList.of(
-        new NotEqual(TiColumnRef.create("c1", tableInfoTest), TiConstant.create(1)));
+        new NotEqual(TiColumnRef.create("c1", t1TableInfo), TiConstant.create(1)));
     List<String> returnFieldsTest = ImmutableList.of("c1", "s1");
+    System.out.println("==========Build=========");
     mockDBReader.printRows("t1", exprsTest, returnFieldsTest);
 
     TableStats tableStats = new TableStats();
     tableStats.build(mockDBReader);
-    TiTableInfo tableInfo = mockDBReader.getTableInfo("t1");
-    Table t = tableStats.tableStatsFromStorage(mockDBReader, tableInfo);
+//    System.out.println("id = " + t1TableInfo.getId());
+    Table t = tableStats.tableStatsFromStorage(mockDBReader, t1TableInfo);
     assertTrue(t.getColumns().size() > 0);
-    System.out.println("name=" + t.getColumns().values().iterator().next().getColumnInfo().getName());
+//    System.out.println("name=" + t.getColumns().values().iterator().next().getColumnInfo().getName());
     List<TiExpr> exprs = ImmutableList.of(
-        new GreaterEqual(TiColumnRef.create("c1", tableInfo), TiConstant.create(1)));
+        new GreaterEqual(TiColumnRef.create("c1", t1TableInfo), TiConstant.create(1)));
     System.out.println("selectivity = " + t.Selectivity(mockDBReader, exprs));
   }
 
@@ -149,12 +150,12 @@ public class TableStatsTest {
       CodecDataOutput cdo = new CodecDataOutput();
       for(int i = 0; i < num; i ++) {
         cdo.reset();
-        t.encode(cdo, DataType.EncodeType.KEY, i);
+        t.encode(cdo, DataType.EncodeType.KEY, (long)i);
         ret[i] = cdo.toByteString();
       }
     } else {
       for(int i = 0; i < len; i ++) {
-        int j = i;
+        long j = i;
         CodecDataOutput cdo = new CodecDataOutput();
         long tmp[] = new long[dimension];
         for(int k = 0; k < dimension; k ++) {
@@ -174,10 +175,15 @@ public class TableStatsTest {
   private Histogram mockStatsHistogram(long id, ByteString[] values, long repeat) {
     int ndv = values.length;
     Histogram histogram = new Histogram(id, ndv, new ArrayList<>());
+    byte[] byte0 = new byte[1];
+    byte0[0] = (byte) 0;
     for(int i = 0; i < ndv; i ++) {
-      Bucket bucket = new Bucket(Comparables.wrap(ByteString.copyFrom(values[i].toString().getBytes())));
+      Bucket bucket = new Bucket(TiKey.create(values[i]));
       bucket.setRepeats(repeat);
       bucket.setCount(repeat * (i + 1));
+      if(i > 0) {
+        bucket.setLowerBound(TiKey.create(values[i - 1].concat(ByteString.copyFrom(byte0))));
+      }
       histogram.getBuckets().add(bucket);
     }
     return histogram;
@@ -213,7 +219,6 @@ public class TableStatsTest {
             mockDBReader.createMockColumn("e", TYPE_LONG)
         ),
         ImmutableList.of(
-          mockDBReader.createMockIndex("pk_idx", ImmutableList.of("a"), true),
           mockDBReader.createMockIndex("idx_cd", ImmutableList.of("c", "d")),
           mockDBReader.createMockIndex("idx_de", ImmutableList.of("d", "e"))
         ),
@@ -234,32 +239,86 @@ public class TableStatsTest {
     final test[] tests = {
         new test(
             ImmutableList.of(
-                new Equal(TiColumnRef.create("a", tbl), TiConstant.create(1))
+                new Equal(TiColumnRef.create("a", tbl), TiConstant.create((long) 1))
             ),
             0.01851851851
         ),
         new test(
             ImmutableList.of(
-                new GreaterThan(TiColumnRef.create("a", tbl), TiConstant.create(0)),
-                new LessThan(TiColumnRef.create("a", tbl), TiConstant.create(2))
+                new GreaterThan(TiColumnRef.create("a", tbl), TiConstant.create((long) 0)),
+                new LessThan(TiColumnRef.create("a", tbl), TiConstant.create((long) 2))
             ),
             0.01851851851
         ),
         new test(
             ImmutableList.of(
-                new GreaterEqual(TiColumnRef.create("a", tbl), TiConstant.create(1)),
-                new LessThan(TiColumnRef.create("a", tbl), TiConstant.create(2))
+                new GreaterEqual(TiColumnRef.create("a", tbl), TiConstant.create((long) 1)),
+                new LessThan(TiColumnRef.create("a", tbl), TiConstant.create((long) 2))
             ),
             0.01851851851
+        ),
+        new test(
+            ImmutableList.of(
+                new GreaterEqual(TiColumnRef.create("a", tbl), TiConstant.create((long) 1)),
+                new GreaterThan(TiColumnRef.create("b", tbl), TiConstant.create((long) 1)),
+                new LessThan(TiColumnRef.create("a", tbl), TiConstant.create((long) 2))
+            ),
+            0.01783264746
+        ),
+        new test(
+            ImmutableList.of(
+                new GreaterEqual(TiColumnRef.create("a", tbl), TiConstant.create((long) 1)),
+                new GreaterThan(TiColumnRef.create("c", tbl), TiConstant.create((long) 1)),
+                new LessThan(TiColumnRef.create("a", tbl), TiConstant.create((long) 2))
+            ),
+            0.00617283950
+        ),
+        new test(
+            ImmutableList.of(
+                new GreaterEqual(TiColumnRef.create("a", tbl), TiConstant.create((long) 1)),
+                new GreaterEqual(TiColumnRef.create("c", tbl), TiConstant.create((long) 1)),
+                new LessThan(TiColumnRef.create("a", tbl), TiConstant.create((long) 2))
+            ),
+            0.01234567901
+        ),
+        new test(
+            ImmutableList.of(
+                new Equal(TiColumnRef.create("d", tbl), TiConstant.create((long) 0)),
+                new Equal(TiColumnRef.create("e", tbl), TiConstant.create((long) 1))
+            ),
+            0.11111111111
+        ),
+        new test(
+            ImmutableList.of(
+                new GreaterThan(TiColumnRef.create("b", tbl), TiConstant.create((long) 1))
+            ),
+            0.96296296296
+        ),
+        new test(
+            ImmutableList.of(
+                new GreaterThan(TiColumnRef.create("c", tbl), TiConstant.create((long) 1))
+            ),
+            0.33333333333
+        ),
+        new test(
+            ImmutableList.of(
+                new GreaterThan(TiColumnRef.create("a", tbl), TiConstant.create((long) 1)),
+                new LessThan(TiColumnRef.create("b", tbl), TiConstant.create((long) 2)),
+                new GreaterThan(TiColumnRef.create("c", tbl), TiConstant.create((long) 3)),
+                new LessThan(TiColumnRef.create("d", tbl), TiConstant.create((long) 4)),
+                new GreaterThan(TiColumnRef.create("e", tbl), TiConstant.create((long) 5))
+            ),
+            0.00123287439
         ),
     };
 
+    int testCount = 0;
     for(test g: tests) {
+      System.out.println("TEST #" + ++testCount + ": " + g.exprs);
       double selectivity = statsTbl.Selectivity(mockDBReader, g.exprs);
       System.out.println("selectivity = " + selectivity);
-//      assertEquals(selectivity, g.selectivity, 0.000001);
+      assertEquals(selectivity, g.selectivity, 0.000001);
     }
-
 
   }
 

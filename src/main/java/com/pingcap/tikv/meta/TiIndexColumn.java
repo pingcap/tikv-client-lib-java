@@ -18,18 +18,19 @@ package com.pingcap.tikv.meta;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.pingcap.tikv.types.DataType;
+
 import java.io.Serializable;
 
 public class TiIndexColumn implements Serializable {
   private String name;
   private int offset;
-  private int length;
+  private long length;
 
   @JsonCreator
   TiIndexColumn(
       @JsonProperty("name") CIStr name,
       @JsonProperty("offset") int offset,
-      @JsonProperty("length") int length) {
+      @JsonProperty("length") long length) {
     this.name = name.getL();
     this.offset = offset;
     this.length = length;
@@ -43,7 +44,7 @@ public class TiIndexColumn implements Serializable {
     return offset;
   }
 
-  public int getLength() {
+  public long getLength() {
     return length;
   }
 

@@ -28,6 +28,7 @@ import com.pingcap.tikv.meta.TiKey;
 import com.pingcap.tikv.region.RegionManager;
 import com.pingcap.tikv.region.RegionStoreClient;
 import com.pingcap.tikv.region.TiRegion;
+import com.pingcap.tikv.util.KeyRangeUtils;
 import com.pingcap.tikv.util.Pair;
 
 import java.util.Iterator;
@@ -35,7 +36,7 @@ import java.util.List;
 import java.util.NoSuchElementException;
 
 public class ScanIterator implements Iterator<Kvrpcpb.KvPair> {
-  private final Range<TiKey> scanRange;
+  private final Range scanRange;
   private final int batchSize;
   protected final TiSession session;
   private final RegionManager regionCache;
@@ -56,7 +57,7 @@ public class ScanIterator implements Iterator<Kvrpcpb.KvPair> {
       long version) {
     this.startKey = startKey;
     this.batchSize = batchSize;
-    this.scanRange = TiKey.toRange(range);
+    this.scanRange = KeyRangeUtils.toRange(range);
     this.session = session;
     this.regionCache = rm;
     this.version = version;
@@ -68,7 +69,7 @@ public class ScanIterator implements Iterator<Kvrpcpb.KvPair> {
     Pair<TiRegion, Metapb.Store> pair = regionCache.getRegionStorePairByKey(startKey);
     TiRegion region = pair.first;
     Metapb.Store store = pair.second;
-    try (RegionStoreClient client = RegionStoreClient.create(region, store, session, regionCache)) {
+    try (RegionStoreClient client = RegionStoreClient.create(region, store, session)) {
       currentCache = client.scan(startKey, version);
       if (currentCache == null || currentCache.size() == 0) {
         return false;
@@ -119,7 +120,7 @@ public class ScanIterator implements Iterator<Kvrpcpb.KvPair> {
 
   @SuppressWarnings("unchecked")
   private boolean contains(ByteString key) {
-    return scanRange.contains(new TiKey<>(key));
+    return scanRange.contains(TiKey.create(key));
   }
 
   private Kvrpcpb.KvPair getCurrent() {

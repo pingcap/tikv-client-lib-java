@@ -17,24 +17,24 @@
 package com.pingcap.tikv.statistics;
 
 import com.google.common.collect.ImmutableList;
-import com.google.protobuf.ByteString;
 import com.pingcap.tikv.exception.HistogramException;
 import com.pingcap.tikv.expression.TiColumnRef;
 import com.pingcap.tikv.expression.TiConstant;
 import com.pingcap.tikv.expression.TiExpr;
 import com.pingcap.tikv.expression.scalar.Equal;
+import com.pingcap.tikv.meta.TiKey;
 import com.pingcap.tikv.meta.TiTableInfo;
 import com.pingcap.tikv.row.Row;
 import com.pingcap.tikv.types.DataType;
 import com.pingcap.tikv.types.DataTypeFactory;
 import com.pingcap.tikv.types.Types;
 import com.pingcap.tikv.util.Bucket;
-import com.pingcap.tikv.util.Comparables;
 import com.pingcap.tikv.util.DBReader;
 
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Objects;
 
 public class Histogram {
 
@@ -143,20 +143,20 @@ public class Histogram {
 
     int len = 0;
     List<Bucket> tmpBuckets = new ArrayList<>(rows.size());
-    for(int i = 0; i < rows.size(); i ++) tmpBuckets.add(new Bucket(1));
+    for(int i = 0; i < rows.size(); i ++) tmpBuckets.add(new Bucket(TiKey.create(1)));
 
     for (Row row: rows) {
       long bucketID = row.getLong(0);
       long count = row.getLong(1);
       long repeats = row.getLong(2);
-      Comparable lowerBound, upperBound;
+      TiKey lowerBound, upperBound;
       try {
         if (isIndex == 1) {
-          lowerBound = Comparables.wrap(row.get(3, DataTypeFactory.of(Types.TYPE_BLOB)));
-          upperBound = Comparables.wrap(row.get(4, DataTypeFactory.of(Types.TYPE_BLOB)));
+          lowerBound = TiKey.encode(row.get(3, DataTypeFactory.of(Types.TYPE_BLOB)));
+          upperBound = TiKey.encode(row.get(4, DataTypeFactory.of(Types.TYPE_BLOB)));
         } else {
-          lowerBound = Comparables.wrap(ByteString.copyFrom(row.get(3, type).toString().getBytes()));
-          upperBound = Comparables.wrap(ByteString.copyFrom(row.get(4, type).toString().getBytes()));
+          lowerBound = TiKey.encode(row.get(3, type));
+          upperBound = TiKey.encode(row.get(4, type));
         }
         tmpBuckets.add((int) bucketID, new Bucket(count, repeats, lowerBound, upperBound));
       } catch (HistogramException e) {
@@ -172,7 +172,7 @@ public class Histogram {
   }
 
   /** equalRowCount estimates the row count where the column equals to value. */
-  double equalRowCount(Comparable values) {
+  double equalRowCount(TiKey values) {
     int index = lowerBound(values);
     //index not in range
     if (index == -buckets.size() - 1) {
@@ -188,6 +188,7 @@ public class Histogram {
     if (buckets.get(index).lowerBound == null) {
       cmp = 1;
     } else {
+      Objects.requireNonNull(buckets.get(index).lowerBound);
       cmp = values.compareTo(buckets.get(index).lowerBound);
     }
     if (cmp < 0) {
@@ -197,7 +198,7 @@ public class Histogram {
   }
 
   /** greaterRowCount estimates the row count where the column greater than value. */
-  double greaterRowCount(Comparable values) {
+  double greaterRowCount(TiKey values) {
     double lessCount = lessRowCount(values);
     double equalCount = equalRowCount(values);
     double greaterCount;
@@ -209,15 +210,14 @@ public class Histogram {
   }
 
   /** greaterAndEqRowCount estimates the row count where the column less than or equal to value. */
-  private double greaterAndEqRowCount(Comparable values) {
-
+  private double greaterAndEqRowCount(TiKey values) {
     double greaterCount = greaterRowCount(values);
     double equalCount = equalRowCount(values);
     return greaterCount + equalCount;
   }
 
   /** lessRowCount estimates the row count where the column less than value. */
-  double lessRowCount(Comparable values) {
+  double lessRowCount(TiKey values) {
     int index = lowerBound(values);
     //index not in range
     if (index == -buckets.size() - 1) {
@@ -232,7 +232,7 @@ public class Histogram {
       preCount = buckets.get(index - 1).count;
     }
     double lessThanBucketValueCount = curCount - buckets.get(index).repeats;
-    Comparable lowerBound = buckets.get(index).lowerBound;
+    TiKey lowerBound = buckets.get(index).lowerBound;
     int c;
     if(lowerBound != null) {
       c = values.compareTo(lowerBound);
@@ -246,14 +246,17 @@ public class Histogram {
   }
 
   /** lessAndEqRowCount estimates the row count where the column less than or equal to value. */
-  public double lessAndEqRowCount(Comparable values) {
+  public double lessAndEqRowCount(TiKey values) {
     double lessCount = lessRowCount(values);
     double equalCount = equalRowCount(values);
     return lessCount + equalCount;
   }
 
-  /** betweenRowCount estimates the row count where column greater or equal to a and less than b. */
-  protected double betweenRowCount(Comparable a, Comparable b) {
+  /** betweenRowCount estimates the row count where column greater than or equal to a and less than b. */
+  double betweenRowCount(TiKey a, TiKey b) {
+//    CodecDataInput c = new CodecDataInput(a.getByteString());
+//    CodecDataInput d = new CodecDataInput(b.getByteString());
+//    System.out.println(c.readLine() + " with " + d.readLine());
     double lessCountA = lessRowCount(a);
     double lessCountB = lessRowCount(b);
     if (lessCountA >= lessCountB) {
@@ -283,13 +286,13 @@ public class Histogram {
    * and returns (-[insertion point] - 1) if the key is not found in buckets
    * where [insertion point] denotes the index of the first element greater than the key
    */
-  protected int lowerBound(Comparable key) {
+  protected int lowerBound(TiKey key) {
     assert key.getClass() == buckets.get(0).getUpperBound().getClass();
-    System.out.println(">>>>>>>>>>>>");
-    for(Bucket bucket: buckets) {
-      System.out.println(bucket.toString());
-    }
-    System.out.println("<<<<<<<<<<<<");
+//    System.out.println(">>>>>>>>>>>>" + TiKey.unwrap(key).getClass() + " " + TiKey.unwrap(buckets.get(0).getUpperBound()).getClass());
+//    for(Bucket bucket: buckets) {
+//      System.out.println(bucket);
+//    }
+//    System.out.println("<<<<<<<<<<<<");
     return Arrays.binarySearch(buckets.toArray(), new Bucket(key));
   }
 

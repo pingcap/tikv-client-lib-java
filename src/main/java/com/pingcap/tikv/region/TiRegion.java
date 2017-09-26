@@ -19,6 +19,7 @@ package com.pingcap.tikv.region;
 
 import com.google.protobuf.ByteString;
 import com.pingcap.tikv.codec.CodecDataInput;
+import com.pingcap.tikv.exception.TiClientInternalException;
 import com.pingcap.tikv.kvproto.Kvrpcpb;
 import com.pingcap.tikv.kvproto.Kvrpcpb.IsolationLevel;
 import com.pingcap.tikv.kvproto.Metapb;
@@ -28,6 +29,8 @@ import com.pingcap.tikv.types.BytesType;
 
 import java.io.Serializable;
 import java.util.HashSet;
+import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 
 public class TiRegion implements Serializable {
@@ -35,12 +38,22 @@ public class TiRegion implements Serializable {
   private final Set<Long> unreachableStores;
   private Peer peer;
   private final IsolationLevel isolationLevel;
+  private final Kvrpcpb.CommandPri commandPri;
 
-  public TiRegion(Region meta, Peer peer, IsolationLevel isolationLevel) {
+  public TiRegion(Region meta, Peer peer, IsolationLevel isolationLevel, Kvrpcpb.CommandPri commandPri) {
+    Objects.requireNonNull(meta, "meta is null");
     this.meta = decodeRegion(meta);
-    this.peer = peer;
+    if (peer == null || peer.getId() == 0) {
+      if (meta.getPeersCount() == 0) {
+        throw new TiClientInternalException("Empty peer list for region " + meta.getId());
+      }
+      this.peer = meta.getPeers(0);
+    } else {
+      this.peer = peer;
+    }
     this.unreachableStores = new HashSet<>();
     this.isolationLevel = isolationLevel;
+    this.commandPri = commandPri;
   }
 
   private Region decodeRegion(Region region) {
@@ -86,6 +99,7 @@ public class TiRegion implements Serializable {
   public Kvrpcpb.Context getContext() {
     Kvrpcpb.Context.Builder builder = Kvrpcpb.Context.newBuilder();
     builder.setIsolationLevel(this.isolationLevel);
+    builder.setPriority(this.commandPri);
     builder.setRegionId(meta.getId()).setPeer(this.peer).setRegionEpoch(this.meta.getRegionEpoch());
     return builder.build();
   }
@@ -98,16 +112,14 @@ public class TiRegion implements Serializable {
    * @return false if no peers matches the store id.
    */
   boolean switchPeer(long leaderStoreID) {
-    return meta.getPeersList()
-        .stream()
-        .anyMatch(
-            p -> {
-              if (p.getStoreId() == leaderStoreID) {
-                this.peer = p;
-                return true;
-              }
-              return false;
-            });
+    List<Peer> peers = meta.getPeersList();
+    for (Peer p : peers) {
+      if (p.getStoreId() == leaderStoreID) {
+        this.peer = p;
+        return true;
+      }
+    }
+    return false;
   }
 
   public boolean contains(ByteString key) {

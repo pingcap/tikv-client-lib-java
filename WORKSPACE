@@ -14,23 +14,23 @@ maven_jar(
 )
 
 maven_jar(
-    name = "org_apache_logging_log4j_log4j_api",
-    artifact = "org.apache.logging.log4j:log4j-api:2.8.1",
+    name = "org_slf4j_slf4j_api",
+    artifact = "org.slf4j:slf4j-api:1.7.16",
 )
 
 maven_jar(
-    name = "org_apache_logging_log4j_log4j_core",
-    artifact = "org.apache.logging.log4j:log4j-core:2.8.1",
+    name = "org_slf4j_jcl_over_slf4j",
+    artifact = "org.slf4j:jcl-over-slf4j:1.7.16",
 )
 
 maven_jar(
-    name = "com_google_errorprone_error_prone_annotations",
-    artifact = "com.google.errorprone:error_prone_annotations:2.0.11",
+    name = "org_slf4j_jul_to_slf4j",
+    artifact = "org.slf4j:jul-to-slf4j:1.7.16",
 )
 
 maven_jar(
-    name = "com_google_instrumentation_instrumentation_api",
-    artifact = "com.google.instrumentation:instrumentation-api:0.4.2",
+    name = "log4j_log4j",
+    artifact = "log4j:log4j:1.2.17",
 )
 
 maven_jar(
@@ -94,19 +94,14 @@ maven_jar(
 )
 
 maven_jar(
-	name = "io_netty_netty_codec_socks",
-	artifact = "io.netty:netty-codec-socks:4.1.8.Final",
-)
-
-maven_jar(
    name = "net_sf_trove4j_trove4j",
    artifact = "net.sf.trove4j:trove4j:3.0.1",
 )
 
 git_repository(
-    name = "org_pubref_rules_protobuf",
-    remote = "https://github.com/zhexuany/rules_protobuf",
-    commit = "7d505c7",
+  name = "org_pubref_rules_protobuf",
+  remote = "https://github.com/pubref/rules_protobuf",
+  tag = "v0.8.1",
 )
 
 load("@org_pubref_rules_protobuf//java:rules.bzl", "java_proto_repositories")

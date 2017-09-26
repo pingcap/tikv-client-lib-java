@@ -15,10 +15,10 @@
 
 package com.pingcap.tikv.predicates;
 
-import static com.google.common.base.Preconditions.checkArgument;
-import static java.util.Objects.requireNonNull;
-
-import com.google.common.collect.*;
+import com.google.common.collect.ImmutableList;
+import com.google.common.collect.Range;
+import com.google.common.collect.RangeSet;
+import com.google.common.collect.TreeRangeSet;
 import com.pingcap.tikv.exception.TiClientInternalException;
 import com.pingcap.tikv.expression.TiConstant;
 import com.pingcap.tikv.expression.TiExpr;
@@ -27,8 +27,12 @@ import com.pingcap.tikv.expression.scalar.*;
 import com.pingcap.tikv.meta.TiKey;
 import com.pingcap.tikv.predicates.AccessConditionNormalizer.NormalizedCondition;
 import com.pingcap.tikv.types.DataType;
+
 import java.util.ArrayList;
 import java.util.List;
+
+import static com.google.common.base.Preconditions.checkArgument;
+import static java.util.Objects.requireNonNull;
 
 // TODO: reconsider class design and organization
 public class RangeBuilder {
@@ -41,7 +45,7 @@ public class RangeBuilder {
    * @param rangeType type of the range
    * @return Index Range for scan
    */
-  List<IndexRange> exprsToIndexRanges(
+  public static List<IndexRange> exprsToIndexRanges(
       List<TiExpr> accessPoints,
       List<DataType> accessPointsTypes,
       List<TiExpr> accessConditions,
@@ -63,7 +67,7 @@ public class RangeBuilder {
    * @param types index column types
    * @return access points for each index
    */
-  List<IndexRange> exprsToPoints(List<TiExpr> accessPoints, List<DataType> types) {
+  static List<IndexRange> exprsToPoints(List<TiExpr> accessPoints, List<DataType> types) {
     requireNonNull(accessPoints, "accessPoints cannot be null");
     requireNonNull(types, "Types cannot be null");
     checkArgument(
@@ -111,7 +115,7 @@ public class RangeBuilder {
    * @param type index column type
    * @return access ranges
    */
-  List<Range> exprToRanges(List<TiExpr> accessConditions, DataType type) {
+  static List<Range> exprToRanges(List<TiExpr> accessConditions, DataType type) {
     if (accessConditions == null || accessConditions.size() == 0) {
       return ImmutableList.of();
     }
@@ -120,7 +124,7 @@ public class RangeBuilder {
     for (TiExpr ac : accessConditions) {
       NormalizedCondition cond = AccessConditionNormalizer.normalize(ac);
       TiConstant constVal = cond.constantVals.get(0);
-      TiKey comparableVal = new TiKey<>(constVal.getValue());
+      TiKey comparableVal = TiKey.create(constVal.getValue());
       TiExpr expr = cond.condition;
 
       if (expr instanceof GreaterThan) {
@@ -174,7 +178,7 @@ public class RangeBuilder {
     private Range range;
     private DataType rangeType;
 
-    private IndexRange(
+    public IndexRange(
         List<Object> accessPoints, List<DataType> types, Range range, DataType rangeType) {
       this.accessPoints = accessPoints;
       this.types = types;
@@ -225,7 +229,7 @@ public class RangeBuilder {
       return result;
     }
 
-    List<Object> getAccessPoints() {
+    public List<Object> getAccessPoints() {
       return accessPoints;
     }
 
@@ -245,8 +249,20 @@ public class RangeBuilder {
       return types;
     }
 
-    DataType getRangeType() {
+    public DataType getRangeType() {
       return rangeType;
+    }
+
+    @Override
+    public String toString() {
+      String ret = "";
+      for(Object x: accessPoints) {
+        ret = ret.concat(Range.singleton((TiKey.create(x))).toString() + ",");
+      }
+      if(range != null) {
+        ret = ret.concat(range.toString());
+      }
+      return ret;
     }
   }
 }

@@ -104,7 +104,7 @@ public class TiColumnInfo implements Serializable {
   public static class InternalTypeHolder {
     private final int tp;
     private final int flag;
-    private final int flen;
+    private final long flen;
     private final int decimal;
     private final String charset;
     private final String collate;
@@ -118,7 +118,7 @@ public class TiColumnInfo implements Serializable {
     public InternalTypeHolder(
         @JsonProperty("Tp") int tp,
         @JsonProperty("Flag") int flag,
-        @JsonProperty("Flen") int flen,
+        @JsonProperty("Flen") long flen,
         @JsonProperty("Decimal") int decimal,
         @JsonProperty("Charset") String charset,
         @JsonProperty("Collate") String collate,
@@ -150,7 +150,7 @@ public class TiColumnInfo implements Serializable {
       return flag;
     }
 
-    public int getFlen() {
+    public long getFlen() {
       return flen;
     }
 
@@ -184,10 +184,9 @@ public class TiColumnInfo implements Serializable {
         .setColumnId(id)
         .setTp(type.getTypeCode())
         .setCollation(type.getCollationCode())
-        .setColumnLen(type.getLength())
+        .setColumnLen((int) type.getLength())
         .setDecimal(type.getDecimal())
         .setFlag(type.getFlag())
-        .setColumnLen(type.getLength())
         .setPkHandle(table.isPkHandle() && isPrimaryKey())
         .addAllElems(type.getElems());
   }
