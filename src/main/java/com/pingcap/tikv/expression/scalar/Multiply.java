@@ -16,11 +16,11 @@
 package com.pingcap.tikv.expression.scalar;
 
 import com.pingcap.tidb.tipb.ExprType;
-import com.pingcap.tikv.expression.TiBinaryFunctionExpresson;
+import com.pingcap.tikv.expression.TiBinaryFunctionExpression;
 import com.pingcap.tikv.expression.TiExpr;
 import com.pingcap.tikv.types.DataType;
 
-public class Multiply extends TiBinaryFunctionExpresson {
+public class Multiply extends TiBinaryFunctionExpression {
   public Multiply(TiExpr lhs, TiExpr rhs) {
     super(lhs, rhs);
   }

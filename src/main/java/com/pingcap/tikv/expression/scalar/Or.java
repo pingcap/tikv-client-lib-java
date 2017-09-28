@@ -18,11 +18,11 @@ package com.pingcap.tikv.expression.scalar;
 import static com.google.common.base.Preconditions.checkArgument;
 
 import com.pingcap.tidb.tipb.ExprType;
-import com.pingcap.tikv.expression.TiBinaryFunctionExpresson;
+import com.pingcap.tikv.expression.TiBinaryFunctionExpression;
 import com.pingcap.tikv.expression.TiExpr;
 import com.pingcap.tikv.types.IntegerType;
 
-public class Or extends TiBinaryFunctionExpresson {
+public class Or extends TiBinaryFunctionExpression {
   public Or(TiExpr lhs, TiExpr rhs) {
     super(lhs, rhs);
   }
