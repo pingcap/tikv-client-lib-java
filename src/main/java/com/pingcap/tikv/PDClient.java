@@ -15,7 +15,6 @@
 
 package com.pingcap.tikv;
 
-import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
 
 import com.google.common.annotations.VisibleForTesting;
@@ -36,7 +35,6 @@ import com.pingcap.tikv.kvproto.Pdpb.GetRegionRequest;
 import com.pingcap.tikv.kvproto.Pdpb.GetRegionResponse;
 import com.pingcap.tikv.kvproto.Pdpb.GetStoreRequest;
 import com.pingcap.tikv.kvproto.Pdpb.GetStoreResponse;
-import com.pingcap.tikv.kvproto.Pdpb.Member;
 import com.pingcap.tikv.kvproto.Pdpb.RequestHeader;
 import com.pingcap.tikv.kvproto.Pdpb.Timestamp;
 import com.pingcap.tikv.kvproto.Pdpb.TsoRequest;
@@ -47,7 +45,6 @@ import com.pingcap.tikv.region.TiRegion;
 import com.pingcap.tikv.types.BytesType;
 import com.pingcap.tikv.util.FutureObserver;
 import io.grpc.ManagedChannel;
-import io.grpc.stub.StreamObserver;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.List;
@@ -226,7 +223,7 @@ public class PDClient extends AbstractGRPCClient<PDBlockingStub, PDStub>
 
   public GetMembersResponse getMembers(HostAndPort url) {
     try {
-      ManagedChannel probChan = getChannel(url.getHostText() + ":" + url.getPort());
+      ManagedChannel probChan = session.getChannel(url.getHostText() + ":" + url.getPort());
       PDGrpc.PDBlockingStub stub = PDGrpc.newBlockingStub(probChan);
       GetMembersRequest request =
           GetMembersRequest.newBuilder().setHeader(RequestHeader.getDefaultInstance()).build();
@@ -258,7 +255,7 @@ public class PDClient extends AbstractGRPCClient<PDBlockingStub, PDStub>
       }
 
       // create new Leader
-      ManagedChannel clientChannel = getChannel(leaderUrlStr);
+      ManagedChannel clientChannel = session.getChannel(leaderUrlStr);
       leaderWrapper =
         new LeaderWrapper(
             leaderUrlStr,

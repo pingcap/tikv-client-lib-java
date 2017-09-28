@@ -17,11 +17,10 @@ package com.pingcap.tikv.catalog;
 
 import static org.junit.Assert.assertEquals;
 
-import com.google.common.collect.ImmutableList;
 import com.pingcap.tikv.KVMockServer;
 import com.pingcap.tikv.PDMockServer;
-import com.pingcap.tikv.TiCluster;
 import com.pingcap.tikv.TiConfiguration;
+import com.pingcap.tikv.TiSession;
 import com.pingcap.tikv.kvproto.Kvrpcpb.IsolationLevel;
 import com.pingcap.tikv.meta.MetaUtils.MetaMockHelper;
 import com.pingcap.tikv.meta.TiDBInfo;
@@ -45,7 +44,7 @@ public class CatalogTransactionTest {
     kvServer = new KVMockServer();
     kvServer.start(new TiRegion(MetaMockHelper.region, MetaMockHelper.region.getPeers(0), IsolationLevel.RC));
     // No PD needed in this test
-    conf = TiConfiguration.createDefault(ImmutableList.of("127.0.0.1:" + pdServer.port));
+    conf = TiConfiguration.createDefault("127.0.0.1:" + pdServer.port);
   }
 
   @Test
@@ -53,8 +52,8 @@ public class CatalogTransactionTest {
     MetaMockHelper helper = new MetaMockHelper(pdServer, kvServer);
     helper.preparePDForRegionRead();
     helper.setSchemaVersion(666);
-    TiCluster cluster = TiCluster.getCluster(conf);
-    CatalogTransaction trx = new CatalogTransaction(cluster.createSnapshot());
+    TiSession session = TiSession.create(conf);
+    CatalogTransaction trx = new CatalogTransaction(session.createSnapshot());
     assertEquals(666, trx.getLatestSchemaVersion());
   }
 
@@ -65,8 +64,8 @@ public class CatalogTransactionTest {
     helper.addDatabase(130, "global_temp");
     helper.addDatabase(264, "TPCH_001");
 
-    TiCluster cluster = TiCluster.getCluster(conf);
-    CatalogTransaction trx = new CatalogTransaction(cluster.createSnapshot());
+    TiSession session = TiSession.create(conf);
+    CatalogTransaction trx = new CatalogTransaction(session.createSnapshot());
     List<TiDBInfo> dbs = trx.getDatabases();
     assertEquals(2, dbs.size());
     assertEquals(130, dbs.get(0).getId());
@@ -87,8 +86,8 @@ public class CatalogTransactionTest {
     helper.addTable(130, 42, "test");
     helper.addTable(130, 43, "test1");
 
-    TiCluster cluster = TiCluster.getCluster(conf);
-    CatalogTransaction trx = new CatalogTransaction(cluster.createSnapshot());
+    TiSession session = TiSession.create(conf);
+    CatalogTransaction trx = new CatalogTransaction(session.createSnapshot());
     List<TiTableInfo> tables = trx.getTables(130);
     assertEquals(tables.size(), 2);
     assertEquals(tables.get(0).getName(), "test");

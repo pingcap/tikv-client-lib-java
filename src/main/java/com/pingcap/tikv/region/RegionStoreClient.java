@@ -47,25 +47,17 @@ import com.pingcap.tikv.kvproto.Kvrpcpb.RawPutResponse;
 import com.pingcap.tikv.kvproto.Kvrpcpb.ScanRequest;
 import com.pingcap.tikv.kvproto.Kvrpcpb.ScanResponse;
 import com.pingcap.tikv.kvproto.Metapb.Store;
-import com.pingcap.tikv.kvproto.PDGrpc;
-import com.pingcap.tikv.kvproto.Pdpb.GetRegionByIDRequest;
-import com.pingcap.tikv.kvproto.Pdpb.GetRegionResponse;
 import com.pingcap.tikv.kvproto.TikvGrpc;
 import com.pingcap.tikv.kvproto.TikvGrpc.TikvBlockingStub;
 import com.pingcap.tikv.kvproto.TikvGrpc.TikvStub;
 import com.pingcap.tikv.operation.KVErrorHandler;
-import com.pingcap.tikv.operation.PDErrorHandler;
-import com.pingcap.tikv.util.FutureObserver;
 import com.pingcap.tikv.util.Pair;
 import io.grpc.ManagedChannel;
 import java.util.List;
-import java.util.concurrent.Future;
 import java.util.function.Supplier;
-import org.apache.log4j.Logger;
 
 // RegionStore itself is not thread-safe
 public class RegionStoreClient extends AbstractGRPCClient<TikvBlockingStub, TikvStub> implements RegionErrorReceiver {
-  private static final Logger logger = Logger.getLogger(RegionStoreClient.class);
   private TiRegion region;
   private TikvBlockingStub blockingStub;
   private TikvStub asyncStub;
@@ -210,30 +202,29 @@ public class RegionStoreClient extends AbstractGRPCClient<TikvBlockingStub, Tikv
   }
 
   public static RegionStoreClient create(
-      TiRegion region, Store store, TiSession session, RegionManager regionManager) {
+      TiRegion region, Store store, TiSession session) {
     RegionStoreClient client;
     String addressStr = store.getAddress();
-    ManagedChannel channel = getChannel(addressStr);
+    ManagedChannel channel = session.getChannel(addressStr);
 
     TikvBlockingStub blockingStub = TikvGrpc.newBlockingStub(channel);
 
     TikvStub asyncStub = TikvGrpc.newStub(channel);
     client =
-        new RegionStoreClient(region, session, regionManager, blockingStub, asyncStub);
+        new RegionStoreClient(region, session, blockingStub, asyncStub);
     return client;
   }
 
   private RegionStoreClient(
       TiRegion region,
       TiSession session,
-      RegionManager regionManager,
       TikvBlockingStub blockingStub,
       TikvStub asyncStub) {
     super(session);
     checkNotNull(region, "Region is empty");
     checkNotNull(region.getLeader(), "Leader Peer is null");
     checkArgument(region.getLeader() != null, "Leader Peer is null");
-    this.regionManager = regionManager;
+    this.regionManager = session.getRegionManager();
     this.blockingStub = blockingStub;
     this.asyncStub = asyncStub;
     this.region = region;
@@ -252,7 +243,7 @@ public class RegionStoreClient extends AbstractGRPCClient<TikvBlockingStub, Tikv
   @Override
   public void onNotLeader(TiRegion newRegion, Store newStore) {
     String addressStr = newStore.getAddress();
-    ManagedChannel channel = getChannel(addressStr);
+    ManagedChannel channel = getSession().getChannel(addressStr);
     region = newRegion;
     if (!region.switchPeer(newStore.getId())) {
       throw new TiClientInternalException("Failed to switch leader");
@@ -267,7 +258,7 @@ public class RegionStoreClient extends AbstractGRPCClient<TikvBlockingStub, Tikv
         regionManager.getRegionStorePairByRegionId(region.getId());
     Store store = regionStorePair.second;
     String addressStr = store.getAddress();
-    ManagedChannel channel = getChannel(addressStr);
+    ManagedChannel channel = getSession().getChannel(addressStr);
     blockingStub = TikvGrpc.newBlockingStub(channel);
     asyncStub = TikvGrpc.newStub(channel);
     region = regionStorePair.first;

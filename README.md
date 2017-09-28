@@ -42,15 +42,15 @@ make tikv
 ## How to use for now
 Since it's not quite complete, a usage sample for now can be given is:
 ```java
-	TiConfiguration conf = TiConfiguration.createDefault(ImmutableList.of("127.0.0.1:" + 2379));
-        TiCluster cluster = TiCluster.getCluster(conf);
-        Catalog cat = cluster.getCatalog();
+	TiConfiguration conf = TiConfiguration.createDefault("127.0.0.1:2379");
+        TiSession session = TiSession.create(conf);
+        Catalog cat = session.getCatalog();
         TiDBInfo db = cat.getDatabase("test");
         TiTableInfo table = cat.getTable(db, "t2");
 
 ....
 
-        Snapshot snapshot = cluster.createSnapshot();
+        Snapshot snapshot = session.createSnapshot();
         Iterator<Row> it = snapshot.newSelect(table)
                 .addRange(TiRange.create(0L, Long.MAX_VALUE))
                 .doSelect();

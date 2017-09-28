@@ -21,7 +21,6 @@ import static org.junit.Assert.fail;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
-import com.google.common.collect.Iterables;
 import com.google.protobuf.ByteString;
 import com.pingcap.tidb.tipb.SelectRequest;
 import com.pingcap.tidb.tipb.SelectResponse;
@@ -29,7 +28,6 @@ import com.pingcap.tikv.kvproto.Coprocessor.KeyRange;
 import com.pingcap.tikv.kvproto.Kvrpcpb;
 import com.pingcap.tikv.kvproto.Kvrpcpb.IsolationLevel;
 import com.pingcap.tikv.kvproto.Metapb;
-import com.pingcap.tikv.region.RegionManager;
 import com.pingcap.tikv.region.RegionStoreClient;
 import com.pingcap.tikv.region.TiRegion;
 import com.pingcap.tikv.util.ZeroBackOff;
@@ -68,11 +66,12 @@ public class RegionStoreClientTest {
             .setEndKey(ByteString.EMPTY)
             .addPeers(Metapb.Peer.newBuilder().setId(11).setStoreId(13))
             .build();
+
     region = new TiRegion(r, r.getPeers(0), IsolationLevel.RC);
     server = new KVMockServer();
     port = server.start(region);
     // No PD needed in this test
-    TiConfiguration conf = TiConfiguration.createDefault(ImmutableList.of("127.0.0.1:" + pdServer.port));
+    TiConfiguration conf = TiConfiguration.createDefault("127.0.0.1:" + pdServer.port);
     session = TiSession.create(conf);
     conf.setRetryTimes(3);
     conf.setBackOffClass(ZeroBackOff.class);
@@ -86,8 +85,7 @@ public class RegionStoreClientTest {
             .setState(Metapb.StoreState.Up)
             .build();
 
-    return RegionStoreClient.create(
-        region, store, session, new RegionManager(PDClient.create(session)));
+    return RegionStoreClient.create(region, store, session);
   }
 
   @After
@@ -96,7 +94,7 @@ public class RegionStoreClientTest {
   }
 
   @Test
-  public void rawGet() throws Exception {
+  public void rawGetTest() throws Exception {
     RegionStoreClient client = createClient();
     server.put("key1", "value1");
     Kvrpcpb.Context context =
@@ -126,7 +124,7 @@ public class RegionStoreClientTest {
   }
 
   @Test
-  public void get() throws Exception {
+  public void getTest() throws Exception {
     RegionStoreClient client = createClient();
     server.put("key1", "value1");
     ByteString value = client.get(ByteString.copyFromUtf8("key1"), 1);
@@ -144,7 +142,7 @@ public class RegionStoreClientTest {
   }
 
   @Test
-  public void batchGet() throws Exception {
+  public void batchGetTest() throws Exception {
     RegionStoreClient client = createClient();
 
     server.put("key1", "value1");
@@ -173,7 +171,7 @@ public class RegionStoreClientTest {
   }
 
   @Test
-  public void scan() throws Exception {
+  public void scanTest() throws Exception {
     RegionStoreClient client = createClient();
 
     server.put("key1", "value1");
@@ -203,7 +201,7 @@ public class RegionStoreClientTest {
   }
 
   @Test
-  public void coprocess() throws Exception {
+  public void coprocessTest() throws Exception {
     RegionStoreClient client = createClient();
 
     server.put("key1", "value1");

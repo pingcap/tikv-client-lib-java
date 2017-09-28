@@ -50,7 +50,6 @@ public class SelectIterator implements Iterator<Row> {
   private SchemaInfer schemaInfer;
   private final boolean indexScan;
   private TiSelectRequest tiReq;
-  private RegionManager regionManager;
   private static final DataType[] handleTypes =
       new DataType[]{DataTypeFactory.of(Types.TYPE_LONG)};
 
@@ -58,25 +57,23 @@ public class SelectIterator implements Iterator<Row> {
       TiSelectRequest req,
       List<RegionTask> regionTasks,
       TiSession session,
-      RegionManager regionManager,
       boolean indexScan) {
     this.regionTasks = regionTasks;
     this.tiReq = req;
     this.session = session;
     this.schemaInfer = SchemaInfer.create(req);
     this.indexScan = indexScan;
-    this.regionManager = regionManager;
   }
 
   private List<Chunk> createClientAndSendReq(RegionTask regionTask,
-      TiSelectRequest req, RegionManager regionManager) {
+      TiSelectRequest req) {
     List<KeyRange> ranges = regionTask.getRanges();
     TiRegion region = regionTask.getRegion();
     Store store = regionTask.getStore();
 
     RegionStoreClient client;
     try {
-      client = RegionStoreClient.create(region, store, session, regionManager);
+      client = RegionStoreClient.create(region, store, session);
       SelectResponse resp = client.coprocess(req.buildScan(indexScan), ranges);
       // if resp is null, then indicates eof.
       if (resp == null) {
@@ -91,8 +88,7 @@ public class SelectIterator implements Iterator<Row> {
 
   public SelectIterator(TiSelectRequest req, TiSession session, RegionManager rm,
       boolean indexScan) {
-    this(req, RangeSplitter.newSplitter(rm).splitRangeByRegion(req.getRanges()), session, rm,
-        indexScan);
+    this(req, RangeSplitter.newSplitter(rm).splitRangeByRegion(req.getRanges()), session, indexScan);
   }
 
   private boolean readNextRegion() {
@@ -101,7 +97,7 @@ public class SelectIterator implements Iterator<Row> {
     }
 
     RegionTask regionTask = regionTasks.get(index++);
-    List<Chunk> chunks = createClientAndSendReq(regionTask, this.tiReq, this.regionManager);
+    List<Chunk> chunks = createClientAndSendReq(regionTask, this.tiReq);
     if (chunks == null) {
       return false;
     }

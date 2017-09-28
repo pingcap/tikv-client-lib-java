@@ -3,11 +3,10 @@ package com.pingcap.tikv.catalog;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
-import com.google.common.collect.ImmutableList;
 import com.pingcap.tikv.KVMockServer;
 import com.pingcap.tikv.PDMockServer;
-import com.pingcap.tikv.TiCluster;
 import com.pingcap.tikv.TiConfiguration;
+import com.pingcap.tikv.TiSession;
 import com.pingcap.tikv.kvproto.Kvrpcpb.IsolationLevel;
 import com.pingcap.tikv.meta.MetaUtils.MetaMockHelper;
 import com.pingcap.tikv.meta.TiDBInfo;
@@ -33,7 +32,7 @@ public class CatalogTest {
     kvServer = new KVMockServer();
     kvServer.start(new TiRegion(MetaMockHelper.region, MetaMockHelper.region.getPeers(0), IsolationLevel.RC));
     // No PD needed in this test
-    conf = TiConfiguration.createDefault(ImmutableList.of("127.0.0.1:" + pdServer.port));
+    conf = TiConfiguration.createDefault("127.0.0.1:" + pdServer.port);
   }
 
   @Test
@@ -45,8 +44,8 @@ public class CatalogTest {
     helper.addDatabase(130, "global_temp");
     helper.addDatabase(264, "TPCH_001");
 
-    TiCluster cluster = TiCluster.getCluster(conf);
-    Catalog cat = cluster.getCatalog();
+    TiSession session = TiSession.create(conf);
+    Catalog cat = session.getCatalog();
     List<TiDBInfo> dbs = cat.listDatabases();
     List<String> names = dbs.stream().map(TiDBInfo::getName).sorted().collect(Collectors.toList());
     assertEquals(2, dbs.size());
@@ -82,8 +81,8 @@ public class CatalogTest {
     helper.addTable(130, 42, "test");
     helper.addTable(130, 43, "test1");
 
-    TiCluster cluster = TiCluster.getCluster(conf);
-    Catalog cat = cluster.getCatalog();
+    TiSession session = TiSession.create(conf);
+    Catalog cat = session.getCatalog();
     TiDBInfo db = cat.getDatabase("gLObal_temp");
     List<TiTableInfo> tables = cat.listTables(db);
     List<String> names = tables.stream().map(table -> table.getName()).sorted().collect(Collectors.toList());

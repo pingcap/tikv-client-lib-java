@@ -17,19 +17,13 @@ package com.pingcap.tikv;
 
 import static io.grpc.stub.ClientCalls.asyncBidiStreamingCall;
 
-import com.google.common.net.HostAndPort;
 import com.pingcap.tikv.operation.ErrorHandler;
 import com.pingcap.tikv.policy.RetryNTimes.Builder;
 import com.pingcap.tikv.policy.RetryPolicy;
-import io.grpc.ManagedChannel;
-import io.grpc.ManagedChannelBuilder;
 import io.grpc.MethodDescriptor;
 import io.grpc.stub.AbstractStub;
 import io.grpc.stub.ClientCalls;
 import io.grpc.stub.StreamObserver;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
 import org.apache.log4j.Logger;
 
@@ -37,31 +31,8 @@ public abstract class AbstractGRPCClient<
         BlockingStubT extends AbstractStub<BlockingStubT>, StubT extends AbstractStub<StubT>>
     implements AutoCloseable {
   final Logger logger = Logger.getLogger(this.getClass());
-  private TiSession session;
-  private TiConfiguration conf;
-  private static final int MAX_MSG_SIZE = 134217728 * 4;
-  private static final Map<String, ManagedChannel> connPool = new HashMap<>();
-
-  protected static synchronized ManagedChannel getChannel(String addressStr) {
-    ManagedChannel channel = connPool.get(addressStr);
-    if (channel == null) {
-      HostAndPort address;
-      try {
-        address = HostAndPort.fromString(addressStr);
-      } catch (Exception e) {
-        throw new IllegalArgumentException("failed to form address");
-      }
-      // Channel should be lazy without actual connection until first call
-      // So a coarse grain lock is ok here
-      channel = ManagedChannelBuilder.forAddress(address.getHostText(), address.getPort())
-          .maxInboundMessageSize(MAX_MSG_SIZE)
-          .usePlaintext(true)
-          .idleTimeout(60, TimeUnit.SECONDS)
-          .build();
-      connPool.put(addressStr, channel);
-    }
-    return channel;
-  }
+  protected TiSession session;
+  protected TiConfiguration conf;
 
   protected AbstractGRPCClient(TiSession session) {
     this.session = session;

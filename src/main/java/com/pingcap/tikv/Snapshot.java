@@ -28,7 +28,6 @@ import com.pingcap.tikv.meta.TiTimestamp;
 import com.pingcap.tikv.operation.IndexScanIterator;
 import com.pingcap.tikv.operation.ScanIterator;
 import com.pingcap.tikv.operation.SelectIterator;
-import com.pingcap.tikv.region.RegionManager;
 import com.pingcap.tikv.region.RegionStoreClient;
 import com.pingcap.tikv.region.TiRegion;
 import com.pingcap.tikv.row.Row;
@@ -41,13 +40,11 @@ import java.util.List;
 
 public class Snapshot {
   private final TiTimestamp timestamp;
-  private final RegionManager regionCache;
   private final TiSession session;
   private final TiConfiguration conf;
 
-  public Snapshot(TiTimestamp timestamp, RegionManager regionCache, TiSession session) {
+  public Snapshot(TiTimestamp timestamp, TiSession session) {
     this.timestamp = timestamp;
-    this.regionCache = regionCache;
     this.session = session;
     this.conf = session.getConf();
   }
@@ -71,9 +68,9 @@ public class Snapshot {
   }
 
   public ByteString get(ByteString key) {
-    Pair<TiRegion, Store> pair = regionCache.getRegionStorePairByKey(key);
+    Pair<TiRegion, Store> pair = session.getRegionManager().getRegionStorePairByKey(key);
     RegionStoreClient client =
-        RegionStoreClient.create(pair.first, pair.second, getSession(), regionCache);
+        RegionStoreClient.create(pair.first, pair.second, getSession());
     // TODO: Need to deal with lock error after grpc stable
     return client.get(key, timestamp.getVersion());
   }
@@ -85,11 +82,11 @@ public class Snapshot {
    * @return a Iterator that contains all result from this select request.
    */
   public Iterator<Row> select(TiSelectRequest selReq) {
-    return new SelectIterator(selReq, getSession(), regionCache, false);
+    return new SelectIterator(selReq, getSession(), session.getRegionManager(), false);
   }
 
   public Iterator<Row> selectByIndex(TiSelectRequest selReq) {
-    Iterator<Row> iter = new SelectIterator(selReq, getSession(), regionCache, true);
+    Iterator<Row> iter = new SelectIterator(selReq, getSession(), session.getRegionManager(), true);
     return new IndexScanIterator(this, selReq, iter);
   }
 
@@ -102,7 +99,7 @@ public class Snapshot {
    * @return Row iterator to iterate over resulting rows
    */
   public Iterator<Row> select(TiSelectRequest req, RegionTask task) {
-    return new SelectIterator(req, ImmutableList.of(task), getSession(), regionCache, false);
+    return new SelectIterator(req, ImmutableList.of(task), getSession(), false);
   }
 
   /**
@@ -115,13 +112,13 @@ public class Snapshot {
    */
   public Iterator<Row> selectByIndex(TiSelectRequest req, RegionTask task) {
     Iterator<Row> iter =
-        new SelectIterator(req, ImmutableList.of(task), getSession(), regionCache, true);
+        new SelectIterator(req, ImmutableList.of(task), getSession(), true);
     return new IndexScanIterator(this, req, iter);
   }
 
   public Iterator<KvPair> scan(ByteString startKey) {
     return new ScanIterator(
-        startKey, conf.getScanBatchSize(), null, session, regionCache, timestamp.getVersion());
+        startKey, conf.getScanBatchSize(), null, session, session.getRegionManager(), timestamp.getVersion());
   }
 
   // TODO: Need faster implementation, say concurrent version
@@ -135,13 +132,13 @@ public class Snapshot {
     List<KvPair> result = new ArrayList<>(keys.size());
     for (ByteString key : keys) {
       if (curRegion == null || !curKeyRange.contains(Comparables.wrap(key))) {
-        Pair<TiRegion, Store> pair = regionCache.getRegionStorePairByKey(key);
+        Pair<TiRegion, Store> pair = session.getRegionManager().getRegionStorePairByKey(key);
         lastPair = pair;
         curRegion = pair.first;
         curKeyRange = makeRange(curRegion.getStartKey(), curRegion.getEndKey());
 
         try (RegionStoreClient client =
-            RegionStoreClient.create(lastPair.first, lastPair.second, getSession(), regionCache)) {
+            RegionStoreClient.create(lastPair.first, lastPair.second, getSession())) {
           List<KvPair> partialResult = client.batchGet(keyBuffer, timestamp.getVersion());
           // TODO: Add lock check
           result.addAll(partialResult);
