@@ -20,9 +20,11 @@ import static com.pingcap.tikv.util.KeyRangeUtils.makeRange;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Range;
 import com.google.protobuf.ByteString;
+import com.pingcap.tidb.tipb.Select;
 import com.pingcap.tikv.exception.TiClientInternalException;
 import com.pingcap.tikv.kvproto.Kvrpcpb.KvPair;
 import com.pingcap.tikv.kvproto.Metapb.Store;
+import com.pingcap.tikv.meta.TiDAGRequest;
 import com.pingcap.tikv.meta.TiSelectRequest;
 import com.pingcap.tikv.meta.TiTimestamp;
 import com.pingcap.tikv.operation.IndexScanIterator;
@@ -78,16 +80,25 @@ public class Snapshot {
   /**
    * Issue a select request to TiKV and PD.
    *
-   * @param selReq is SelectRequest.
+   * @param dagRequest is DAGRequest.
    * @return a Iterator that contains all result from this select request.
    */
-  public Iterator<Row> select(TiSelectRequest selReq) {
-    return new SelectIterator(selReq, getSession(), session.getRegionManager(), false);
+//  public Iterator<Row> select(TiSelectRequest selReq) {
+//    return new SelectIterator(selReq, getSession(), session.getRegionManager(), false);
+//  }
+
+  public Iterator<Row> select(TiDAGRequest dagRequest) {
+    return new SelectIterator(dagRequest, getSession(), session.getRegionManager(), false);
   }
 
-  public Iterator<Row> selectByIndex(TiSelectRequest selReq) {
-    Iterator<Row> iter = new SelectIterator(selReq, getSession(), session.getRegionManager(), true);
-    return new IndexScanIterator(this, selReq, iter);
+//  public Iterator<Row> selectByIndex(TiSelectRequest selReq) {
+//    Iterator<Row> iter = new SelectIterator(selReq, getSession(), session.getRegionManager(), true);
+//    return new IndexScanIterator(this, selReq, iter);
+//  }
+
+  public Iterator<Row> selectByIndex(TiDAGRequest dagRequest) {
+    Iterator<Row> iter = new SelectIterator(dagRequest, getSession(), session.getRegionManager(), true);
+    return new IndexScanIterator(this, dagRequest, iter);
   }
 
   /**
@@ -98,7 +109,10 @@ public class Snapshot {
    * @param task RegionTask of the coprocessor request to send
    * @return Row iterator to iterate over resulting rows
    */
-  public Iterator<Row> select(TiSelectRequest req, RegionTask task) {
+//  public Iterator<Row> select(TiSelectRequest req, RegionTask task) {
+//    return new SelectIterator(req, ImmutableList.of(task), getSession(), false);
+//  }
+  public Iterator<Row> select(TiDAGRequest req, RegionTask task) {
     return new SelectIterator(req, ImmutableList.of(task), getSession(), false);
   }
 
@@ -110,9 +124,14 @@ public class Snapshot {
    * @param task RegionTask of the coprocessor request to send
    * @return Row iterator to iterate over resulting rows
    */
-  public Iterator<Row> selectByIndex(TiSelectRequest req, RegionTask task) {
+//  public Iterator<Row> selectByIndex(TiSelectRequest req, RegionTask task) {
+//    Iterator<Row> iter =
+//        new SelectIterator(req, ImmutableList.of(task), getSession(), true);
+//    return new IndexScanIterator(this, req, iter);
+//  }
+  public Iterator<Row> selectByIndex(TiDAGRequest req, RegionTask task) {
     Iterator<Row> iter =
-        new SelectIterator(req, ImmutableList.of(task), getSession(), true);
+            new SelectIterator(req, ImmutableList.of(task), getSession(), true);
     return new IndexScanIterator(this, req, iter);
   }
 

@@ -22,7 +22,9 @@ import com.pingcap.tikv.TiSession;
 import com.pingcap.tikv.codec.CodecDataInput;
 import com.pingcap.tikv.exception.TiClientInternalException;
 import com.pingcap.tikv.kvproto.Coprocessor.KeyRange;
+import com.pingcap.tikv.kvproto.Metapb;
 import com.pingcap.tikv.kvproto.Metapb.Store;
+import com.pingcap.tikv.meta.TiDAGRequest;
 import com.pingcap.tikv.meta.TiSelectRequest;
 import com.pingcap.tikv.region.RegionManager;
 import com.pingcap.tikv.region.RegionStoreClient;
@@ -35,6 +37,7 @@ import com.pingcap.tikv.types.DataTypeFactory;
 import com.pingcap.tikv.types.Types;
 import com.pingcap.tikv.util.RangeSplitter;
 import com.pingcap.tikv.util.RangeSplitter.RegionTask;
+
 import java.util.Iterator;
 import java.util.List;
 import java.util.NoSuchElementException;
@@ -49,24 +52,37 @@ public class SelectIterator implements Iterator<Row> {
   private boolean eof = false;
   private SchemaInfer schemaInfer;
   private final boolean indexScan;
-  private TiSelectRequest tiReq;
+  //  private TiSelectRequest tiReq;
+  private TiDAGRequest dagRequest;
   private static final DataType[] handleTypes =
-      new DataType[]{DataTypeFactory.of(Types.TYPE_LONG)};
+          new DataType[]{DataTypeFactory.of(Types.TYPE_LONG)};
+
+//  public SelectIterator(
+//      TiSelectRequest req,
+//      List<RegionTask> regionTasks,
+//      TiSession session,
+//      boolean indexScan) {
+//    this.regionTasks = regionTasks;
+//    this.tiReq = req;
+//    this.session = session;
+//    this.schemaInfer = SchemaInfer.create(req);
+//    this.indexScan = indexScan;
+//  }
 
   public SelectIterator(
-      TiSelectRequest req,
-      List<RegionTask> regionTasks,
-      TiSession session,
-      boolean indexScan) {
+          TiDAGRequest req,
+          List<RegionTask> regionTasks,
+          TiSession session,
+          boolean indexScan) {
     this.regionTasks = regionTasks;
-    this.tiReq = req;
+    dagRequest = req;
     this.session = session;
-    this.schemaInfer = SchemaInfer.create(req);
     this.indexScan = indexScan;
   }
 
+
   private List<Chunk> createClientAndSendReq(RegionTask regionTask,
-      TiSelectRequest req) {
+                                             TiDAGRequest req) {
     List<KeyRange> ranges = regionTask.getRanges();
     TiRegion region = regionTask.getRegion();
     Store store = regionTask.getStore();
@@ -86,8 +102,29 @@ public class SelectIterator implements Iterator<Row> {
     }
   }
 
-  public SelectIterator(TiSelectRequest req, TiSession session, RegionManager rm,
-      boolean indexScan) {
+//  private List<Chunk> createClientAndSendReq(RegionTask regionTask,
+//                                             TiSelectRequest req) {
+//    List<KeyRange> ranges = regionTask.getRanges();
+//    TiRegion region = regionTask.getRegion();
+//    Store store = regionTask.getStore();
+//
+//    RegionStoreClient client;
+//    try {
+//      client = RegionStoreClient.create(region, store, session);
+//      SelectResponse resp = client.coprocess(req.buildScan(indexScan), ranges);
+//      // if resp is null, then indicates eof.
+//      if (resp == null) {
+//        eof = true;
+//        return null;
+//      }
+//      return resp.getChunksList();
+//    } catch (Exception e) {
+//      throw new TiClientInternalException("Error Closing Store client.", e);
+//    }
+//  }
+
+  public SelectIterator(TiDAGRequest req, TiSession session, RegionManager rm,
+                        boolean indexScan) {
     this(req, RangeSplitter.newSplitter(rm).splitRangeByRegion(req.getRanges()), session, indexScan);
   }
 
@@ -97,13 +134,26 @@ public class SelectIterator implements Iterator<Row> {
     }
 
     RegionTask regionTask = regionTasks.get(index++);
-    List<Chunk> chunks = createClientAndSendReq(regionTask, this.tiReq);
+    List<Chunk> chunks = createClientAndSendReq(regionTask, this.dagRequest);
     if (chunks == null) {
       return false;
     }
     chunkIterator = new ChunkIterator(chunks);
     return true;
   }
+//  private boolean readNextRegion() {
+//    if (eof || index >= regionTasks.size()) {
+//      return false;
+//    }
+//
+//    RegionTask regionTask = regionTasks.get(index++);
+//    List<Chunk> chunks = createClientAndSendReq(regionTask, this.tiReq);
+//    if (chunks == null) {
+//      return false;
+//    }
+//    chunkIterator = new ChunkIterator(chunks);
+//    return true;
+//  }
 
   @Override
   public boolean hasNext() {
