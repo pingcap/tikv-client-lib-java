@@ -18,6 +18,7 @@ package com.pingcap.tikv.expression;
 import static com.google.common.base.Preconditions.checkArgument;
 import static java.util.Objects.requireNonNull;
 
+import com.google.common.base.Joiner;
 import com.google.common.collect.ImmutableList;
 import com.pingcap.tidb.tipb.Expr;
 import com.pingcap.tidb.tipb.ExprType;
@@ -101,5 +102,12 @@ public abstract class TiFunctionExpression implements TiExpr {
       arg.bind(table);
     }
     return this;
+  }
+
+  @Override
+  public String toString() {
+    return String.format("%s(%s)",
+                         getName(),
+                         Joiner.on(", ").skipNulls().join(args));
   }
 }

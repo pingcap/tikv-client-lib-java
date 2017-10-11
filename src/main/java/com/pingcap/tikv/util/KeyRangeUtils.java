@@ -17,6 +17,7 @@ package com.pingcap.tikv.util;
 
 import com.google.common.collect.Range;
 import com.google.protobuf.ByteString;
+import com.pingcap.tikv.codec.TableCodec;
 import com.pingcap.tikv.kvproto.Coprocessor;
 
 public class KeyRangeUtils {
@@ -33,11 +34,16 @@ public class KeyRangeUtils {
     return Range.closedOpen(Comparables.wrap(range.getStart()), Comparables.wrap(range.getEnd()));
   }
 
+  public static String toString(Coprocessor.KeyRange range) {
+    return String.format("[%s, %s]",
+        TableCodec.decodeRowKey(range.getStart()),
+        TableCodec.decodeRowKey(range.getEnd()));
+  }
+
   public static Range makeRange(ByteString startKey, ByteString endKey) {
     if (startKey.isEmpty() && endKey.isEmpty()) {
       return Range.all();
     }
-    Range<? extends Comparable> result = Range.all();
     if (startKey.isEmpty()) {
       return Range.lessThan(Comparables.wrap(endKey));
     } else if (endKey.isEmpty()) {
