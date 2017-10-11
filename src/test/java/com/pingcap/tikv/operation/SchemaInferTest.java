@@ -30,6 +30,7 @@ import com.pingcap.tikv.expression.TiConstant;
 import com.pingcap.tikv.expression.TiExpr;
 import com.pingcap.tikv.expression.aggregate.Sum;
 import com.pingcap.tikv.expression.scalar.Plus;
+import com.pingcap.tikv.meta.TiDAGRequest;
 import com.pingcap.tikv.meta.TiSelectRequest;
 import com.pingcap.tikv.meta.TiTableInfo;
 import com.pingcap.tikv.types.DataType;
@@ -52,9 +53,9 @@ public class SchemaInferTest {
   @Test
   public void simpleSelectSchemaInferTest() throws Exception {
     // select name from t1;
-    TiSelectRequest selectRequest = new TiSelectRequest();
-    selectRequest.getFields().add(name);
-    List<DataType> dataTypes = SchemaInfer.create(selectRequest).getTypes();
+    TiDAGRequest tiDAGRequest = new TiDAGRequest();
+    tiDAGRequest.getFields().add(name);
+    List<DataType> dataTypes = SchemaInfer.create(tiDAGRequest).getTypes();
     assertEquals(1, dataTypes.size());
     assertEquals(DataTypeFactory.of(TYPE_VARCHAR), dataTypes.get(0));
   }
@@ -63,9 +64,9 @@ public class SchemaInferTest {
   public void selectAggSchemaInferTest() throws Exception {
     // select sum(number) from t1;
     // SingleGroup is added as dummy variable.
-    TiSelectRequest selectRequest = new TiSelectRequest();
-    selectRequest.addAggregate(sum);
-    List<DataType> dataTypes = SchemaInfer.create(selectRequest).getTypes();
+    TiDAGRequest tiDAGRequest = new TiDAGRequest();
+    tiDAGRequest.addAggregate(sum);
+    List<DataType> dataTypes = SchemaInfer.create(tiDAGRequest).getTypes();
     assertEquals(2, dataTypes.size());
     assertEquals(DataTypeFactory.of(TYPE_BLOB), dataTypes.get(0));
     assertEquals(DataTypeFactory.of(TYPE_NEW_DECIMAL), dataTypes.get(1));
@@ -74,11 +75,11 @@ public class SchemaInferTest {
   @Test
   public void selectAggWithGroupBySchemaInferTest() throws Exception {
     // select sum(number) from t1 group by name;
-    TiSelectRequest selectRequest = new TiSelectRequest();
-    selectRequest.getFields().add(name);
-    selectRequest.addAggregate(sum);
-    selectRequest.getGroupByItems().add(complexGroupBy);
-    List<DataType> dataTypes = SchemaInfer.create(selectRequest).getTypes();
+    TiDAGRequest dagRequest = new TiDAGRequest();
+    dagRequest.getFields().add(name);
+    dagRequest.addAggregate(sum);
+    dagRequest.getGroupByItems().add(complexGroupBy);
+    List<DataType> dataTypes = SchemaInfer.create(dagRequest).getTypes();
     assertEquals(2, dataTypes.size());
     assertEquals(DataTypeFactory.of(TYPE_BLOB), dataTypes.get(0));
     assertEquals(DataTypeFactory.of(TYPE_NEW_DECIMAL), dataTypes.get(1));
@@ -87,11 +88,11 @@ public class SchemaInferTest {
   @Test
   public void complexGroupBySelectTest() throws Exception {
     // select sum(number) from t1 group by name + "1";
-    TiSelectRequest selectRequest = new TiSelectRequest();
-    selectRequest.getFields().add(name);
-    selectRequest.addAggregate(sum);
-    selectRequest.getGroupByItems().add(complexGroupBy);
-    List<DataType> dataTypes = SchemaInfer.create(selectRequest).getTypes();
+    TiDAGRequest dagRequest = new TiDAGRequest();
+    dagRequest.getFields().add(name);
+    dagRequest.addAggregate(sum);
+    dagRequest.getGroupByItems().add(complexGroupBy);
+    List<DataType> dataTypes = SchemaInfer.create(dagRequest).getTypes();
     assertEquals(2, dataTypes.size());
     assertEquals(DataTypeFactory.of(TYPE_BLOB), dataTypes.get(0));
     assertEquals(DataTypeFactory.of(TYPE_NEW_DECIMAL), dataTypes.get(1));

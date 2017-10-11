@@ -15,18 +15,19 @@
 
 package com.pingcap.tikv.operation;
 
-import static com.pingcap.tikv.types.Types.TYPE_BLOB;
-
 import com.pingcap.tikv.expression.TiByItem;
 import com.pingcap.tikv.expression.TiExpr;
-import com.pingcap.tikv.meta.TiSelectRequest;
+import com.pingcap.tikv.meta.TiDAGRequest;
 import com.pingcap.tikv.operation.transformer.*;
 import com.pingcap.tikv.types.DataType;
 import com.pingcap.tikv.types.DataTypeFactory;
 import com.pingcap.tikv.util.Pair;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
+
+import static com.pingcap.tikv.types.Types.TYPE_BLOB;
 
 /**
  * SchemaInfer extract row's type after query is executed. It is pretty rough version. Optimization
@@ -40,30 +41,30 @@ public class SchemaInfer {
   private List<DataType> types;
   private RowTransformer rt;
 
-  public static SchemaInfer create(TiSelectRequest tiSelectRequest) {
-    return new SchemaInfer(tiSelectRequest);
+  public static SchemaInfer create(TiDAGRequest dagRequest) {
+    return new SchemaInfer(dagRequest);
   }
 
-  private SchemaInfer(TiSelectRequest tiSelectRequest) {
+  private SchemaInfer(TiDAGRequest dagRequest) {
     types = new ArrayList<>();
-    extractFieldTypes(tiSelectRequest);
-    buildTransform(tiSelectRequest);
+    extractFieldTypes(dagRequest);
+    buildTransform(dagRequest);
   }
 
-  private void buildTransform(TiSelectRequest tiSelectRequest) {
+  private void buildTransform(TiDAGRequest dagRequest) {
     RowTransformer.Builder rowTrans = RowTransformer.newBuilder();
     // 1. if group by is empty, first column should be "single group"
     // which is a string
     // 2. if multiple group by items present, it is wrapped inside
     // a byte array. we make a multiple decoding
     // 3. for no aggregation case, make only projected columns
-    if (tiSelectRequest.getGroupByItems().isEmpty()) {
-      if (!tiSelectRequest.getAggregatePairs().isEmpty()) {
+    if (dagRequest.getGroupByItems().isEmpty()) {
+      if (!dagRequest.getAggregatePairs().isEmpty()) {
         rowTrans.addProjection(Skip.SKIP_OP);
       }
     } else {
       List<DataType> types =
-          tiSelectRequest
+          dagRequest
               .getGroupByItems()
               .stream()
               .map(TiByItem::getExpr)
@@ -74,12 +75,12 @@ public class SchemaInfer {
     }
 
     // append aggregates if present
-    if (!tiSelectRequest.getAggregatePairs().isEmpty()) {
-      for (Pair<TiExpr, DataType> pair : tiSelectRequest.getAggregatePairs()) {
+    if (!dagRequest.getAggregatePairs().isEmpty()) {
+      for (Pair<TiExpr, DataType> pair : dagRequest.getAggregatePairs()) {
         rowTrans.addProjection(new Cast(pair.second));
       }
     } else {
-      for (TiExpr field : tiSelectRequest.getFields()) {
+      for (TiExpr field : dagRequest.getFields()) {
         rowTrans.addProjection(new NoOp(field.getType()));
       }
     }
@@ -90,17 +91,17 @@ public class SchemaInfer {
   /**
    * TODO: order by extract field types from tiSelectRequest for reading data to row.
    *
-   * @param tiSelectRequest is SelectRequest
+   * @param dagRequest is SelectRequest
    */
-  private void extractFieldTypes(TiSelectRequest tiSelectRequest) {
-    if (!tiSelectRequest.getAggregates().isEmpty()) {
+  private void extractFieldTypes(TiDAGRequest dagRequest) {
+    if (!dagRequest.getAggregates().isEmpty()) {
       // In some cases, aggregates come without group by clause, we need add a dummy
       // single group for it.
       types.add(DataTypeFactory.of(TYPE_BLOB));
-      tiSelectRequest.getAggregates().forEach(expr -> types.add(expr.getType()));
+      dagRequest.getAggregates().forEach(expr -> types.add(expr.getType()));
     } else {
       // Extract all column type information from TiExpr
-      tiSelectRequest.getFields().forEach(expr -> types.add(expr.getType()));
+      dagRequest.getFields().forEach(expr -> types.add(expr.getType()));
     }
   }
 
