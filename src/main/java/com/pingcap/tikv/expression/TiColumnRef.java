@@ -70,7 +70,8 @@ public class TiColumnRef implements TiExpr {
     Expr.Builder builder = Expr.newBuilder();
     builder.setTp(ExprType.ColumnRef);
     CodecDataOutput cdo = new CodecDataOutput();
-    IntegerType.writeLong(cdo, columnInfo.getId());
+    // After switching to DAG request, expression value should be the index of table column
+    IntegerType.writeLong(cdo, columnInfo.getId() -  1);
     builder.setVal(cdo.toByteString());
     return builder.build();
   }
@@ -128,6 +129,7 @@ public class TiColumnRef implements TiExpr {
     }
   }
 
+  @Override
   public int hashCode() {
     final int prime = 31;
     int result = 1;
@@ -136,5 +138,10 @@ public class TiColumnRef implements TiExpr {
     result = result * prime + columnInfo.getName().hashCode();
     result = result * prime + Long.hashCode(tableInfo.getId());
     return result;
+  }
+
+  @Override
+  public String toString() {
+    return String.format("[%s]", getName());
   }
 }

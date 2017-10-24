@@ -16,13 +16,29 @@
 package com.pingcap.tikv.expression.scalar;
 
 import com.pingcap.tidb.tipb.ExprType;
+import com.pingcap.tidb.tipb.ScalarFuncSig;
 import com.pingcap.tikv.expression.TiExpr;
-import com.pingcap.tikv.expression.TiFunctionExpression;
 import com.pingcap.tikv.types.DataType;
+import com.pingcap.tikv.util.ScalarFuncInfer;
 
-public class Coalesce extends TiFunctionExpression {
+import static com.pingcap.tidb.tipb.ScalarFuncSig.*;
+
+public class Coalesce extends ScalarFunction {
   public Coalesce(TiExpr... args) {
     super(args);
+  }
+
+  @Override
+  ScalarFuncSig getSignature() {
+    return ScalarFuncInfer.infer(
+            getArgType(),
+            CoalesceInt,
+            CoalesceDecimal,
+            CoalesceReal,
+            CoalesceDuration,
+            CoalesceTime,
+            CoalesceString
+    );
   }
 
   @Override
@@ -36,7 +52,8 @@ public class Coalesce extends TiFunctionExpression {
   }
 
   @Override
-  protected void validateArguments(TiExpr... args) throws RuntimeException {}
+  protected void validateArguments(TiExpr... args) throws RuntimeException {
+  }
 
   @Override
   public DataType getType() {

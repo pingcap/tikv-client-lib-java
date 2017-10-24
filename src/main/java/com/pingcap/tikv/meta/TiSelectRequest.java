@@ -20,6 +20,7 @@ import static com.pingcap.tikv.predicates.PredicateUtils.mergeCNFExpressions;
 import static java.util.Objects.requireNonNull;
 
 import com.google.common.annotations.VisibleForTesting;
+import com.google.common.base.Joiner;
 import com.pingcap.tidb.tipb.SelectRequest;
 import com.pingcap.tikv.exception.TiClientInternalException;
 import com.pingcap.tikv.expression.TiByItem;
@@ -27,6 +28,7 @@ import com.pingcap.tikv.expression.TiColumnRef;
 import com.pingcap.tikv.expression.TiExpr;
 import com.pingcap.tikv.kvproto.Coprocessor.KeyRange;
 import com.pingcap.tikv.types.DataType;
+import com.pingcap.tikv.util.KeyRangeUtils;
 import com.pingcap.tikv.util.Pair;
 import java.io.Serializable;
 import java.util.ArrayList;
@@ -362,28 +364,41 @@ public class TiSelectRequest implements Serializable {
   public String toString() {
     StringBuilder sb = new StringBuilder();
     if (tableInfo != null) {
-      sb.append(String.format("[table: %s] ", tableInfo.toString()));
-      sb.append(tableInfo.toString());
+      sb.append(String.format("[table: %s] ", tableInfo.getName()));
     }
 
-    for (TiColumnRef ref : fields) {
-      sb.append(String.format("ColumnRef:[%s]", ref.toProto().toString()));
+    if (getRanges().size() != 0) {
+      sb.append(", Ranges: ");
+      List<String> rangeStrings = getRanges()
+          .stream()
+          .map(r -> KeyRangeUtils.toString(r))
+          .collect(Collectors.toList());
+      sb.append(Joiner.on(", ").skipNulls().join(rangeStrings));
     }
 
-    for (Pair<TiExpr, DataType> agg : aggregates) {
-      sb.append(String.format("Aggregates:[%s]", agg.first.toProto().toString()));
+    if (getFields().size() != 0) {
+      sb.append(", Columns: ");
+      sb.append(Joiner.on(", ").skipNulls().join(getFields()));
     }
 
-    for (TiByItem by : groupByItems) {
-      sb.append(String.format("GroupBys:[%s]", by.toProto().toString()));
+    if (getWhere().size() != 0) {
+      sb.append(", Aggregates: ");
+      sb.append(Joiner.on(", ").skipNulls().join(getWhere()));
     }
 
-    for (TiByItem by : orderByItems) {
-      sb.append(String.format("OrderBys:[%s]", by.toProto().toString()));
+    if (getAggregates().size() != 0) {
+      sb.append(", Aggregates: ");
+      sb.append(Joiner.on(", ").skipNulls().join(getAggregates()));
     }
 
-    for (TiExpr cond : where) {
-      sb.append(String.format("Where:[%s]", cond.toProto().toString()));
+    if (getGroupByItems().size() != 0) {
+      sb.append(", Group By: ");
+      sb.append(Joiner.on(", ").skipNulls().join(getGroupByItems()));
+    }
+
+    if (getOrderByItems().size() != 0) {
+      sb.append(", Order By: ");
+      sb.append(Joiner.on(", ").skipNulls().join(getOrderByItems()));
     }
     return sb.toString();
   }

@@ -16,11 +16,11 @@
 package com.pingcap.tikv.expression.scalar;
 
 import com.pingcap.tidb.tipb.ExprType;
-import com.pingcap.tikv.expression.TiBinaryFunctionExpression;
+import com.pingcap.tidb.tipb.ScalarFuncSig;
 import com.pingcap.tikv.expression.TiExpr;
 import com.pingcap.tikv.types.DataType;
 
-public class IntDiv extends TiBinaryFunctionExpression {
+public class IntDiv extends ScalarFunction {
   public IntDiv(TiExpr lhs, TiExpr rhs) {
     super(lhs, rhs);
   }
@@ -38,6 +38,12 @@ public class IntDiv extends TiBinaryFunctionExpression {
   @Override
   public DataType getType() {
     // TODO: Add type inference
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  ScalarFuncSig getSignature() {
+    // currently not support
     throw new UnsupportedOperationException();
   }
 }

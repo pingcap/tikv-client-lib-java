@@ -16,12 +16,15 @@
 package com.pingcap.tikv.expression.scalar;
 
 import com.pingcap.tidb.tipb.ExprType;
-import com.pingcap.tikv.expression.TiBinaryFunctionExpression;
+import com.pingcap.tidb.tipb.ScalarFuncSig;
 import com.pingcap.tikv.expression.TiExpr;
 import com.pingcap.tikv.types.DataType;
 import com.pingcap.tikv.types.IntegerType;
+import com.pingcap.tikv.util.ScalarFuncInfer;
 
-public class NullEqual extends TiBinaryFunctionExpression {
+import static com.pingcap.tidb.tipb.ScalarFuncSig.*;
+
+public class NullEqual extends ScalarFunction {
   public NullEqual(TiExpr lhs, TiExpr rhs) {
     super(lhs, rhs);
   }
@@ -39,5 +42,18 @@ public class NullEqual extends TiBinaryFunctionExpression {
   @Override
   public DataType getType() {
     return IntegerType.DEF_BOOLEAN_TYPE;
+  }
+
+  @Override
+  ScalarFuncSig getSignature() {
+    return ScalarFuncInfer.infer(
+            getArgType(),
+            NullEQInt,
+            NullEQDecimal,
+            NullEQReal,
+            NullEQDuration,
+            NullEQTime,
+            NullEQString
+    );
   }
 }

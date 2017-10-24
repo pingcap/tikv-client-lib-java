@@ -16,12 +16,15 @@
 package com.pingcap.tikv.expression.scalar;
 
 import com.pingcap.tidb.tipb.ExprType;
+import com.pingcap.tidb.tipb.ScalarFuncSig;
 import com.pingcap.tikv.expression.TiExpr;
-import com.pingcap.tikv.expression.TiUnaryFunctionExpression;
 import com.pingcap.tikv.types.DataType;
 import com.pingcap.tikv.types.IntegerType;
+import com.pingcap.tikv.util.ScalarFuncInfer;
 
-public class IsTrue extends TiUnaryFunctionExpression {
+import static com.pingcap.tidb.tipb.ScalarFuncSig.*;
+
+public class IsTrue extends ScalarFunction {
   public IsTrue(TiExpr arg) {
     super(arg);
   }
@@ -44,5 +47,17 @@ public class IsTrue extends TiUnaryFunctionExpression {
   @Override
   protected void validateArguments(TiExpr... args) throws RuntimeException {
     super.validateArguments();
+  }
+
+  @Override
+  ScalarFuncSig getSignature() {
+    return ScalarFuncInfer.infer(
+            getArgType(),
+            IntIsTrue,
+            DecimalIsTrue,
+            RealIsTrue,
+            null,
+            null
+    );
   }
 }

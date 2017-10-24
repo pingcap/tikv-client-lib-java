@@ -22,10 +22,8 @@ import com.pingcap.tikv.TiSession;
 import com.pingcap.tikv.codec.CodecDataInput;
 import com.pingcap.tikv.exception.TiClientInternalException;
 import com.pingcap.tikv.kvproto.Coprocessor.KeyRange;
-import com.pingcap.tikv.kvproto.Metapb;
 import com.pingcap.tikv.kvproto.Metapb.Store;
 import com.pingcap.tikv.meta.TiDAGRequest;
-import com.pingcap.tikv.meta.TiSelectRequest;
 import com.pingcap.tikv.region.RegionManager;
 import com.pingcap.tikv.region.RegionStoreClient;
 import com.pingcap.tikv.region.TiRegion;
@@ -57,18 +55,6 @@ public class SelectIterator implements Iterator<Row> {
   private static final DataType[] handleTypes =
           new DataType[]{DataTypeFactory.of(Types.TYPE_LONG)};
 
-//  public SelectIterator(
-//      TiSelectRequest req,
-//      List<RegionTask> regionTasks,
-//      TiSession session,
-//      boolean indexScan) {
-//    this.regionTasks = regionTasks;
-//    this.tiReq = req;
-//    this.session = session;
-//    this.schemaInfer = SchemaInfer.create(req);
-//    this.indexScan = indexScan;
-//  }
-
   public SelectIterator(
           TiDAGRequest req,
           List<RegionTask> regionTasks,
@@ -76,6 +62,7 @@ public class SelectIterator implements Iterator<Row> {
           boolean indexScan) {
     this.regionTasks = regionTasks;
     dagRequest = req;
+    schemaInfer = SchemaInfer.create(req);
     this.session = session;
     this.indexScan = indexScan;
   }
@@ -102,27 +89,6 @@ public class SelectIterator implements Iterator<Row> {
     }
   }
 
-//  private List<Chunk> createClientAndSendReq(RegionTask regionTask,
-//                                             TiSelectRequest req) {
-//    List<KeyRange> ranges = regionTask.getRanges();
-//    TiRegion region = regionTask.getRegion();
-//    Store store = regionTask.getStore();
-//
-//    RegionStoreClient client;
-//    try {
-//      client = RegionStoreClient.create(region, store, session);
-//      SelectResponse resp = client.coprocess(req.buildScan(indexScan), ranges);
-//      // if resp is null, then indicates eof.
-//      if (resp == null) {
-//        eof = true;
-//        return null;
-//      }
-//      return resp.getChunksList();
-//    } catch (Exception e) {
-//      throw new TiClientInternalException("Error Closing Store client.", e);
-//    }
-//  }
-
   public SelectIterator(TiDAGRequest req, TiSession session, RegionManager rm,
                         boolean indexScan) {
     this(req, RangeSplitter.newSplitter(rm).splitRangeByRegion(req.getRanges()), session, indexScan);
@@ -135,6 +101,23 @@ public class SelectIterator implements Iterator<Row> {
 
     RegionTask regionTask = regionTasks.get(index++);
     List<Chunk> chunks = createClientAndSendReq(regionTask, this.dagRequest);
+//    ByteString string = chunks.get(0).getRowsData();
+//    String utfString = string.toStringUtf8();
+//    CodecDataInput codecDataInput = new CodecDataInput(string);
+//    RowReader rowReader = RowReaderFactory.createRowReader(codecDataInput);
+//
+//    DataType[] types = new DataType[]{
+//            schemaInfer.getType(0),
+//            schemaInfer.getType(1),
+////            schemaInfer.getType(2)
+//    };
+//    for (int i = 0; i < 200; i++) {
+//      Row row = rowReader.readRow(types);
+//      //    return reader.readRow(this.schemaInfer.getTypes().toArray(new DataType[0]));
+//      System.out.print(row.get(0, null) + " ");
+//      System.out.println(row.get(1, schemaInfer.getType(1)));
+////      System.out.println(" handle:" + row.get(2, null));
+//    }
     if (chunks == null) {
       return false;
     }

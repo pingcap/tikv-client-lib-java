@@ -16,11 +16,14 @@
 package com.pingcap.tikv.expression.scalar;
 
 import com.pingcap.tidb.tipb.ExprType;
-import com.pingcap.tikv.expression.TiBinaryFunctionExpression;
+import com.pingcap.tidb.tipb.ScalarFuncSig;
 import com.pingcap.tikv.expression.TiExpr;
 import com.pingcap.tikv.types.DataType;
+import com.pingcap.tikv.util.ScalarFuncInfer;
 
-public class Minus extends TiBinaryFunctionExpression {
+import static com.pingcap.tidb.tipb.ScalarFuncSig.*;
+
+public class Minus extends ScalarFunction {
   public Minus(TiExpr lhs, TiExpr rhs) {
     super(lhs, rhs);
   }
@@ -38,6 +41,18 @@ public class Minus extends TiBinaryFunctionExpression {
   @Override
   public DataType getType() {
     // TODO: Add type inference
-    throw new UnsupportedOperationException();
+    return getArgType();
+  }
+
+  @Override
+  ScalarFuncSig getSignature() {
+    return ScalarFuncInfer.infer(
+            getArgType(),
+            MinusInt,
+            MinusDecimal,
+            MinusReal,
+            null,
+            null
+    );
   }
 }

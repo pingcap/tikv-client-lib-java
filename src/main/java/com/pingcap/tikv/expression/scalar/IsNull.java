@@ -16,12 +16,15 @@
 package com.pingcap.tikv.expression.scalar;
 
 import com.pingcap.tidb.tipb.ExprType;
+import com.pingcap.tidb.tipb.ScalarFuncSig;
 import com.pingcap.tikv.expression.TiExpr;
-import com.pingcap.tikv.expression.TiUnaryFunctionExpression;
 import com.pingcap.tikv.types.DataType;
 import com.pingcap.tikv.types.IntegerType;
+import com.pingcap.tikv.util.ScalarFuncInfer;
 
-public class IsNull extends TiUnaryFunctionExpression {
+import static com.pingcap.tidb.tipb.ScalarFuncSig.*;
+
+public class IsNull extends ScalarFunction {
   public IsNull(TiExpr arg) {
     super(arg);
   }
@@ -39,5 +42,18 @@ public class IsNull extends TiUnaryFunctionExpression {
   @Override
   public DataType getType() {
     return IntegerType.DEF_BOOLEAN_TYPE;
+  }
+
+  @Override
+  ScalarFuncSig getSignature() {
+    return ScalarFuncInfer.infer(
+            getArgType(),
+            IntIsNull,
+            DecimalIsNull,
+            RealIsNull,
+            DurationIsNull,
+            TimeIsNull,
+            StringIsNull
+    );
   }
 }

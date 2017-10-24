@@ -43,4 +43,9 @@ public class TiByItem implements Serializable {
   public TiExpr getExpr() {
     return expr;
   }
+
+  @Override
+  public String toString() {
+    return String.format("[%s %s]", expr.toString(), desc ? "DESC" : "ASC");
+  }
 }

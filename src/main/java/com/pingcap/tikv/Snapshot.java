@@ -27,6 +27,7 @@ import com.pingcap.tikv.kvproto.Metapb.Store;
 import com.pingcap.tikv.meta.TiDAGRequest;
 import com.pingcap.tikv.meta.TiSelectRequest;
 import com.pingcap.tikv.meta.TiTimestamp;
+import com.pingcap.tikv.operation.DAGIterator;
 import com.pingcap.tikv.operation.IndexScanIterator;
 import com.pingcap.tikv.operation.ScanIterator;
 import com.pingcap.tikv.operation.SelectIterator;
@@ -88,7 +89,7 @@ public class Snapshot {
 //  }
 
   public Iterator<Row> select(TiDAGRequest dagRequest) {
-    return new SelectIterator(dagRequest, getSession(), session.getRegionManager(), false);
+    return new DAGIterator(dagRequest, getSession(), session.getRegionManager(), false);
   }
 
 //  public Iterator<Row> selectByIndex(TiSelectRequest selReq) {
@@ -97,7 +98,7 @@ public class Snapshot {
 //  }
 
   public Iterator<Row> selectByIndex(TiDAGRequest dagRequest) {
-    Iterator<Row> iter = new SelectIterator(dagRequest, getSession(), session.getRegionManager(), true);
+    Iterator<Row> iter = new DAGIterator(dagRequest, getSession(), session.getRegionManager(), true);
     return new IndexScanIterator(this, dagRequest, iter);
   }
 
@@ -113,7 +114,7 @@ public class Snapshot {
 //    return new SelectIterator(req, ImmutableList.of(task), getSession(), false);
 //  }
   public Iterator<Row> select(TiDAGRequest req, RegionTask task) {
-    return new SelectIterator(req, ImmutableList.of(task), getSession(), false);
+    return new DAGIterator(req, ImmutableList.of(task), getSession(), false);
   }
 
   /**
@@ -131,7 +132,7 @@ public class Snapshot {
 //  }
   public Iterator<Row> selectByIndex(TiDAGRequest req, RegionTask task) {
     Iterator<Row> iter =
-            new SelectIterator(req, ImmutableList.of(task), getSession(), true);
+            new DAGIterator(req, ImmutableList.of(task), getSession(), true);
     return new IndexScanIterator(this, req, iter);
   }
 

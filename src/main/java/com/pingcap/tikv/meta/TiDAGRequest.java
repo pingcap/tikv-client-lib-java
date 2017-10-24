@@ -1,13 +1,13 @@
 package com.pingcap.tikv.meta;
 
 import com.google.common.annotations.VisibleForTesting;
+import com.google.common.base.Joiner;
 import com.pingcap.tidb.tipb.*;
 import com.pingcap.tikv.exception.TiClientInternalException;
-import com.pingcap.tikv.expression.TiByItem;
-import com.pingcap.tikv.expression.TiColumnRef;
-import com.pingcap.tikv.expression.TiExpr;
+import com.pingcap.tikv.expression.*;
 import com.pingcap.tikv.kvproto.Coprocessor;
 import com.pingcap.tikv.types.DataType;
+import com.pingcap.tikv.util.KeyRangeUtils;
 import com.pingcap.tikv.util.Pair;
 
 import java.io.Serializable;
@@ -93,6 +93,27 @@ public class TiDAGRequest implements Serializable {
             .build();
   }
 
+  //  private DAGRequest buildTableScan() {
+//    DAGRequest.Builder dagBuilder = DAGRequest.newBuilder();
+//    dagBuilder.setStartTs(System.currentTimeMillis());
+////    dagBuilder.addOutputOffsets(0);
+////    dagBuilder.addOutputOffsets(1);
+//    dagBuilder.setTimeZoneOffset(0);
+//    dagBuilder.setFlags(0);
+//    Executor.Builder executorBuilder = Executor.newBuilder();
+////    executorBuilder.setTp(ExecType.TypeTableScan);
+//    TableScan.Builder tableScanBuilder = TableScan.newBuilder();
+////    tableScanBuilder.addColumns(tableInfo.getColumns().get(0).toProto(tableInfo));
+////    tableScanBuilder.addColumns(tableInfo.getColumns().get(1).toProto(tableInfo));
+//    tableScanBuilder.setDesc(false);
+//
+//    executorBuilder.setTblScan(tableScanBuilder);
+//    dagBuilder.addExecutors(executorBuilder.build());
+//
+//
+//
+//    return dagBuilder.build();
+//  }
   // See TiDB source code: executor/builder.go:890
   private DAGRequest buildTableScan() {
     checkArgument(startTs != 0, "timestamp is 0");
@@ -100,54 +121,48 @@ public class TiDAGRequest implements Serializable {
     Executor.Builder executorBuilder = Executor.newBuilder();
     TableScan.Builder tblScanBuilder = TableScan.newBuilder();
 
-    List<TiColumnInfo> columns;
-    if (!getGroupByItems().isEmpty() || !getAggregates().isEmpty()) {
-      columns = tableInfo.getColumns();
-    } else {
-      columns =
-              getFields()
-                      .stream()
-                      .map(col -> col.bind(tableInfo).getColumnInfo())
-                      .collect(Collectors.toList());
-    }
-
-    TiTableInfo filteredTable =
-            new TiTableInfo(
-                    tableInfo.getId(),
-                    CIStr.newCIStr(tableInfo.getName()),
-                    tableInfo.getCharset(),
-                    tableInfo.getCollate(),
-                    tableInfo.isPkHandle(),
-                    columns,
-                    tableInfo.getIndices(),
-                    tableInfo.getComment(),
-                    tableInfo.getAutoIncId(),
-                    tableInfo.getMaxColumnId(),
-                    tableInfo.getMaxIndexId(),
-                    tableInfo.getOldSchemaId());
+//    List<TiColumnInfo> columns;
+//    if (!getGroupByItems().isEmpty() || !getAggregates().isEmpty()) {
+//      columns = tableInfo.getColumns();
+//    } else {
+//      columns =
+//              getFields()
+//                      .stream()
+//                      .map(col -> col.bind(tableInfo).getColumnInfo())
+//                      .collect(Collectors.toList());
+//    }
+//
+//    TiTableInfo filteredTable =
+//            new TiTableInfo(
+//                    tableInfo.getId(),
+//                    CIStr.newCIStr(tableInfo.getName()),
+//                    tableInfo.getCharset(),
+//                    tableInfo.getCollate(),
+//                    tableInfo.isPkHandle(),
+//                    columns,
+//                    tableInfo.getIndices(),
+//                    tableInfo.getComment(),
+//                    tableInfo.getAutoIncId(),
+//                    tableInfo.getMaxColumnId(),
+//                    tableInfo.getMaxIndexId(),
+//                    tableInfo.getOldSchemaId());
 
     // Step1. Add columns to first executor
-    getFields().stream().map(r -> r.getColumnInfo().toProto(filteredTable)).forEach(tblScanBuilder::addColumns);
+//    getFields().stream().map(r -> r.bind(tableInfo).getColumnInfo().toProto(tableInfo)).forEach(tblScanBuilder::addColumns);
+    tableInfo.getColumns().forEach(tiColumnInfo -> tblScanBuilder.addColumns(tiColumnInfo.toProto(tableInfo)));
     executorBuilder.setTp(ExecType.TypeTableScan);
+    tblScanBuilder.setTableId(tableInfo.getId());
+//    ColumnInfo firstRow = tableInfo.getColumns().get(0).toProto(tableInfo);
+//    ColumnInfo extraInfo = ColumnInfo.newBuilder()
+//            .setColumnId(-1)
+//            .setPkHandle(false)
+//            .build();
+//    tblScanBuilder.addColumns(extraInfo);
     dagRequestBuilder.addExecutors(executorBuilder.setTblScan(tblScanBuilder));
     executorBuilder.clear();
 
     // Step2. Add others
-    Aggregation.Builder aggregationBuilder = Aggregation.newBuilder();
-    getGroupByItems().forEach(tiByItem -> aggregationBuilder.addGroupBy(tiByItem.getExpr().toProto()));
-    getAggregates().forEach(tiExpr -> aggregationBuilder.addAggFunc(tiExpr.toProto()));
-    executorBuilder.setTp(ExecType.TypeAggregation);
-    dagRequestBuilder.addExecutors(
-            executorBuilder.setAggregation(aggregationBuilder)
-    );
-    executorBuilder.clear();
-
-    TopN.Builder topNBuilder = TopN.newBuilder();
-    getOrderByItems().forEach(tiByItem -> topNBuilder.addOrderBy(tiByItem.toProto()));
-    executorBuilder.setTp(ExecType.TypeTopN);
-    dagRequestBuilder.addExecutors(executorBuilder.setTopN(topNBuilder));
-    executorBuilder.clear();
-
+    // DO NOT EDIT EXPRESSION ADD ORDER
     TiExpr whereExpr = mergeCNFExpressions(getWhere());
     if (whereExpr != null) {
       executorBuilder.setTp(ExecType.TypeSelection);
@@ -158,11 +173,40 @@ public class TiDAGRequest implements Serializable {
       );
     }
 
+    if (!getGroupByItems().isEmpty() || !getAggregates().isEmpty()) {
+      Aggregation.Builder aggregationBuilder = Aggregation.newBuilder();
+      getGroupByItems().forEach(tiByItem -> aggregationBuilder.addGroupBy(tiByItem.getExpr().toProto()));
+      getAggregates().forEach(tiExpr -> aggregationBuilder.addAggFunc(tiExpr.toProto()));
+      executorBuilder.setTp(ExecType.TypeAggregation);
+      dagRequestBuilder.addExecutors(
+              executorBuilder.setAggregation(aggregationBuilder)
+      );
+      executorBuilder.clear();
+    }
+
+    if (!getOrderByItems().isEmpty()) {
+      TopN.Builder topNBuilder = TopN.newBuilder();
+      getOrderByItems().forEach(tiByItem -> topNBuilder.addOrderBy(tiByItem.toProto()));
+      executorBuilder.setTp(ExecType.TypeTopN);
+      dagRequestBuilder.addExecutors(executorBuilder.setTopN(topNBuilder));
+      executorBuilder.clear();
+    }
+
+    if (0 != getLimit()) {
+      Limit.Builder limitBuilder = Limit.newBuilder();
+      limitBuilder.setLimit(getLimit());
+      executorBuilder.setTp(ExecType.TypeLimit);
+      dagRequestBuilder.addExecutors(executorBuilder.setLimit(limitBuilder));
+      executorBuilder.clear();
+    }
+
+    getFields().forEach(tiColumnInfo -> dagRequestBuilder.addOutputOffsets(tiColumnInfo.getColumnInfo().getOffset()));
+//    tableInfo.getColumns().forEach(tiColumnInfo -> dagRequestBuilder.addOutputOffsets(tiColumnInfo.getOffset()));
+//    setTruncateMode(TruncateMode.TruncationAsWarning);
     return dagRequestBuilder
             .setTimeZoneOffset(timeZoneOffset)
             .setFlags(flags)
             .setStartTs(startTs)
-            // TODO: verify usage of setOutputOffsets()
             .build();
   }
 
@@ -363,38 +407,74 @@ public class TiDAGRequest implements Serializable {
     return this;
   }
 
+  public boolean hasAggregate() {
+    return null == getAggregates() ||
+            !getAggregates().isEmpty();
+  }
+
+  public boolean hasGroupBy() {
+    return null == getGroupByItems() ||
+            !getGroupByItems().isEmpty();
+  }
+
   public List<TiExpr> getWhere() {
     return where;
+  }
+
+  public List<TiColumnInfo> getColInfoList() {
+    return getFields().stream().map(TiColumnRef::getColumnInfo).collect(Collectors.toList());
+  }
+
+  public List<DataType> getGroupByDTList() {
+    return getGroupByItems()
+            .stream()
+            .map(TiByItem::getExpr)
+            .map(TiExpr::getType)
+            .collect(Collectors.toList());
   }
 
   @Override
   public String toString() {
     StringBuilder sb = new StringBuilder();
     if (tableInfo != null) {
-      sb.append(String.format("[table: %s] ", tableInfo.toString()));
-      sb.append(tableInfo.toString());
+      sb.append(String.format("[table: %s] ", tableInfo.getName()));
     }
 
-    for (TiColumnRef ref : fields) {
-      sb.append(String.format("ColumnRef:[%s]", ref.toProto().toString()));
+    if (getRanges().size() != 0) {
+      sb.append(", Ranges: ");
+      List<String> rangeStrings = getRanges()
+              .stream()
+              .map(r -> KeyRangeUtils.toString(r))
+              .collect(Collectors.toList());
+      sb.append(Joiner.on(", ").skipNulls().join(rangeStrings));
     }
 
-    for (Pair<TiExpr, DataType> agg : aggregates) {
-      sb.append(String.format("Aggregates:[%s]", agg.first.toProto().toString()));
+    if (getFields().size() != 0) {
+      sb.append(", Columns: ");
+      sb.append(Joiner.on(", ").skipNulls().join(getFields()));
     }
 
-    for (TiByItem by : groupByItems) {
-      sb.append(String.format("GroupBys:[%s]", by.toProto().toString()));
+    if (getWhere().size() != 0) {
+      sb.append(", Aggregates: ");
+      sb.append(Joiner.on(", ").skipNulls().join(getWhere()));
     }
 
-    for (TiByItem by : orderByItems) {
-      sb.append(String.format("OrderBys:[%s]", by.toProto().toString()));
+    if (getAggregates().size() != 0) {
+      sb.append(", Aggregates: ");
+      sb.append(Joiner.on(", ").skipNulls().join(getAggregates()));
     }
 
-    for (TiExpr cond : where) {
-      sb.append(String.format("Where:[%s]", cond.toProto().toString()));
+    if (getGroupByItems().size() != 0) {
+      sb.append(", Group By: ");
+      sb.append(Joiner.on(", ").skipNulls().join(getGroupByItems()));
+    }
+
+    if (getOrderByItems().size() != 0) {
+      sb.append(", Order By: ");
+      sb.append(Joiner.on(", ").skipNulls().join(getOrderByItems()));
     }
     return sb.toString();
+
   }
 
 }

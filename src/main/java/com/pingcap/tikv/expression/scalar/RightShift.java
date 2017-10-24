@@ -39,4 +39,5 @@ public class RightShift extends TiBinaryFunctionExpression {
   public DataType getType() {
     throw new UnsupportedOperationException();
   }
+
 }

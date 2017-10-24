@@ -16,11 +16,11 @@
 package com.pingcap.tikv.expression.scalar;
 
 import com.pingcap.tidb.tipb.ExprType;
-import com.pingcap.tikv.expression.TiBinaryFunctionExpression;
+import com.pingcap.tidb.tipb.ScalarFuncSig;
 import com.pingcap.tikv.expression.TiExpr;
 import com.pingcap.tikv.types.DataType;
 
-public class LeftShift extends TiBinaryFunctionExpression {
+public class LeftShift extends ScalarFunction {
   public LeftShift(TiExpr lhs, TiExpr rhs) {
     super(lhs, rhs);
   }
@@ -37,6 +37,11 @@ public class LeftShift extends TiBinaryFunctionExpression {
 
   @Override
   public DataType getType() {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  ScalarFuncSig getSignature() {
     throw new UnsupportedOperationException();
   }
 }

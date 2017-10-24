@@ -23,8 +23,6 @@ public abstract class TiBinaryFunctionExpression extends TiFunctionExpression {
     super(lhs, rhs);
   }
 
-  public abstract String getName();
-
   @Override
   protected void validateArguments(TiExpr... args) throws RuntimeException {
     checkNotNull(args, "Arguments of " + getName() + " cannot be null");

@@ -15,18 +15,33 @@
 
 package com.pingcap.tikv.expression.scalar;
 
-import static com.google.common.base.Preconditions.checkArgument;
-import static java.util.Objects.requireNonNull;
-
 import com.pingcap.tidb.tipb.ExprType;
+import com.pingcap.tidb.tipb.ScalarFuncSig;
 import com.pingcap.tikv.expression.TiExpr;
-import com.pingcap.tikv.expression.TiFunctionExpression;
 import com.pingcap.tikv.types.DataType;
 import com.pingcap.tikv.types.IntegerType;
+import com.pingcap.tikv.util.ScalarFuncInfer;
 
-public class In extends TiFunctionExpression {
+import static com.google.common.base.Preconditions.checkArgument;
+import static com.pingcap.tidb.tipb.ScalarFuncSig.*;
+import static java.util.Objects.requireNonNull;
+
+public class In extends ScalarFunction {
   public In(TiExpr... args) {
     super(args);
+  }
+
+  @Override
+  ScalarFuncSig getSignature() {
+    return ScalarFuncInfer.infer(
+            getArgType(),
+            InInt,
+            InDecimal,
+            InReal,
+            InDuration,
+            InTime,
+            InString
+    );
   }
 
   @Override

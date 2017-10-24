@@ -16,13 +16,18 @@
 package com.pingcap.tikv.expression.scalar;
 
 import com.pingcap.tidb.tipb.ExprType;
+import com.pingcap.tidb.tipb.ScalarFuncSig;
 import com.pingcap.tikv.expression.TiExpr;
-import com.pingcap.tikv.expression.TiFunctionExpression;
 import com.pingcap.tikv.types.IntegerType;
 
-public class NullIf extends TiFunctionExpression {
+public class NullIf extends ScalarFunction {
   public NullIf(TiExpr... arg) {
     super(arg);
+  }
+
+  @Override
+  ScalarFuncSig getSignature() {
+    throw new UnsupportedOperationException();
   }
 
   @Override

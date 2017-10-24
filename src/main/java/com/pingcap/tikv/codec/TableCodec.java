@@ -18,6 +18,7 @@ package com.pingcap.tikv.codec;
 import com.google.protobuf.ByteString;
 import com.pingcap.tikv.types.IntegerType;
 import com.pingcap.tikv.util.Pair;
+import java.util.Objects;
 
 // Basically all protobuf ByteString involves buffer copy
 // and might not be a good choice inside codec so we choose to
@@ -35,6 +36,7 @@ public class TableCodec {
   public static final long SIGN_MASK = ~Long.MAX_VALUE;
 
   public static void writeRowKey(CodecDataOutput cdo, long tableId, byte[] encodeHandle) {
+    Objects.requireNonNull(cdo, "cdo cannot be null");
     appendTableRecordPrefix(cdo, tableId);
     cdo.write(encodeHandle);
   }
@@ -42,6 +44,7 @@ public class TableCodec {
   // EncodeIndexSeekKey encodes an index value to kv.Key.
   public static void writeIndexSeekKey(
       CodecDataOutput cdo, long tableId, long indexId, byte[]... dataGroup) {
+    Objects.requireNonNull(cdo, "cdo cannot be null");
     appendTableIndexPrefix(cdo, tableId);
     IntegerType.writeLong(cdo, indexId);
     for (byte[] data : dataGroup) {
@@ -54,6 +57,7 @@ public class TableCodec {
   // appendTableRecordPrefix appends table record prefix  "t[tableID]_r".
   // tablecodec.go:appendTableRecordPrefix
   private static void appendTableRecordPrefix(CodecDataOutput cdo, long tableId) {
+    Objects.requireNonNull(cdo, "cdo cannot be null");
     cdo.write(TBL_PREFIX);
     IntegerType.writeLong(cdo, tableId);
     cdo.write(REC_PREFIX_SEP);
@@ -62,6 +66,7 @@ public class TableCodec {
   // appendTableIndexPrefix appends table index prefix  "t[tableID]_i".
   // tablecodec.go:appendTableIndexPrefix
   private static void appendTableIndexPrefix(CodecDataOutput cdo, long tableId) {
+    Objects.requireNonNull(cdo, "cdo cannot be null");
     cdo.write(TBL_PREFIX);
     IntegerType.writeLong(cdo, tableId);
     cdo.write(IDX_PREFIX_SEP);
@@ -74,17 +79,30 @@ public class TableCodec {
     return cdo.toByteString();
   }
 
+  public static long decodeRowKey(ByteString rowKey) {
+    Objects.requireNonNull(rowKey, "rowKey cannot be null");
+    CodecDataInput cdi = new CodecDataInput(rowKey);
+    cdi.skipBytes(TBL_PREFIX.length);
+    IntegerType.readLong(cdi);
+    cdi.skipBytes(REC_PREFIX_SEP.length);
+
+    return IntegerType.readLong(cdi);
+  }
+
   public static void writeRowKeyWithHandle(CodecDataOutput cdo, long tableId, long handle) {
+    Objects.requireNonNull(cdo, "cdo cannot be null");
     appendTableRecordPrefix(cdo, tableId);
     IntegerType.writeLong(cdo, handle);
   }
 
   public static void writeRecordKey(CodecDataOutput cdo, byte[] recordPrefix, long handle) {
+    Objects.requireNonNull(cdo, "cdo cannot be null");
     cdo.write(recordPrefix);
     IntegerType.writeLong(cdo, handle);
   }
 
   public static Pair<Long, Long> readRecordKey(CodecDataInput cdi) {
+    Objects.requireNonNull(cdi, "cdi cannot be null");
     if (!consumeAndMatching(cdi, TBL_PREFIX)) {
       throw new CodecException("Invalid Table Prefix");
     }
@@ -103,6 +121,7 @@ public class TableCodec {
   }
 
   private static boolean consumeAndMatching(CodecDataInput cdi, byte[] prefix) {
+    Objects.requireNonNull(cdi, "cdi cannot be null");
     for (byte b : prefix) {
       if (cdi.readByte() != b) {
         return false;
