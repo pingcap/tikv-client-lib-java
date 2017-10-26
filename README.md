@@ -49,7 +49,6 @@ Since it's not quite complete, a usage sample for now can be given is:
         TiTableInfo table = cat.getTable(db, "t2");
 
 ....
-
         Snapshot snapshot = session.createSnapshot();
         Iterator<Row> it = snapshot.newSelect(table)
                 .addRange(TiRange.create(0L, Long.MAX_VALUE))

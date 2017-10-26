@@ -15,8 +15,6 @@
 
 package com.pingcap.tikv.types;
 
-import static com.pingcap.tikv.types.Types.*;
-
 import com.google.common.collect.ImmutableList;
 import com.google.protobuf.ByteString;
 import com.pingcap.tikv.codec.CodecDataInput;
@@ -24,8 +22,11 @@ import com.pingcap.tikv.codec.CodecDataOutput;
 import com.pingcap.tikv.meta.Collation;
 import com.pingcap.tikv.meta.TiColumnInfo;
 import com.pingcap.tikv.row.Row;
+
 import java.io.Serializable;
 import java.util.List;
+
+import static com.pingcap.tikv.types.Types.*;
 
 /** Base Type for encoding and decoding TiDB row information. */
 public abstract class DataType implements Serializable {
@@ -56,7 +57,7 @@ public abstract class DataType implements Serializable {
   protected int flag;
   protected int decimal;
   protected int collation;
-  protected int length;
+  protected long length;
   private List<String> elems;
 
   protected DataType(TiColumnInfo.InternalTypeHolder holder) {
@@ -184,7 +185,7 @@ public abstract class DataType implements Serializable {
     return collation;
   }
 
-  public int getLength() {
+  public long getLength() {
     return length;
   }
 
@@ -277,12 +278,12 @@ public abstract class DataType implements Serializable {
 
   @Override
   public int hashCode() {
-    return 31
-        * (tp == 0 ? 1 : tp)
-        * (flag == 0 ? 1 : flag)
-        * (decimal == 0 ? 1 : decimal)
-        * (collation == 0 ? 1 : collation)
-        * (length == 0 ? 1 : length)
-        * (elems.hashCode());
+    return (int) (31
+            * (tp == 0 ? 1 : tp)
+            * (flag == 0 ? 1 : flag)
+            * (decimal == 0 ? 1 : decimal)
+            * (collation == 0 ? 1 : collation)
+            * (length == 0 ? 1 : length)
+            * (elems.hashCode()));
   }
 }
