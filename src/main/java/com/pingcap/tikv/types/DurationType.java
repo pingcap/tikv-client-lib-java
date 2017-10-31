@@ -22,43 +22,35 @@ import com.pingcap.tikv.codec.CodecDataOutput;
 import com.pingcap.tikv.codec.InvalidCodecFormatException;
 import com.pingcap.tikv.meta.TiColumnInfo;
 import com.pingcap.tikv.row.Row;
-import java.sql.Time;
-import java.sql.Timestamp;
 import java.time.Duration;
 import java.time.LocalDateTime;
-import java.time.ZoneId;
-import java.time.ZonedDateTime;
 
-public class TimestampType extends DataType {
-  private final ZoneId defaultZone = ZoneId.of("UTC");
-  static TimestampType of(int tp) {
-    return new TimestampType(tp);
+public class DurationType extends IntegerType {
+  static DurationType of(int tp) {
+    return new DurationType(tp);
   }
 
-  private TimestampType(int tp) {
+  private DurationType(int tp) {
     super(tp);
   }
 
-  TimestampType(TiColumnInfo.InternalTypeHolder holder) {
+  DurationType(TiColumnInfo.InternalTypeHolder holder) {
     super(holder);
   }
 
   @Override
   public Object decodeNotNull(int flag, CodecDataInput cdi) {
     // MysqlTime MysqlDate MysqlDatetime
-    if (flag == UVARINT_FLAG) {
-      // read packedUint
-      LocalDateTime localDateTime = fromPackedLong(IntegerType.readUVarLong(cdi));
-      if (localDateTime == null) {
-        return null;
-      }
-      return Timestamp.from(ZonedDateTime.of(localDateTime, ZoneId.of("UTC")).toInstant());
+    if (flag == VARINT_FLAG) {
+      long nanoSec = IntegerType.readVarLong(cdi);
+      Duration duration = Duration.ofNanos(nanoSec);
+      return duration.toMillis() / 1000;
     } else if (flag == INT_FLAG) {
       long nanoSec = IntegerType.readLong(cdi);
       Duration duration = Duration.ofNanos(nanoSec);
-      return new Time(duration.toMillis());
+      return duration.toMillis() / 1000;
     } else {
-      throw new InvalidCodecFormatException("Invalid Flag type for TimestampType: " + flag);
+      throw new InvalidCodecFormatException("Invalid Flag type for Time Type: " + flag);
     }
   }
 
@@ -71,23 +63,20 @@ public class TimestampType extends DataType {
    */
   public void decode(CodecDataInput cdi, Row row, int pos) {
     int flag = cdi.readUnsignedByte();
-    // MysqlTime MysqlDate MysqlDatetime
-    if (flag == UVARINT_FLAG) {
-      // read packedUint
-      LocalDateTime localDateTime = fromPackedLong(IntegerType.readUVarLong(cdi));
-      if (localDateTime == null) {
-        row.setNull(pos);
-        return;
-      }
-      Timestamp timestamp = Timestamp.from(ZonedDateTime.of(localDateTime, defaultZone).toInstant());
-      row.setTimestamp(pos, timestamp);
+    if (flag == VARINT_FLAG) {
+      long nanoSec = IntegerType.readVarLong(cdi);
+//      Duration duration = Duration.ofNanos(nanoSec);
+      row.setLong(pos, nanoSec);
+//      Time time = new Time(duration.toMillis());
+//      row.setTime(pos, time);
     } else if (flag == INT_FLAG) {
       long nanoSec = IntegerType.readLong(cdi);
-      Duration duration = Duration.ofNanos(nanoSec);
-      Time time = new Time(duration.toMillis());
-      row.setTime(pos, time);
+      row.setLong(pos, nanoSec);
+//      Duration duration = Duration.ofNanos(nanoSec);
+//      Time time = new Time(duration.toMillis());
+//      row.setTime(pos, time);
     } else {
-      throw new InvalidCodecFormatException("Invalid Flag type for TimestampType: " + flag);
+      throw new InvalidCodecFormatException("Invalid Flag type for Time Type: " + flag);
     }
   }
 
@@ -101,14 +90,13 @@ public class TimestampType extends DataType {
   @Override
   public void encodeNotNull(CodecDataOutput cdo, EncodeType encodeType, Object value) {
     LocalDateTime localDateTime;
-    // TODO, is LocalDateTime enough here?
     if (value instanceof LocalDateTime) {
       localDateTime = (LocalDateTime) value;
     } else {
       throw new UnsupportedOperationException("Can not cast Object to LocalDateTime ");
     }
     long val = toPackedLong(localDateTime);
-    IntegerType.writeULong(cdo, val);
+    IntegerType.writeVarLong(cdo, val);
   }
 
   /**
@@ -117,9 +105,12 @@ public class TimestampType extends DataType {
    * @param time localDateTime that need to be encoded.
    * @return a packed long.
    */
-  static long toPackedLong(LocalDateTime time) {
+  private static long toPackedLong(LocalDateTime time) {
     int year = time.getYear();
-    int month = time.getMonthValue();
+    int month = time.getMonthValue() - 1;
+    if(year != 0 || month != 0) {
+      throw new UnsupportedOperationException("Time Convert Error: Duration of time cannot exceed one month.");
+    }
     int day = time.getDayOfMonth();
     int hour = time.getHour();
     int minute = time.getMinute();
@@ -131,30 +122,41 @@ public class TimestampType extends DataType {
     return ((ymd << 17 | hms) << 24) | micro;
   }
 
-  /**
-   * Decode a packed long to LocalDateTime.
-   *
-   * @param packed a long value
-   * @return a decoded LocalDateTime.
-   */
-  static LocalDateTime fromPackedLong(long packed) {
-    // TODO: As for JDBC behavior, it can be configured to "round" or "toNull"
-    // for now we didn't pass in session so we do a toNull behavior
-    if (packed == 0) {
-      return null;
-    }
-    long ymdhms = packed >> 24;
-    long ymd = ymdhms >> 17;
-    int day = (int) (ymd & ((1 << 5) - 1));
-    long ym = ymd >> 5;
-    int month = (int) (ym % 13);
-    int year = (int) (ym / 13);
-
-    int hms = (int) (ymdhms & ((1 << 17) - 1));
-    int second = hms & ((1 << 6) - 1);
-    int minute = (hms >> 6) & ((1 << 6) - 1);
-    int hour = hms >> 12;
-    int microsec = (int) (packed % (1 << 24));
-    return LocalDateTime.of(year, month, day, hour, minute, second, microsec * 1000);
-  }
+//  /**
+//   * Decode a packed long to LocalDateTime.
+//   *
+//   * @param packed a long value
+//   * @return a decoded LocalDateTime.
+//   */
+//  static LocalDateTime fromPackedLong(long packed) {
+//    // TODO: As for JDBC behavior, it can be configured to "round" or "toNull"
+//    // for now we didn't pass in session so we do a toNull behavior
+//    if (packed == 0) {
+//      return null;
+//    }
+//    int sign = 1;
+//    if (packed < 0) {
+//      sign = -1;
+//      packed = -packed;
+//    }
+//    long ymdhms = packed / 1000000000;
+//    long ymd = ymdhms / 86400;
+//    int day = (int) (ymd & ((1 << 5) - 1));
+//    long ym = ymd >> 5;
+//    long year = ym / 13;
+//    long month = ym % 13;
+//    if (ym != 0) {
+//      throw new UnsupportedOperationException("Time Convert Error: Duration of time cannot exceed one month. y = " + year + " m = "
+//          + month);
+//    }
+//
+//    int hms = (int) (ymdhms % 86400);
+//    int second = hms % 60;
+//    int minute = hms / 60 % 60;
+//    int hour = hms / 3600;
+//
+//    int microsec = (int) (packed % 1000000000);
+//
+//    return LocalDateTime.of(sign * (int)year, (int)month + 1, day, hour, minute, second, microsec * 1000);
+//  }
 }

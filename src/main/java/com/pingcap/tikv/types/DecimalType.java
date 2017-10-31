@@ -74,7 +74,7 @@ public class DecimalType extends DataType {
    *
    * @param cdi cdi is source data.
    */
-  public static BigDecimal readDecimalFully(CodecDataInput cdi) {
+  private static BigDecimal readDecimalFully(CodecDataInput cdi) {
     if (cdi.available() < 3) {
       throw new IllegalArgumentException("insufficient bytes to read value");
     }
@@ -105,7 +105,7 @@ public class DecimalType extends DataType {
    * @param cdo cdo is destination data.
    * @param dec is decimal value that will be written into cdo.
    */
-  static void writeDecimalFully(CodecDataOutput cdo, MyDecimal dec) {
+  private static void writeDecimalFully(CodecDataOutput cdo, MyDecimal dec) {
     int[] data = dec.toBin(dec.precision(), dec.frac());
     cdo.writeByte(dec.precision());
     cdo.writeByte(dec.frac());
@@ -120,7 +120,7 @@ public class DecimalType extends DataType {
    * @param cdi source of data
    * @return decoded unsigned long value
    */
-  public static double readDouble(CodecDataInput cdi) {
+  static double readDouble(CodecDataInput cdi) {
     return readDecimalFully(cdi).doubleValue();
   }
 
@@ -142,7 +142,7 @@ public class DecimalType extends DataType {
    * @param cdo For outputting data in bytes array
    * @param val The data to encode
    */
-  public static void writeDouble(CodecDataOutput cdo, double val) {
+  static void writeDouble(CodecDataOutput cdo, double val) {
     MyDecimal dec = new MyDecimal();
     dec.fromDecimal(val);
     writeDecimalFully(cdo, dec);
