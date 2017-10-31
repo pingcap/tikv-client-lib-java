@@ -6,7 +6,25 @@ import com.pingcap.tikv.types.*;
 
 import java.util.Objects;
 
+/**
+ * The ScalarFunction Signature inferrer.
+ * <p>
+ * Used to infer a target signature for the given DataType
+ */
 public class ScalarFuncInfer {
+  /**
+   * Infer scalar function signature.
+   * You should provide candidates for the
+   * inferrer to choose.
+   *
+   * @param dataType     the data type
+   * @param intSig       the int sig
+   * @param decimalSig   the decimal sig
+   * @param realSig      the real sig
+   * @param durationType the duration type
+   * @param timeType     the time type
+   * @return the scalar func sig
+   */
   public static ScalarFuncSig infer(DataType dataType,
                                     ScalarFuncSig intSig,
                                     ScalarFuncSig decimalSig,
@@ -35,6 +53,20 @@ public class ScalarFuncInfer {
     }
   }
 
+  /**
+   * Infer scalar function signature.
+   * You should provide candidates for the
+   * inferrer to choose.
+   *
+   * @param dataType     the data type
+   * @param intSig       the int sig
+   * @param decimalSig   the decimal sig
+   * @param realSig      the real sig
+   * @param durationType the duration type
+   * @param timeType     the time type
+   * @param stringType   the string type
+   * @return the scalar func sig
+   */
   public static ScalarFuncSig infer(DataType dataType,
                                     ScalarFuncSig intSig,
                                     ScalarFuncSig decimalSig,
