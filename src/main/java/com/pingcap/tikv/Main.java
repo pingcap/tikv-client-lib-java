@@ -2,22 +2,14 @@ package com.pingcap.tikv;
 
 
 import com.google.protobuf.ByteString;
-import com.pingcap.tidb.tipb.*;
 import com.pingcap.tikv.catalog.Catalog;
 import com.pingcap.tikv.codec.TableCodec;
-import com.pingcap.tikv.expression.*;
-import com.pingcap.tikv.expression.aggregate.Count;
-import com.pingcap.tikv.expression.scalar.Equal;
-import com.pingcap.tikv.expression.scalar.GreaterEqual;
-import com.pingcap.tikv.expression.scalar.LessThan;
+import com.pingcap.tikv.expression.TiColumnRef;
 import com.pingcap.tikv.kvproto.Coprocessor;
 import com.pingcap.tikv.meta.TiDAGRequest;
 import com.pingcap.tikv.meta.TiDBInfo;
-import com.pingcap.tikv.meta.TiSelectRequest;
 import com.pingcap.tikv.meta.TiTableInfo;
 import com.pingcap.tikv.region.RegionManager;
-import com.pingcap.tikv.region.RegionStoreClient;
-import com.pingcap.tikv.region.TiRegion;
 import com.pingcap.tikv.row.Row;
 
 import java.util.ArrayList;
@@ -59,19 +51,20 @@ public class Main {
     dagRequest.setTableInfo(table);
     dagRequest.setStartTs(session.getTimestamp().getVersion());
 //    dagRequest.addWhere(new GreaterEqual(TiConstant.create(5), TiConstant.create(5)));
-    dagRequest.addAggregate(new Count(TiColumnRef.create("c_custkey")));
-    dagRequest.addGroupByItem(TiByItem.create(TiColumnRef.create("c_mktsegment"), false));
+//    dagRequest.addAggregate(new Count(TiColumnRef.create("c_custkey")));
+//    dagRequest.addGroupByItem(TiByItem.create(TiColumnRef.create("c_mktsegment"), false));
 //    dagRequest.addGroupByItem(TiByItem.create(TiColumnRef.create("c_name"), false));
 //    dagRequest.setLimit(10);
     dagRequest.bind();
     Iterator<com.pingcap.tikv.row.Row> iterator = snapshot.select(dagRequest);
     System.out.println("Show result:");
+    int cnt = 0;
     while (iterator.hasNext()) {
       Row rowData = iterator.next();
       for (int i = 0; i < rowData.fieldCount(); i++) {
         System.out.print(rowData.get(i, null) + "\t");
       }
-      System.out.println();
+      System.out.println("     " + cnt++);
 //      System.out.println(rowData.get(0, null) + " " + rowData.get(1, null));
     }
 

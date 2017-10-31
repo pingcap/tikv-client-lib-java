@@ -22,10 +22,13 @@ import com.pingcap.tikv.operation.transformer.Cast;
 import com.pingcap.tikv.operation.transformer.NoOp;
 import com.pingcap.tikv.operation.transformer.RowTransformer;
 import com.pingcap.tikv.types.DataType;
+import com.pingcap.tikv.types.DataTypeFactory;
 import com.pingcap.tikv.util.Pair;
 
 import java.util.ArrayList;
 import java.util.List;
+
+import static com.pingcap.tikv.types.Types.TYPE_LONG;
 
 /**
  * SchemaInfer extract row's type after query is executed. It is pretty rough version. Optimization
@@ -46,7 +49,15 @@ public class SchemaInfer {
   private SchemaInfer(TiDAGRequest dagRequest) {
     types = new ArrayList<>();
     extractFieldTypes(dagRequest);
+    extractHandleType(dagRequest);
     buildTransform(dagRequest);
+  }
+
+  private void extractHandleType(TiDAGRequest dagRequest) {
+    if (dagRequest.isHandleNeeded()) {
+      // DataType of handle is long
+      types.add(DataTypeFactory.of(TYPE_LONG));
+    }
   }
 
   private void buildTransform(TiDAGRequest dagRequest) {
