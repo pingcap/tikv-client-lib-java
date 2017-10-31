@@ -121,42 +121,4 @@ public class DurationType extends IntegerType {
     long hms = hour << 12 | minute << 6 | second;
     return ((ymd << 17 | hms) << 24) | micro;
   }
-
-//  /**
-//   * Decode a packed long to LocalDateTime.
-//   *
-//   * @param packed a long value
-//   * @return a decoded LocalDateTime.
-//   */
-//  static LocalDateTime fromPackedLong(long packed) {
-//    // TODO: As for JDBC behavior, it can be configured to "round" or "toNull"
-//    // for now we didn't pass in session so we do a toNull behavior
-//    if (packed == 0) {
-//      return null;
-//    }
-//    int sign = 1;
-//    if (packed < 0) {
-//      sign = -1;
-//      packed = -packed;
-//    }
-//    long ymdhms = packed / 1000000000;
-//    long ymd = ymdhms / 86400;
-//    int day = (int) (ymd & ((1 << 5) - 1));
-//    long ym = ymd >> 5;
-//    long year = ym / 13;
-//    long month = ym % 13;
-//    if (ym != 0) {
-//      throw new UnsupportedOperationException("Time Convert Error: Duration of time cannot exceed one month. y = " + year + " m = "
-//          + month);
-//    }
-//
-//    int hms = (int) (ymdhms % 86400);
-//    int second = hms % 60;
-//    int minute = hms / 60 % 60;
-//    int hour = hms / 3600;
-//
-//    int microsec = (int) (packed % 1000000000);
-//
-//    return LocalDateTime.of(sign * (int)year, (int)month + 1, day, hour, minute, second, microsec * 1000);
-//  }
 }
