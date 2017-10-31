@@ -93,27 +93,6 @@ public class TiDAGRequest implements Serializable {
             .build();
   }
 
-  //  private DAGRequest buildTableScan() {
-//    DAGRequest.Builder dagBuilder = DAGRequest.newBuilder();
-//    dagBuilder.setStartTs(System.currentTimeMillis());
-////    dagBuilder.addOutputOffsets(0);
-////    dagBuilder.addOutputOffsets(1);
-//    dagBuilder.setTimeZoneOffset(0);
-//    dagBuilder.setFlags(0);
-//    Executor.Builder executorBuilder = Executor.newBuilder();
-////    executorBuilder.setTp(ExecType.TypeTableScan);
-//    TableScan.Builder tableScanBuilder = TableScan.newBuilder();
-////    tableScanBuilder.addColumns(tableInfo.getColumns().get(0).toProto(tableInfo));
-////    tableScanBuilder.addColumns(tableInfo.getColumns().get(1).toProto(tableInfo));
-//    tableScanBuilder.setDesc(false);
-//
-//    executorBuilder.setTblScan(tableScanBuilder);
-//    dagBuilder.addExecutors(executorBuilder.build());
-//
-//
-//
-//    return dagBuilder.build();
-//  }
   // See TiDB source code: executor/builder.go:890
   private DAGRequest buildTableScan() {
     checkArgument(startTs != 0, "timestamp is 0");
@@ -121,48 +100,18 @@ public class TiDAGRequest implements Serializable {
     Executor.Builder executorBuilder = Executor.newBuilder();
     TableScan.Builder tblScanBuilder = TableScan.newBuilder();
 
-//    List<TiColumnInfo> columns;
-//    if (!getGroupByItems().isEmpty() || !getAggregates().isEmpty()) {
-//      columns = tableInfo.getColumns();
-//    } else {
-//      columns =
-//              getFields()
-//                      .stream()
-//                      .map(col -> col.bind(tableInfo).getColumnInfo())
-//                      .collect(Collectors.toList());
-//    }
-//
-//    TiTableInfo filteredTable =
-//            new TiTableInfo(
-//                    tableInfo.getId(),
-//                    CIStr.newCIStr(tableInfo.getName()),
-//                    tableInfo.getCharset(),
-//                    tableInfo.getCollate(),
-//                    tableInfo.isPkHandle(),
-//                    columns,
-//                    tableInfo.getIndices(),
-//                    tableInfo.getComment(),
-//                    tableInfo.getAutoIncId(),
-//                    tableInfo.getMaxColumnId(),
-//                    tableInfo.getMaxIndexId(),
-//                    tableInfo.getOldSchemaId());
 
     // Step1. Add columns to first executor
-//    getFields().stream().map(r -> r.bind(tableInfo).getColumnInfo().toProto(tableInfo)).forEach(tblScanBuilder::addColumns);
     tableInfo.getColumns().forEach(tiColumnInfo -> tblScanBuilder.addColumns(tiColumnInfo.toProto(tableInfo)));
     executorBuilder.setTp(ExecType.TypeTableScan);
     tblScanBuilder.setTableId(tableInfo.getId());
-//    ColumnInfo firstRow = tableInfo.getColumns().get(0).toProto(tableInfo);
-//    ColumnInfo extraInfo = ColumnInfo.newBuilder()
-//            .setColumnId(-1)
-//            .setPkHandle(false)
-//            .build();
-//    tblScanBuilder.addColumns(extraInfo);
     dagRequestBuilder.addExecutors(executorBuilder.setTblScan(tblScanBuilder));
     executorBuilder.clear();
 
     // Step2. Add others
-    // DO NOT EDIT EXPRESSION ADD ORDER
+    // DO NOT EDIT EXPRESSION CONSTRUCTION ORDER
+    // Or make sure the construction order is below:
+    // TableScan/IndexScan > Selection > Aggregation > TopN/Limit
     TiExpr whereExpr = mergeCNFExpressions(getWhere());
     if (whereExpr != null) {
       executorBuilder.setTp(ExecType.TypeSelection);
@@ -201,8 +150,7 @@ public class TiDAGRequest implements Serializable {
     }
 
     getFields().forEach(tiColumnInfo -> dagRequestBuilder.addOutputOffsets(tiColumnInfo.getColumnInfo().getOffset()));
-//    tableInfo.getColumns().forEach(tiColumnInfo -> dagRequestBuilder.addOutputOffsets(tiColumnInfo.getOffset()));
-//    setTruncateMode(TruncateMode.TruncationAsWarning);
+
     return dagRequestBuilder
             .setTimeZoneOffset(timeZoneOffset)
             .setFlags(flags)

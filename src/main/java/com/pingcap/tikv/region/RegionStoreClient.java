@@ -158,14 +158,20 @@ public class RegionStoreClient extends AbstractGRPCClient<TikvBlockingStub, Tikv
   }
 
   public SelectResponse coprocess(DAGRequest req, List<KeyRange> ranges) {
+    if (null == req ||
+        null == ranges ||
+        req.getExecutorsCount() < 1) {
+      throw new IllegalArgumentException("Invalid coprocess argument!");
+    }
+
     Supplier<Coprocessor.Request> reqToSend = () ->
             Coprocessor.Request.newBuilder()
                     .setContext(region.getContext())
-                    // TODO: If no executors...?
                     .setTp(req.getExecutors(0).hasIdxScan() ? REQ_TYPE_INDEX : REQ_TYPE_DAG)
                     .setData(req.toByteString())
                     .addAllRanges(ranges)
                     .build();
+
     KVErrorHandler<Coprocessor.Response> handler =
             new KVErrorHandler<>(
                     regionManager, this, region, resp -> resp.hasRegionError() ? resp.getRegionError() : null);
