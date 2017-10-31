@@ -82,7 +82,7 @@ public class TestDAGBuild {
     dagRequest.addGroupByItem(TiByItem.create(TiColumnRef.create("c_mktsegment"), false));
     dagRequest.bind();
     Iterator<Row> iterator = snapshot.select(dagRequest);
-    showIterRes(iterator);
+//    showIterRes(iterator);
   }
 
   @Test
@@ -96,7 +96,7 @@ public class TestDAGBuild {
     dagRequest.addGroupByItem(TiByItem.create(TiColumnRef.create("c_mktsegment"), false));
     dagRequest.bind();
     Iterator<Row> iterator = snapshot.select(dagRequest);
-    showIterRes(iterator);
+//    showIterRes(iterator);
   }
 
   @Test
@@ -108,7 +108,7 @@ public class TestDAGBuild {
     dagRequest.addAggregate(new Count(TiColumnRef.create("c_custkey")));
     dagRequest.bind();
     Iterator<Row> iterator = snapshot.select(dagRequest);
-    showIterRes(iterator);
+//    showIterRes(iterator);
   }
 
   @Test
@@ -122,7 +122,7 @@ public class TestDAGBuild {
     dagRequest.bind();
     Iterator<Row> iterator = snapshot.select(dagRequest);
     Assert.assertTrue(!iterator.hasNext());
-    showIterRes(iterator);
+//    showIterRes(iterator);
   }
 
   @Test
@@ -137,7 +137,7 @@ public class TestDAGBuild {
     dagRequest.bind();
     Iterator<Row> iterator = snapshot.select(dagRequest);
     Assert.assertTrue(iterator.hasNext());
-    showIterRes(iterator);
+//    showIterRes(iterator);
   }
 
   @Test
@@ -151,6 +151,6 @@ public class TestDAGBuild {
     dagRequest.bind();
     Iterator<Row> iterator = snapshot.select(dagRequest);
     Assert.assertTrue(iterator.hasNext());
-    showIterRes(iterator);
+//    showIterRes(iterator);
   }
 }
