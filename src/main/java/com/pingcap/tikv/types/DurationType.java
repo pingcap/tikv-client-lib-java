@@ -22,6 +22,7 @@ import com.pingcap.tikv.codec.CodecDataOutput;
 import com.pingcap.tikv.codec.InvalidCodecFormatException;
 import com.pingcap.tikv.meta.TiColumnInfo;
 import com.pingcap.tikv.row.Row;
+
 import java.time.Duration;
 import java.time.LocalDateTime;
 
@@ -40,7 +41,6 @@ public class DurationType extends IntegerType {
 
   @Override
   public Object decodeNotNull(int flag, CodecDataInput cdi) {
-    // MysqlTime MysqlDate MysqlDatetime
     if (flag == VARINT_FLAG) {
       long nanoSec = IntegerType.readVarLong(cdi);
       Duration duration = Duration.ofNanos(nanoSec);
@@ -65,16 +65,10 @@ public class DurationType extends IntegerType {
     int flag = cdi.readUnsignedByte();
     if (flag == VARINT_FLAG) {
       long nanoSec = IntegerType.readVarLong(cdi);
-//      Duration duration = Duration.ofNanos(nanoSec);
       row.setLong(pos, nanoSec);
-//      Time time = new Time(duration.toMillis());
-//      row.setTime(pos, time);
     } else if (flag == INT_FLAG) {
       long nanoSec = IntegerType.readLong(cdi);
       row.setLong(pos, nanoSec);
-//      Duration duration = Duration.ofNanos(nanoSec);
-//      Time time = new Time(duration.toMillis());
-//      row.setTime(pos, time);
     } else {
       throw new InvalidCodecFormatException("Invalid Flag type for Time Type: " + flag);
     }
