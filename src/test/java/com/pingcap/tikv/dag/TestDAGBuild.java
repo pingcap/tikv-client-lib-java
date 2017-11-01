@@ -11,8 +11,7 @@ import com.pingcap.tikv.expression.TiByItem;
 import com.pingcap.tikv.expression.TiColumnRef;
 import com.pingcap.tikv.expression.TiConstant;
 import com.pingcap.tikv.expression.aggregate.Count;
-import com.pingcap.tikv.expression.scalar.Equal;
-import com.pingcap.tikv.expression.scalar.Plus;
+import com.pingcap.tikv.expression.scalar.*;
 import com.pingcap.tikv.kvproto.Coprocessor;
 import com.pingcap.tikv.meta.TiDAGRequest;
 import com.pingcap.tikv.meta.TiDBInfo;
@@ -41,6 +40,7 @@ public class TestDAGBuild {
   List<TiDBInfo> databaseInfoList = cat.listDatabases();
   public TiColumnRef custKey = TiColumnRef.create("c_custkey");
   public TiColumnRef mktsegment = TiColumnRef.create("c_mktsegment");
+  private TiColumnRef shipdate = TiColumnRef.create("l_shipdate");
   private TiByItem complexGroupBy = TiByItem.create(new Plus(mktsegment, TiConstant.create("1")), false);
 
   TiTableInfo table;
@@ -54,6 +54,12 @@ public class TestDAGBuild {
     Logger log = Logger.getLogger("io.grpc");
     log.setLevel(Level.ALL);
 
+    bindRanges();
+  }
+
+  private void bindRanges() {
+    ranges.clear();
+
     ByteString startKey = TableCodec.encodeRowKeyWithHandle(table.getId(), Long.MIN_VALUE);
     ByteString endKey = TableCodec.encodeRowKeyWithHandle(table.getId(), Long.MAX_VALUE);
     Coprocessor.KeyRange keyRange = Coprocessor.KeyRange.newBuilder().setStart(startKey).setEnd(endKey).build();
@@ -61,14 +67,18 @@ public class TestDAGBuild {
   }
 
   private void showIterRes(Iterator<Row> iterator) {
-    System.out.println("Result:");
+    System.out.println("Result is:");
+    int count = 0;
+
     while (iterator.hasNext()) {
       Row rowData = iterator.next();
+      count++;
       for (int i = 0; i < rowData.fieldCount(); i++) {
         System.out.print(rowData.get(i, null) + "\t");
       }
       System.out.println();
     }
+    System.out.println("Total data count: " + count);
   }
 
   @Test
@@ -82,6 +92,20 @@ public class TestDAGBuild {
     dagRequest.addGroupByItem(TiByItem.create(TiColumnRef.create("c_mktsegment"), false));
     dagRequest.bind();
     Iterator<Row> iterator = snapshot.select(dagRequest);
+    Assert.assertTrue(iterator.hasNext());
+//    showIterRes(iterator);
+  }
+
+  @Test
+  public void testSelectAll() {
+    TiDAGRequest dagRequest = new TiDAGRequest();
+    dagRequest.setTableInfo(table);
+    dagRequest.addRanges(ranges);
+    dagRequest.addField(mktsegment);
+    dagRequest.setStartTs(session.getTimestamp().getVersion());
+    dagRequest.bind();
+    Iterator<Row> iterator = snapshot.select(dagRequest);
+    Assert.assertTrue(iterator.hasNext());
 //    showIterRes(iterator);
   }
 
@@ -96,6 +120,7 @@ public class TestDAGBuild {
     dagRequest.addGroupByItem(TiByItem.create(TiColumnRef.create("c_mktsegment"), false));
     dagRequest.bind();
     Iterator<Row> iterator = snapshot.select(dagRequest);
+    Assert.assertTrue(iterator.hasNext());
 //    showIterRes(iterator);
   }
 
@@ -108,6 +133,7 @@ public class TestDAGBuild {
     dagRequest.addAggregate(new Count(TiColumnRef.create("c_custkey")));
     dagRequest.bind();
     Iterator<Row> iterator = snapshot.select(dagRequest);
+    Assert.assertTrue(iterator.hasNext());
 //    showIterRes(iterator);
   }
 
@@ -152,5 +178,32 @@ public class TestDAGBuild {
     Iterator<Row> iterator = snapshot.select(dagRequest);
     Assert.assertTrue(iterator.hasNext());
 //    showIterRes(iterator);
+  }
+
+  @Test
+  public void testExpBug() {
+    table = cat.getTable(db, "lineitem");
+    bindRanges();
+
+    TiDAGRequest dagRequest = new TiDAGRequest();
+    dagRequest.addRanges(ranges);
+    dagRequest.setTableInfo(table);
+    dagRequest.addField(shipdate);
+    dagRequest.setStartTs(session.getTimestamp().getVersion());
+//    dagRequest.addWhere(new Not(new IsNull(shipdate)));
+//    dagRequest.addWhere(new IsNull(shipdate));
+    dagRequest.setLimit(65);
+    dagRequest.bind();
+    Iterator<Row> iterator = snapshot.select(dagRequest);
+    Assert.assertTrue(iterator.hasNext());
+    showIterRes(iterator);
+  }
+
+  private void showIterCount(Iterator<Row> iterator) {
+    int count = 0;
+    while (iterator.hasNext()) {
+      count++;
+    }
+    System.out.println("Data count: " + count);
   }
 }

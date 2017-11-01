@@ -65,7 +65,12 @@ public class DAGIterator implements Iterator<Row> {
             chunkIndex >= chunkList.size() ||
             dataInput.available() <= 0
             ) {
-      if (!readNextRegionChunks()) {
+      // First we check if our chunk list has remaining chunk
+      if (tryAdvanceChunkIndex()) {
+        createDataInputReader();
+      }
+      // If not, check next region
+      else if (!readNextRegionChunks()) {
         return false;
       }
     }
@@ -86,8 +91,17 @@ public class DAGIterator implements Iterator<Row> {
     }
   }
 
+  private boolean tryAdvanceChunkIndex() {
+    if (null == chunkList || chunkIndex >= chunkList.size() - 1) {
+      return false;
+    }
+
+    chunkIndex++;
+    return true;
+  }
+
   private boolean readNextRegionChunks() {
-    if (taskIndex >= regionTasks.size()) {
+    if (null == regionTasks || taskIndex >= regionTasks.size()) {
       return false;
     }
 
