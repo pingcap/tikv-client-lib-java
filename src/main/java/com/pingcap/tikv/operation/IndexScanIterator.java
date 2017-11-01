@@ -22,7 +22,6 @@ import com.pingcap.tikv.codec.KeyUtils;
 import com.pingcap.tikv.codec.TableCodec;
 import com.pingcap.tikv.kvproto.Coprocessor.KeyRange;
 import com.pingcap.tikv.meta.TiDAGRequest;
-import com.pingcap.tikv.meta.TiSelectRequest;
 import com.pingcap.tikv.row.Row;
 
 import java.util.Iterator;
@@ -35,11 +34,6 @@ public class IndexScanIterator implements Iterator<Row> {
   private final TiDAGRequest dagRequest;
   private final Snapshot snapshot;
 
-  //  public IndexScanIterator(Snapshot snapshot, TiSelectRequest req, Iterator<Row> iter) {
-//    this.iter = iter;
-//    this.selReq = req;
-//    this.snapshot = snapshot;
-//  }
   public IndexScanIterator(Snapshot snapshot, TiDAGRequest req, Iterator<Row> iter) {
     this.iter = iter;
     this.dagRequest = req;
@@ -58,10 +52,8 @@ public class IndexScanIterator implements Iterator<Row> {
     ByteString startKey = TableCodec.encodeRowKeyWithHandle(dagRequest.getTableInfo().getId(), handle);
     ByteString endKey = ByteString.copyFrom(KeyUtils.prefixNext(startKey.toByteArray()));
     dagRequest.resetRanges(
-            ImmutableList.of(KeyRange.newBuilder().setStart(startKey).setEnd(endKey).build())
+        ImmutableList.of(KeyRange.newBuilder().setStart(startKey).setEnd(endKey).build())
     );
-//    selReq.resetRanges(
-//        ImmutableList.of(KeyRange.newBuilder().setStart(startKey).setEnd(endKey).build()));
     Iterator<Row> it = snapshot.select(dagRequest);
     return it.next();
   }
