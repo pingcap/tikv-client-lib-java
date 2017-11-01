@@ -2,22 +2,16 @@ package com.pingcap.tikv;
 
 
 import com.google.protobuf.ByteString;
-import com.pingcap.tidb.tipb.*;
 import com.pingcap.tikv.catalog.Catalog;
 import com.pingcap.tikv.codec.TableCodec;
-import com.pingcap.tikv.expression.*;
+import com.pingcap.tikv.expression.TiByItem;
+import com.pingcap.tikv.expression.TiColumnRef;
 import com.pingcap.tikv.expression.aggregate.Count;
-import com.pingcap.tikv.expression.scalar.Equal;
-import com.pingcap.tikv.expression.scalar.GreaterEqual;
-import com.pingcap.tikv.expression.scalar.LessThan;
 import com.pingcap.tikv.kvproto.Coprocessor;
 import com.pingcap.tikv.meta.TiDAGRequest;
 import com.pingcap.tikv.meta.TiDBInfo;
-import com.pingcap.tikv.meta.TiSelectRequest;
 import com.pingcap.tikv.meta.TiTableInfo;
 import com.pingcap.tikv.region.RegionManager;
-import com.pingcap.tikv.region.RegionStoreClient;
-import com.pingcap.tikv.region.TiRegion;
 import com.pingcap.tikv.row.Row;
 
 import java.util.ArrayList;
@@ -37,13 +31,11 @@ public class Main {
   public static Catalog cat = session.getCatalog();
 
   public static void main(String[] args) throws Exception {
-    // May need to save this reference
     TiDBInfo db = cat.getDatabase("tpch_test");
     TiTableInfo table = cat.getTable(db, "customer");
     Logger log = Logger.getLogger("io.grpc");
     log.setLevel(Level.ALL);
 
-    List<TiDBInfo> databaseInfoList = cat.listDatabases();
     ByteString startKey = TableCodec.encodeRowKeyWithHandle(table.getId(), Long.MIN_VALUE);
     ByteString endKey = TableCodec.encodeRowKeyWithHandle(table.getId(), Long.MAX_VALUE);
     Coprocessor.KeyRange keyRange = Coprocessor.KeyRange.newBuilder().setStart(startKey).setEnd(endKey).build();
@@ -52,17 +44,11 @@ public class Main {
 
     TiDAGRequest dagRequest = new TiDAGRequest();
     dagRequest.addRanges(ranges);
-//    dagRequest.addField(TiColumnRef.create("c_address", table));
-//    dagRequest.addField(TiColumnRef.create("c_name", table));
-//    dagRequest.addField(TiColumnRef.create("c_custkey", table));
     dagRequest.addField(TiColumnRef.create("c_mktsegment", table));
     dagRequest.setTableInfo(table);
     dagRequest.setStartTs(session.getTimestamp().getVersion());
-//    dagRequest.addWhere(new GreaterEqual(TiConstant.create(5), TiConstant.create(5)));
     dagRequest.addAggregate(new Count(TiColumnRef.create("c_custkey")));
     dagRequest.addGroupByItem(TiByItem.create(TiColumnRef.create("c_mktsegment"), false));
-//    dagRequest.addGroupByItem(TiByItem.create(TiColumnRef.create("c_name"), false));
-//    dagRequest.setLimit(10);
     dagRequest.bind();
     Iterator<com.pingcap.tikv.row.Row> iterator = snapshot.select(dagRequest);
     System.out.println("Show result:");
@@ -72,23 +58,6 @@ public class Main {
         System.out.print(rowData.get(i, null) + "\t");
       }
       System.out.println();
-//      System.out.println(rowData.get(0, null) + " " + rowData.get(1, null));
     }
-
-
-//    DAGRequest.Builder dagBuilder = DAGRequest.newBuilder();
-//    dagBuilder.setStartTs(System.currentTimeMillis());
-//    dagBuilder.addOutputOffsets(0);
-//    dagBuilder.addOutputOffsets(1);
-//    dagBuilder.setTimeZoneOffset(0);
-//    dagBuilder.setFlags(0);
-//    Executor.Builder executorBuilder = Executor.newBuilder();
-//    executorBuilder.setTp(ExecType.TypeTableScan);
-//    TableScan.Builder tableScanBuilder = TableScan.newBuilder();
-//    tableScanBuilder.addColumns(table.getColumns().get(0).toProto(table));
-//    tableScanBuilder.addColumns(table.getColumns().get(1).toProto(table));
-//    executorBuilder.setTblScan(tableScanBuilder);
-//    dagBuilder.addExecutors(executorBuilder);
-
   }
 }

@@ -26,7 +26,7 @@ public abstract class ScalarFunction extends TiFunctionExpression {
 
   /**
    * Get scalar function argument type
-   *
+   * <p>
    * Note:In DAG mode, all the arguments' type should
    * be the same
    */

@@ -51,12 +51,12 @@ public class Plus extends ScalarFunction {
   @Override
   ScalarFuncSig getSignature() {
     return ScalarFuncInfer.infer(
-            getArgType(),
-            PlusInt,
-            PlusDecimal,
-            PlusReal,
-            null,
-            null
+        getArgType(),
+        PlusInt,
+        PlusDecimal,
+        PlusReal,
+        null,
+        null
     );
   }
 }

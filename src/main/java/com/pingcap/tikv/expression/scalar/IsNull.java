@@ -47,13 +47,13 @@ public class IsNull extends ScalarFunction {
   @Override
   ScalarFuncSig getSignature() {
     return ScalarFuncInfer.infer(
-            getArgType(),
-            IntIsNull,
-            DecimalIsNull,
-            RealIsNull,
-            DurationIsNull,
-            TimeIsNull,
-            StringIsNull
+        getArgType(),
+        IntIsNull,
+        DecimalIsNull,
+        RealIsNull,
+        DurationIsNull,
+        TimeIsNull,
+        StringIsNull
     );
   }
 }

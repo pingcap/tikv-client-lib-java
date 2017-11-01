@@ -32,13 +32,13 @@ public class IfNull extends ScalarFunction {
   @Override
   ScalarFuncSig getSignature() {
     return ScalarFuncInfer.infer(
-            getArgType(),
-            IfNullInt,
-            IfNullDecimal,
-            IfNullReal,
-            IfNullDuration,
-            IfNullTime,
-            IfNullString
+        getArgType(),
+        IfNullInt,
+        IfNullDecimal,
+        IfNullReal,
+        IfNullDuration,
+        IfNullTime,
+        IfNullString
     );
   }
 
@@ -53,7 +53,8 @@ public class IfNull extends ScalarFunction {
   }
 
   @Override
-  protected void validateArguments(TiExpr... args) throws RuntimeException {}
+  protected void validateArguments(TiExpr... args) throws RuntimeException {
+  }
 
   @Override
   public DataType getType() {

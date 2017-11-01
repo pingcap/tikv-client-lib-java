@@ -32,13 +32,13 @@ public class If extends ScalarFunction {
   @Override
   ScalarFuncSig getSignature() {
     return ScalarFuncInfer.infer(
-            getArgType(),
-            IfInt,
-            IfDecimal,
-            IfReal,
-            IfDuration,
-            IfTime,
-            IfString
+        getArgType(),
+        IfInt,
+        IfDecimal,
+        IfReal,
+        IfDuration,
+        IfTime,
+        IfString
     );
   }
 

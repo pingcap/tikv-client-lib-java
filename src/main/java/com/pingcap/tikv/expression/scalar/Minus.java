@@ -47,12 +47,12 @@ public class Minus extends ScalarFunction {
   @Override
   ScalarFuncSig getSignature() {
     return ScalarFuncInfer.infer(
-            getArgType(),
-            MinusInt,
-            MinusDecimal,
-            MinusReal,
-            null,
-            null
+        getArgType(),
+        MinusInt,
+        MinusDecimal,
+        MinusReal,
+        null,
+        null
     );
   }
 }

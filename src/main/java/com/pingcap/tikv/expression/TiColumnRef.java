@@ -76,7 +76,7 @@ public class TiColumnRef implements TiExpr {
     //
     // Here we use the original columnID minus 1 to represent
     // what we want.
-    IntegerType.writeLong(cdo, columnInfo.getId() -  1);
+    IntegerType.writeLong(cdo, columnInfo.getId() - 1);
     builder.setVal(cdo.toByteString());
     return builder.build();
   }

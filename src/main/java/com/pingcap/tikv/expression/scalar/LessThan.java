@@ -47,13 +47,13 @@ public class LessThan extends ScalarFunction {
   @Override
   ScalarFuncSig getSignature() {
     return ScalarFuncInfer.infer(
-            getArgType(),
-            LTInt,
-            LTDecimal,
-            LTReal,
-            LTDuration,
-            LTTime,
-            LTString
+        getArgType(),
+        LTInt,
+        LTDecimal,
+        LTReal,
+        LTDuration,
+        LTTime,
+        LTString
     );
   }
 }

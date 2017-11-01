@@ -47,12 +47,12 @@ public class Multiply extends ScalarFunction {
   @Override
   ScalarFuncSig getSignature() {
     return ScalarFuncInfer.infer(
-            getArgType(),
-            MultiplyInt,
-            MultiplyDecimal,
-            MultiplyReal,
-            null,
-            null
+        getArgType(),
+        MultiplyInt,
+        MultiplyDecimal,
+        MultiplyReal,
+        null,
+        null
     );
   }
 }

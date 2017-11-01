@@ -47,13 +47,13 @@ public class NotEqual extends ScalarFunction {
   @Override
   ScalarFuncSig getSignature() {
     return ScalarFuncInfer.infer(
-            getArgType(),
-            NEInt,
-            NEDecimal,
-            NEReal,
-            NEDuration,
-            NETime,
-            NEString
+        getArgType(),
+        NEInt,
+        NEDecimal,
+        NEReal,
+        NEDuration,
+        NETime,
+        NEString
     );
   }
 }

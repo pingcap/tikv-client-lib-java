@@ -47,13 +47,13 @@ public class GreaterThan extends ScalarFunction {
   @Override
   ScalarFuncSig getSignature() {
     return ScalarFuncInfer.infer(
-            getArgType(),
-            GTInt,
-            GTDecimal,
-            GTReal,
-            GTDuration,
-            GTTime,
-            GTString
+        getArgType(),
+        GTInt,
+        GTDecimal,
+        GTReal,
+        GTDuration,
+        GTTime,
+        GTString
     );
   }
 }

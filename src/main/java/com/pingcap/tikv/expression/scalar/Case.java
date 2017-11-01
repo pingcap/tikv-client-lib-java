@@ -31,13 +31,13 @@ public class Case extends ScalarFunction {
   @Override
   ScalarFuncSig getSignature() {
     return ScalarFuncInfer.infer(
-            getArgType(),
-            CaseWhenInt,
-            CaseWhenDecimal,
-            CaseWhenReal,
-            CaseWhenDuration,
-            CaseWhenTime,
-            CaseWhenString
+        getArgType(),
+        CaseWhenInt,
+        CaseWhenDecimal,
+        CaseWhenReal,
+        CaseWhenDuration,
+        CaseWhenTime,
+        CaseWhenString
     );
   }
 

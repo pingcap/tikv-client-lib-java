@@ -52,12 +52,12 @@ public class IsTrue extends ScalarFunction {
   @Override
   ScalarFuncSig getSignature() {
     return ScalarFuncInfer.infer(
-            getArgType(),
-            IntIsTrue,
-            DecimalIsTrue,
-            RealIsTrue,
-            null,
-            null
+        getArgType(),
+        IntIsTrue,
+        DecimalIsTrue,
+        RealIsTrue,
+        null,
+        null
     );
   }
 }

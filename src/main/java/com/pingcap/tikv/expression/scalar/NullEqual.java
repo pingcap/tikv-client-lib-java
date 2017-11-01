@@ -47,13 +47,13 @@ public class NullEqual extends ScalarFunction {
   @Override
   ScalarFuncSig getSignature() {
     return ScalarFuncInfer.infer(
-            getArgType(),
-            NullEQInt,
-            NullEQDecimal,
-            NullEQReal,
-            NullEQDuration,
-            NullEQTime,
-            NullEQString
+        getArgType(),
+        NullEQInt,
+        NullEQDecimal,
+        NullEQReal,
+        NullEQDuration,
+        NullEQTime,
+        NullEQString
     );
   }
 }

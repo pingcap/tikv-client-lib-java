@@ -47,13 +47,13 @@ public class LessEqual extends ScalarFunction {
   @Override
   ScalarFuncSig getSignature() {
     return ScalarFuncInfer.infer(
-            getArgType(),
-            LEInt,
-            LEDecimal,
-            LEReal,
-            LEDuration,
-            LETime,
-            LEString
+        getArgType(),
+        LEInt,
+        LEDecimal,
+        LEReal,
+        LEDuration,
+        LETime,
+        LEString
     );
   }
 }

@@ -47,13 +47,13 @@ public class GreaterEqual extends ScalarFunction {
   @Override
   ScalarFuncSig getSignature() {
     return ScalarFuncInfer.infer(
-            getArgType(),
-            GEInt,
-            GEDecimal,
-            GEReal,
-            GEDuration,
-            GETime,
-            GEString
+        getArgType(),
+        GEInt,
+        GEDecimal,
+        GEReal,
+        GEDuration,
+        GETime,
+        GEString
     );
   }
 }

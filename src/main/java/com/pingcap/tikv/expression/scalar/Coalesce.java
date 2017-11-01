@@ -31,13 +31,13 @@ public class Coalesce extends ScalarFunction {
   @Override
   ScalarFuncSig getSignature() {
     return ScalarFuncInfer.infer(
-            getArgType(),
-            CoalesceInt,
-            CoalesceDecimal,
-            CoalesceReal,
-            CoalesceDuration,
-            CoalesceTime,
-            CoalesceString
+        getArgType(),
+        CoalesceInt,
+        CoalesceDecimal,
+        CoalesceReal,
+        CoalesceDuration,
+        CoalesceTime,
+        CoalesceString
     );
   }
 

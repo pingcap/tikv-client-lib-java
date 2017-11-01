@@ -18,6 +18,7 @@ package com.pingcap.tikv.expression;
 import com.pingcap.tidb.tipb.Expr;
 import com.pingcap.tikv.meta.TiTableInfo;
 import com.pingcap.tikv.types.DataType;
+
 import java.io.Serializable;
 
 public interface TiExpr extends Serializable {

@@ -47,13 +47,13 @@ public class Equal extends ScalarFunction {
   @Override
   ScalarFuncSig getSignature() {
     return ScalarFuncInfer.infer(
-            getArgType(),
-            EQInt,
-            EQDecimal,
-            EQReal,
-            EQDuration,
-            EQTime,
-            EQString
+        getArgType(),
+        EQInt,
+        EQDecimal,
+        EQReal,
+        EQDuration,
+        EQTime,
+        EQString
     );
   }
 }

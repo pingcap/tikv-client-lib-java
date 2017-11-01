@@ -34,13 +34,13 @@ public class In extends ScalarFunction {
   @Override
   ScalarFuncSig getSignature() {
     return ScalarFuncInfer.infer(
-            getArgType(),
-            InInt,
-            InDecimal,
-            InReal,
-            InDuration,
-            InTime,
-            InString
+        getArgType(),
+        InInt,
+        InDecimal,
+        InReal,
+        InDuration,
+        InTime,
+        InString
     );
   }
 

@@ -41,7 +41,8 @@ public class NullIf extends ScalarFunction {
   }
 
   @Override
-  protected void validateArguments(TiExpr... args) throws RuntimeException {}
+  protected void validateArguments(TiExpr... args) throws RuntimeException {
+  }
 
   @Override
   public IntegerType getType() {
