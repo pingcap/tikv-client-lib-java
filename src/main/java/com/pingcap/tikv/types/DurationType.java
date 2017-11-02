@@ -23,7 +23,6 @@ import com.pingcap.tikv.codec.InvalidCodecFormatException;
 import com.pingcap.tikv.meta.TiColumnInfo;
 import com.pingcap.tikv.row.Row;
 
-import java.time.Duration;
 import java.time.LocalDateTime;
 
 public class DurationType extends IntegerType {
@@ -43,12 +42,10 @@ public class DurationType extends IntegerType {
   public Object decodeNotNull(int flag, CodecDataInput cdi) {
     if (flag == VARINT_FLAG) {
       long nanoSec = IntegerType.readVarLong(cdi);
-      Duration duration = Duration.ofNanos(nanoSec);
-      return duration.toMillis() / 1000;
+      return nanoSec / 1000000;
     } else if (flag == INT_FLAG) {
       long nanoSec = IntegerType.readLong(cdi);
-      Duration duration = Duration.ofNanos(nanoSec);
-      return duration.toMillis() / 1000;
+      return nanoSec / 1000000;
     } else {
       throw new InvalidCodecFormatException("Invalid Flag type for Time Type: " + flag);
     }
@@ -84,12 +81,18 @@ public class DurationType extends IntegerType {
   @Override
   public void encodeNotNull(CodecDataOutput cdo, EncodeType encodeType, Object value) {
     LocalDateTime localDateTime;
+    long val;
     if (value instanceof LocalDateTime) {
       localDateTime = (LocalDateTime) value;
+      val = toPackedLong(localDateTime);
+    } else if (value instanceof Long) {
+      val = ((Long) value);
+    } else if (value instanceof Integer) {
+      val = ((Integer) value);
     } else {
-      throw new UnsupportedOperationException("Can not cast Object to LocalDateTime ");
+      throw new UnsupportedOperationException("Can not cast Object to Duration");
     }
-    long val = toPackedLong(localDateTime);
+
     IntegerType.writeVarLong(cdo, val);
   }
 
@@ -111,8 +114,7 @@ public class DurationType extends IntegerType {
     int second = time.getSecond();
     // 1 microsecond = 1000 nano second
     int micro = time.getNano() / 1000;
-    long ymd = (year * 13 + month) << 5 | day;
-    long hms = hour << 12 | minute << 6 | second;
-    return ((ymd << 17 | hms) << 24) | micro;
+    long hms = hour * 3600 + minute * 60 + second;
+    return ((day * 86400 + hms) * 1000) + micro;
   }
 }
