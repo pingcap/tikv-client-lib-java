@@ -33,7 +33,7 @@ public class IntegerType extends DataType {
     return new IntegerType(tp);
   }
 
-  private IntegerType(int tp) {
+  IntegerType(int tp) {
     super(tp);
   }
 
@@ -114,7 +114,7 @@ public class IntegerType extends DataType {
    * @param comparable If the output should be memory comparable without decoding. In real TiDB use
    *     case, if used in Key encoding, we output memory comparable format otherwise not
    */
-  public static void writeULongFull(CodecDataOutput cdo, long lVal, boolean comparable) {
+  static void writeULongFull(CodecDataOutput cdo, long lVal, boolean comparable) {
     if (comparable) {
       cdo.writeByte(UINT_FLAG);
       writeULong(cdo, lVal);
@@ -151,7 +151,7 @@ public class IntegerType extends DataType {
    * @param cdo For outputting data in bytes array
    * @param value The data to encode
    */
-  public static void writeVarLong(CodecDataOutput cdo, long value) {
+  static void writeVarLong(CodecDataOutput cdo, long value) {
     long ux = value << 1;
     if (value < 0) {
       ux = ~ux;
@@ -165,7 +165,7 @@ public class IntegerType extends DataType {
    * @param cdo For outputting data in bytes array
    * @param value The data to encode
    */
-  public static void writeUVarLong(CodecDataOutput cdo, long value) {
+  private static void writeUVarLong(CodecDataOutput cdo, long value) {
     while ((value - 0x80) >= 0) {
       cdo.writeByte((byte) value | 0x80);
       value >>>= 7;
@@ -180,7 +180,7 @@ public class IntegerType extends DataType {
    * @return value decoded
    * @exception InvalidCodecFormatException wrong format of binary encoding encountered
    */
-  public static long readLongFully(CodecDataInput cdi) {
+  static long readLongFully(CodecDataInput cdi) {
     int flag = cdi.readByte();
 
     switch (flag) {
@@ -200,7 +200,7 @@ public class IntegerType extends DataType {
    * @return value decoded
    * @exception InvalidCodecFormatException wrong format of binary encoding encountered
    */
-  public static long readULongFully(CodecDataInput cdi) {
+  static long readULongFully(CodecDataInput cdi) {
     byte flag = cdi.readByte();
     switch (flag) {
       case UINT_FLAG:
@@ -253,7 +253,7 @@ public class IntegerType extends DataType {
    * @param cdi source of data
    * @return decoded unsigned long value
    */
-  public static long readUVarLong(CodecDataInput cdi) {
+  static long readUVarLong(CodecDataInput cdi) {
     long x = 0;
     int s = 0;
     for (int i = 0; !cdi.eof(); i++) {

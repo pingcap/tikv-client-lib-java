@@ -117,7 +117,7 @@ public class TimestampType extends DataType {
    * @param time localDateTime that need to be encoded.
    * @return a packed long.
    */
-  public static long toPackedLong(LocalDateTime time) {
+  static long toPackedLong(LocalDateTime time) {
     int year = time.getYear();
     int month = time.getMonthValue();
     int day = time.getDayOfMonth();
@@ -137,7 +137,7 @@ public class TimestampType extends DataType {
    * @param packed a long value
    * @return a decoded LocalDateTime.
    */
-  public static LocalDateTime fromPackedLong(long packed) {
+  static LocalDateTime fromPackedLong(long packed) {
     // TODO: As for JDBC behavior, it can be configured to "round" or "toNull"
     // for now we didn't pass in session so we do a toNull behavior
     if (packed == 0) {

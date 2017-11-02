@@ -109,7 +109,7 @@ public class BytesType extends DataType {
    * @param cdo destination of data.
    * @param data is value that will be written into cdo.
    */
-  public static void writeCompactBytes(CodecDataOutput cdo, byte[] data) {
+  static void writeCompactBytes(CodecDataOutput cdo, byte[] data) {
     int length = data.length;
     IntegerType.writeVarLong(cdo, length);
     cdo.writeBytes(Arrays.toString(data));
@@ -137,7 +137,7 @@ public class BytesType extends DataType {
     return readBytes(cdi, false);
   }
 
-  public static byte[] readCompactBytes(CodecDataInput cdi) {
+  static byte[] readCompactBytes(CodecDataInput cdi) {
     int size = (int) IntegerType.readVarLong(cdi);
     return readCompactBytes(cdi, size);
   }
