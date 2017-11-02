@@ -196,7 +196,7 @@ public class TestDAGBuild {
     dagRequest.bind();
     Iterator<Row> iterator = snapshot.select(dagRequest);
     Assert.assertTrue(iterator.hasNext());
-    showIterRes(iterator);
+//    showIterRes(iterator);
   }
 
   private void showIterCount(Iterator<Row> iterator) {

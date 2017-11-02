@@ -355,14 +355,22 @@ public class TiDAGRequest implements Serializable {
     return this;
   }
 
+  /**
+   * Has aggregate expression.
+   *
+   * @return the boolean
+   */
   public boolean hasAggregate() {
-    return null == getAggregates() ||
-            !getAggregates().isEmpty();
+    return !getAggregates().isEmpty();
   }
 
+  /**
+   * Has group by expression.
+   *
+   * @return the boolean
+   */
   public boolean hasGroupBy() {
-    return null == getGroupByItems() ||
-            !getGroupByItems().isEmpty();
+    return !getGroupByItems().isEmpty();
   }
 
   public List<TiExpr> getWhere() {
