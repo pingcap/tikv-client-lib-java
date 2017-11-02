@@ -40,7 +40,6 @@ public class Minus extends ScalarFunction {
 
   @Override
   public DataType getType() {
-    // TODO: Add type inference
     return getArgType();
   }
 

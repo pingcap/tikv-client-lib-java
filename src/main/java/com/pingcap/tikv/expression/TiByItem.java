@@ -38,7 +38,9 @@ public class TiByItem implements Serializable {
 
   public ByItem toProto() {
     ByItem.Builder builder = ByItem.newBuilder();
-    return builder.setExpr(expr.toProto()).setDesc(desc).build();
+    return builder.setExpr(expr.toProto())
+                  .setDesc(desc)
+                  .build();
   }
 
   public TiExpr getExpr() {

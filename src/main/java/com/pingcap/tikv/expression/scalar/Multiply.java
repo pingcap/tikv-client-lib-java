@@ -40,8 +40,7 @@ public class Multiply extends ScalarFunction {
 
   @Override
   public DataType getType() {
-    // TODO: Add type inference
-    throw new UnsupportedOperationException();
+    return getArgType();
   }
 
   @Override

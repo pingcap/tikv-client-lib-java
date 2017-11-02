@@ -41,7 +41,7 @@ public class Divide extends ScalarFunction {
 
   @Override
   public DataType getType() {
-    throw new UnsupportedOperationException();
+    return getArgType();
   }
 
   @Override

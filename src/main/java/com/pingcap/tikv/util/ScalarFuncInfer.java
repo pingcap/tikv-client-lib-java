@@ -1,10 +1,25 @@
+/*
+ * Copyright 2017 PingCAP, Inc.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package com.pingcap.tikv.util;
 
 import com.pingcap.tidb.tipb.ScalarFuncSig;
 import com.pingcap.tikv.exception.TypeException;
 import com.pingcap.tikv.types.*;
 
-import java.util.Objects;
+import static java.util.Objects.requireNonNull;
 
 /**
  * The ScalarFunction Signature inferrer.
@@ -31,23 +46,18 @@ public class ScalarFuncInfer {
                                     ScalarFuncSig realSig,
                                     ScalarFuncSig durationType,
                                     ScalarFuncSig timeType) {
-    Objects.requireNonNull(dataType, "Data type should not be null!");
+    requireNonNull(dataType, "Data type should not be null!");
 
     if (dataType instanceof IntegerType) {
-      Objects.requireNonNull(intSig, "No IntegerType signature provided!");
-      return intSig;
+      return requireNonNull(intSig, "No IntegerType signature provided!");
     } else if (dataType instanceof DecimalType) {
-      Objects.requireNonNull(decimalSig, "No DecimalType signature provided!");
-      return decimalSig;
+      return requireNonNull(decimalSig, "No DecimalType signature provided!");
     } else if (dataType instanceof RealType) {
-      Objects.requireNonNull(realSig, "No RealType signature provided!");
-      return realSig;
+      return requireNonNull(realSig, "No RealType signature provided!");
     } else if (dataType instanceof DurationType) {
-      Objects.requireNonNull(durationType, "No DurationType signature provided!");
-      return durationType;
+      return requireNonNull(durationType, "No DurationType signature provided!");
     } else if (dataType instanceof TimestampType || dataType instanceof DateType) {
-      Objects.requireNonNull(timeType, "No TimestampType signature provided!");
-      return timeType;
+      return requireNonNull(timeType, "No TimestampType signature provided!");
     } else {
       throw new TypeException("Unsupported data type:" + dataType);
     }
@@ -74,10 +84,10 @@ public class ScalarFuncInfer {
                                     ScalarFuncSig durationType,
                                     ScalarFuncSig timeType,
                                     ScalarFuncSig stringType) {
-    Objects.requireNonNull(dataType, "Data type should not be null!");
+    requireNonNull(dataType, "Data type should not be null!");
+
     if (dataType instanceof BytesType) {
-      Objects.requireNonNull(stringType, "No StringType signature provided!");
-      return stringType;
+      return requireNonNull(stringType, "No StringType signature provided!");
     }
 
     return infer(dataType, intSig, decimalSig, realSig, durationType, timeType);
