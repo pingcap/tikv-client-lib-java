@@ -184,6 +184,7 @@ public class TiDAGRequest implements Serializable {
   /**
    * When constructing a DAG request, a executor with an ExecType of higher priority
    * should always be placed before those lower ones.
+   *
    * @param dagRequest Request DAG.
    * @return if the dagRequest is valid.
    */
@@ -193,21 +194,19 @@ public class TiDAGRequest implements Serializable {
       return false;
     }
 
-    for (int i = 0; i < dagRequest.getExecutorsCount(); i++) {
+    ExecType formerType = dagRequest.getExecutors(0).getTp();
+    if (formerType != ExecType.TypeTableScan &&
+        formerType != ExecType.TypeIndexScan) {
+      return false;
+    }
+
+    for (int i = 1; i < dagRequest.getExecutorsCount(); i++) {
       ExecType currentType = dagRequest.getExecutors(i).getTp();
-      if (i == 0 &&
-          currentType != ExecType.TypeTableScan &&
-          currentType != ExecType.TypeIndexScan) {
+      if (EXEC_TYPE_PRIORITY_MAP.get(currentType) <
+          EXEC_TYPE_PRIORITY_MAP.get(formerType)) {
         return false;
       }
-
-      for (int j = 0; j < i; j++) {
-        ExecType formerType = dagRequest.getExecutors(j).getTp();
-        if (EXEC_TYPE_PRIORITY_MAP.get(currentType) <
-            EXEC_TYPE_PRIORITY_MAP.get(formerType)) {
-          return false;
-        }
-      }
+      formerType = currentType;
     }
 
     return true;
