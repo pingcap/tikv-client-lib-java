@@ -15,81 +15,177 @@
 
 package com.pingcap.tikv.util;
 
+import com.google.common.collect.ImmutableMap;
+import com.pingcap.tidb.tipb.ExprType;
 import com.pingcap.tidb.tipb.ScalarFuncSig;
-import com.pingcap.tikv.exception.TypeException;
-import com.pingcap.tikv.types.*;
 
-import static java.util.Objects.requireNonNull;
+import java.util.Map;
+
+import static com.pingcap.tidb.tipb.ExprType.*;
+import static com.pingcap.tidb.tipb.ScalarFuncSig.*;
+import static com.pingcap.tikv.types.Types.*;
 
 /**
  * The ScalarFunction Signature inferrer.
  * <p>
- * Used to infer a target signature for the given DataType
+ * Used to infer a target signature for the given DataType and ExprType
  */
 public class ScalarFuncInfer {
+  private static final Map<ExprType, ScalarFuncSig> INTEGER_SCALAR_SIG_MAP =
+      ImmutableMap.<ExprType, ScalarFuncSig>builder()
+          .put(Case, CaseWhenInt)
+          .put(Coalesce, CoalesceInt)
+          .put(EQ, EQInt)
+          .put(GE, GEInt)
+          .put(GT, GTInt)
+          .put(If, IfInt)
+          .put(IfNull, IfNullInt)
+          .put(In, InInt)
+          .put(IsNull, IntIsNull)
+          .put(IsTruth, IntIsTrue)
+          .put(LE, LEInt)
+          .put(LT, LTInt)
+          .put(Minus, MinusInt)
+          .put(Mul, MultiplyInt)
+          .put(NE, NEInt)
+          .put(NullEQ, NullEQInt)
+          .put(Plus, PlusInt)
+          .build();
+
+  private static final Map<ExprType, ScalarFuncSig> DECIMAL_SCALAR_SIG_MAP =
+      ImmutableMap.<ExprType, ScalarFuncSig>builder()
+          .put(Case, CaseWhenDecimal)
+          .put(Coalesce, CoalesceDecimal)
+          .put(EQ, EQDecimal)
+          .put(GE, GEDecimal)
+          .put(GT, GTDecimal)
+          .put(If, IfDecimal)
+          .put(IfNull, IfNullDecimal)
+          .put(In, InDecimal)
+          .put(IsNull, DecimalIsNull)
+          .put(IsTruth, DecimalIsTrue)
+          .put(LE, LEDecimal)
+          .put(LT, LTDecimal)
+          .put(Minus, MinusDecimal)
+          .put(Mul, MultiplyDecimal)
+          .put(Div, DivideDecimal)
+          .put(NE, NEDecimal)
+          .put(NullEQ, NullEQDecimal)
+          .put(Plus, PlusDecimal)
+          .build();
+
+  private static final Map<ExprType, ScalarFuncSig> REAL_SCALAR_SIG_MAP =
+      ImmutableMap.<ExprType, ScalarFuncSig>builder()
+          .put(Case, CaseWhenReal)
+          .put(Coalesce, CoalesceReal)
+          .put(EQ, EQReal)
+          .put(GE, GEReal)
+          .put(GT, GTReal)
+          .put(If, IfReal)
+          .put(IfNull, IfNullReal)
+          .put(In, InReal)
+          .put(IsNull, RealIsNull)
+          .put(IsTruth, RealIsTrue)
+          .put(LE, LEReal)
+          .put(LT, LTReal)
+          .put(Minus, MinusReal)
+          .put(Mul, MultiplyReal)
+          .put(Div, DivideReal)
+          .put(NE, NEReal)
+          .put(NullEQ, NullEQReal)
+          .put(Plus, PlusReal)
+          .build();
+
+  private static final Map<ExprType, ScalarFuncSig> DURATION_SCALAR_SIG_MAP =
+      ImmutableMap.<ExprType, ScalarFuncSig>builder()
+          .put(Case, CaseWhenDuration)
+          .put(Coalesce, CoalesceDuration)
+          .put(EQ, EQDuration)
+          .put(GE, GEDuration)
+          .put(GT, GTDuration)
+          .put(If, IfDuration)
+          .put(IfNull, IfNullDuration)
+          .put(In, InDuration)
+          .put(IsNull, DurationIsNull)
+          .put(LE, LEDuration)
+          .put(LT, LTDuration)
+          .put(NE, NEDuration)
+          .put(NullEQ, NullEQDuration)
+          .build();
+
+  private static final Map<ExprType, ScalarFuncSig> TIME_SCALAR_SIG_MAP =
+      ImmutableMap.<ExprType, ScalarFuncSig>builder()
+          .put(Case, CaseWhenTime)
+          .put(Coalesce, CoalesceTime)
+          .put(EQ, EQTime)
+          .put(GE, GETime)
+          .put(GT, GTTime)
+          .put(If, IfTime)
+          .put(IfNull, IfNullTime)
+          .put(In, InTime)
+          .put(IsNull, TimeIsNull)
+          .put(LE, LETime)
+          .put(LT, LTTime)
+          .put(NE, NETime)
+          .put(NullEQ, NullEQTime)
+          .build();
+
+  private static final Map<ExprType, ScalarFuncSig> STRING_SCALAR_SIG_MAP =
+      ImmutableMap.<ExprType, ScalarFuncSig>builder()
+          .put(Case, CaseWhenString)
+          .put(Coalesce, CoalesceString)
+          .put(EQ, EQString)
+          .put(GE, GEString)
+          .put(GT, GTString)
+          .put(If, IfString)
+          .put(IfNull, IfNullString)
+          .put(In, InString)
+          .put(IsNull, StringIsNull)
+          .put(LE, LEString)
+          .put(LT, LTString)
+          .put(NE, NEString)
+          .put(NullEQ, NullEQString)
+          .build();
+
+
+  private static final Map<Integer, Map<ExprType, ScalarFuncSig>> SCALAR_SIG_MAP =
+      ImmutableMap.<Integer, Map<ExprType, ScalarFuncSig>>builder()
+          .put(TYPE_TINY, INTEGER_SCALAR_SIG_MAP)
+          .put(TYPE_SHORT, INTEGER_SCALAR_SIG_MAP)
+          .put(TYPE_LONG, INTEGER_SCALAR_SIG_MAP)
+          .put(TYPE_INT24, INTEGER_SCALAR_SIG_MAP)
+          .put(TYPE_LONG_LONG, INTEGER_SCALAR_SIG_MAP)
+          .put(TYPE_YEAR, INTEGER_SCALAR_SIG_MAP)
+          .put(TYPE_BIT, INTEGER_SCALAR_SIG_MAP)
+          .put(TYPE_NEW_DECIMAL, DECIMAL_SCALAR_SIG_MAP)
+          .put(TYPE_FLOAT, REAL_SCALAR_SIG_MAP)
+          .put(TYPE_DOUBLE, REAL_SCALAR_SIG_MAP)
+          .put(TYPE_DURATION, DURATION_SCALAR_SIG_MAP)
+          .put(TYPE_DATETIME, TIME_SCALAR_SIG_MAP)
+          .put(TYPE_TIMESTAMP, TIME_SCALAR_SIG_MAP)
+          .put(TYPE_NEW_DATE, TIME_SCALAR_SIG_MAP)
+          .put(TYPE_DATE, TIME_SCALAR_SIG_MAP)
+          .put(TYPE_VARCHAR, STRING_SCALAR_SIG_MAP)
+          .put(TYPE_JSON, STRING_SCALAR_SIG_MAP)
+          .put(TYPE_ENUM, STRING_SCALAR_SIG_MAP)
+          .put(TYPE_SET, STRING_SCALAR_SIG_MAP)
+          .put(TYPE_TINY_BLOB, STRING_SCALAR_SIG_MAP)
+          .put(TYPE_MEDIUM_BLOB, STRING_SCALAR_SIG_MAP)
+          .put(TYPE_LONG_BLOB, STRING_SCALAR_SIG_MAP)
+          .put(TYPE_BLOB, STRING_SCALAR_SIG_MAP)
+          .put(TYPE_VAR_STRING, STRING_SCALAR_SIG_MAP)
+          .put(TYPE_STRING, STRING_SCALAR_SIG_MAP)
+          .put(TYPE_GEOMETRY, STRING_SCALAR_SIG_MAP)
+          .build();
+
   /**
-   * Infer scalar function signature.
-   * You should provide candidates for the
-   * inferrer to choose.
+   * Scalar func sig inferrer.
    *
-   * @param dataType     the data type
-   * @param intSig       the int sig
-   * @param decimalSig   the decimal sig
-   * @param realSig      the real sig
-   * @param durationType the duration type
-   * @param timeType     the time type
+   * @param tp       the data type code
+   * @param exprType the expression type
    * @return the scalar func sig
    */
-  public static ScalarFuncSig infer(DataType dataType,
-                                    ScalarFuncSig intSig,
-                                    ScalarFuncSig decimalSig,
-                                    ScalarFuncSig realSig,
-                                    ScalarFuncSig durationType,
-                                    ScalarFuncSig timeType) {
-    requireNonNull(dataType, "Data type should not be null!");
-
-    if (dataType instanceof IntegerType) {
-      return requireNonNull(intSig, "No IntegerType signature provided!");
-    } else if (dataType instanceof DecimalType) {
-      return requireNonNull(decimalSig, "No DecimalType signature provided!");
-    } else if (dataType instanceof RealType) {
-      return requireNonNull(realSig, "No RealType signature provided!");
-    } else if (dataType instanceof DurationType) {
-      return requireNonNull(durationType, "No DurationType signature provided!");
-    } else if (dataType instanceof TimestampType || dataType instanceof DateType) {
-      return requireNonNull(timeType, "No TimestampType signature provided!");
-    } else {
-      throw new TypeException("Unsupported data type:" + dataType);
-    }
-  }
-
-  /**
-   * Infer scalar function signature.
-   * You should provide candidates for the
-   * inferrer to choose.
-   *
-   * @param dataType     the data type
-   * @param intSig       the int sig
-   * @param decimalSig   the decimal sig
-   * @param realSig      the real sig
-   * @param durationType the duration type
-   * @param timeType     the time type
-   * @param stringType   the string type
-   * @return the scalar func sig
-   */
-  public static ScalarFuncSig infer(DataType dataType,
-                                    ScalarFuncSig intSig,
-                                    ScalarFuncSig decimalSig,
-                                    ScalarFuncSig realSig,
-                                    ScalarFuncSig durationType,
-                                    ScalarFuncSig timeType,
-                                    ScalarFuncSig stringType) {
-    requireNonNull(dataType, "Data type should not be null!");
-
-    if (dataType instanceof BytesType) {
-      return requireNonNull(stringType, "No StringType signature provided!");
-    }
-
-    return infer(dataType, intSig, decimalSig, realSig, durationType, timeType);
+  public static ScalarFuncSig of(int tp, ExprType exprType) {
+    return SCALAR_SIG_MAP.get(tp).get(exprType);
   }
 }

@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-package com.pingcap.tikv.expression;
+package com.pingcap.tikv.exception;
 
 public class TiExpressionException extends RuntimeException {
   public TiExpressionException(String msg) {
