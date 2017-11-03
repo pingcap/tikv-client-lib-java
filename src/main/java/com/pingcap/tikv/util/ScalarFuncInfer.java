@@ -18,12 +18,14 @@ package com.pingcap.tikv.util;
 import com.google.common.collect.ImmutableMap;
 import com.pingcap.tidb.tipb.ExprType;
 import com.pingcap.tidb.tipb.ScalarFuncSig;
+import com.pingcap.tikv.types.DataTypeFactory;
 
 import java.util.Map;
 
 import static com.pingcap.tidb.tipb.ExprType.*;
 import static com.pingcap.tidb.tipb.ScalarFuncSig.*;
 import static com.pingcap.tikv.types.Types.*;
+import static java.util.Objects.requireNonNull;
 
 /**
  * The ScalarFunction Signature inferrer.
@@ -186,6 +188,12 @@ public class ScalarFuncInfer {
    * @return the scalar func sig
    */
   public static ScalarFuncSig of(int tp, ExprType exprType) {
-    return SCALAR_SIG_MAP.get(tp).get(exprType);
+    return requireNonNull(
+        requireNonNull(
+            SCALAR_SIG_MAP.get(tp),
+            "DataType " + DataTypeFactory.of(tp) + " not supported yet."
+        ).get(exprType),
+        "ExprType " + exprType + " not supported yet."
+    );
   }
 }
