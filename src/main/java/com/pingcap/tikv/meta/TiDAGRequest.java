@@ -53,7 +53,7 @@ public class TiDAGRequest implements Serializable {
   private TiExpr having;
   private boolean distinct;
 
-  public void bind() {
+  public void resolve() {
     getFields().forEach(expr -> expr.bind(tableInfo));
     getWhere().forEach(expr -> expr.bind(tableInfo));
     getGroupByItems().forEach(item -> item.getExpr().bind(tableInfo));
@@ -322,7 +322,7 @@ public class TiDAGRequest implements Serializable {
    *
    * @param column is column referred during selectReq
    */
-  public TiDAGRequest addField(TiColumnRef column) {
+  public TiDAGRequest addRequiredColumn(TiColumnRef column) {
     fields.add(requireNonNull(column, "columnRef is null"));
     return this;
   }

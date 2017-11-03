@@ -55,8 +55,8 @@ public class TiDAGRequestTest {
     TiTableInfo table = createTable();
     TiDAGRequest selReq = new TiDAGRequest();
     selReq
-        .addField(TiColumnRef.create("c1", table))
-        .addField(TiColumnRef.create("c2", table))
+        .addRequiredColumn(TiColumnRef.create("c1", table))
+        .addRequiredColumn(TiColumnRef.create("c2", table))
         .addAggregate(new Sum(TiColumnRef.create("c1", table)))
         .addAggregate(new Min(TiColumnRef.create("c1", table)))
         .addWhere(new Plus(TiConstant.create(1L), TiConstant.create(2L)))
