@@ -98,6 +98,7 @@ public class TiDAGRequest implements Serializable {
     DAGRequest.Builder dagRequestBuilder = DAGRequest.newBuilder();
     Executor.Builder executorBuilder = Executor.newBuilder();
     IndexScan.Builder indexScanBuilder = IndexScan.newBuilder();
+    executorBuilder.setTp(ExecType.TypeIndexScan);
     indexScanBuilder
         .setTableId(tableInfo.getId())
         .setIndexId(indexInfo.getId());
