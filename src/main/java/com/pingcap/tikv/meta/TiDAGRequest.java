@@ -201,8 +201,8 @@ public class TiDAGRequest implements Serializable {
         return false;
       }
 
-      for (int j = 0; j < i; j++) {
-        ExecType formerType = dagRequest.getExecutors(j).getTp();
+      if (i > 0) {
+        ExecType formerType = dagRequest.getExecutors(i - 1).getTp();
         if (EXEC_TYPE_PRIORITY_MAP.get(currentType) <
             EXEC_TYPE_PRIORITY_MAP.get(formerType)) {
           return false;
