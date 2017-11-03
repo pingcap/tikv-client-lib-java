@@ -76,7 +76,7 @@ public class DAGIterator implements Iterator<Row> {
       return false;
     }
 
-    while (null == chunkList ||
+    while (chunkList == null ||
             chunkIndex >= chunkList.size() ||
             dataInput.available() <= 0
             ) {
@@ -107,7 +107,7 @@ public class DAGIterator implements Iterator<Row> {
   }
 
   private boolean tryAdvanceChunkIndex() {
-    if (null == chunkList || chunkIndex >= chunkList.size() - 1) {
+    if (chunkList == null || chunkIndex >= chunkList.size() - 1) {
       return false;
     }
 
@@ -116,13 +116,13 @@ public class DAGIterator implements Iterator<Row> {
   }
 
   private boolean readNextRegionChunks() {
-    if (null == regionTasks || taskIndex >= regionTasks.size()) {
+    if (regionTasks == null || taskIndex >= regionTasks.size()) {
       return false;
     }
 
     RangeSplitter.RegionTask regionTask = regionTasks.get(taskIndex++);
     List<Chunk> chunks = createClientAndSendReq(regionTask, this.dagRequest);
-    if (null == chunks || chunks.isEmpty()) {
+    if (chunks == null || chunks.isEmpty()) {
       return false;
     }
     chunkList = chunks;

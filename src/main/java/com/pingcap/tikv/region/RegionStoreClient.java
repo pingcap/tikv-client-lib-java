@@ -158,8 +158,8 @@ public class RegionStoreClient extends AbstractGRPCClient<TikvBlockingStub, Tikv
   }
 
   public SelectResponse coprocess(DAGRequest req, List<KeyRange> ranges) {
-    if (null == req ||
-        null == ranges ||
+    if (req == null ||
+        ranges == null ||
         req.getExecutorsCount() < 1) {
       throw new IllegalArgumentException("Invalid coprocess argument!");
     }
