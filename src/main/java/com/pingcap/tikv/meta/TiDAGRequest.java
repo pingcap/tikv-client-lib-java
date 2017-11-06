@@ -411,7 +411,8 @@ public class TiDAGRequest implements Serializable {
   }
 
   /**
-   * Has aggregate expression.
+   * Check whether the DAG request has any
+   * aggregate expression.
    *
    * @return the boolean
    */
@@ -420,7 +421,8 @@ public class TiDAGRequest implements Serializable {
   }
 
   /**
-   * Has group by expression.
+   * Check whether the DAG request has any
+   * group by expression.
    *
    * @return the boolean
    */

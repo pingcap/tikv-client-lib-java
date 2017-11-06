@@ -40,6 +40,11 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.NoSuchElementException;
 
+/**
+ * @deprecated
+ * We switched entire push mode to DAG, so selectIterator may not be used anymore.
+ * However, we are keeping the class here for backward compatibility.
+ */
 @Deprecated
 public class SelectIterator implements Iterator<Row> {
 
