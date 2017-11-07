@@ -157,11 +157,23 @@ public class RegionStoreClient extends AbstractGRPCClient<TikvBlockingStub, Tikv
     return resp.getPairsList();
   }
 
+  /**
+   * Execute a DAGRequest and retrieve the response from TiKV server.
+   *
+   * @param req    SelectRequest to process
+   * @param ranges Key range list
+   * @return Execution result computed by coprocessor
+   */
   public SelectResponse coprocess(DAGRequest req, List<KeyRange> ranges) {
+    if (req == null ||
+        ranges == null ||
+        req.getExecutorsCount() < 1) {
+      throw new IllegalArgumentException("Invalid coprocess argument!");
+    }
+
     Supplier<Coprocessor.Request> reqToSend = () ->
         Coprocessor.Request.newBuilder()
             .setContext(region.getContext())
-            // TODO: If no executors...?
             .setTp(req.getExecutors(0).hasIdxScan() ? REQ_TYPE_INDEX : REQ_TYPE_DAG)
             .setData(req.toByteString())
             .addAllRanges(ranges)
@@ -198,6 +210,17 @@ public class RegionStoreClient extends AbstractGRPCClient<TikvBlockingStub, Tikv
     return coprocessorHelper(responseIterator);
   }
 
+  /**
+   * Execute a SelectRequest and retrieve the response from TiKV server.
+   *
+   * @param req    SelectRequest to process
+   * @param ranges Key range list
+   * @return Execution result computed by coprocessor
+   * <p>
+   * This method is deprecated due to switching to DAG push down mode, but we still keep this method
+   * for backward compatibility.
+   */
+  @Deprecated
   public SelectResponse coprocess(SelectRequest req, List<KeyRange> ranges) {
     Supplier<Coprocessor.Request> reqToSend = () ->
         Coprocessor.Request.newBuilder()

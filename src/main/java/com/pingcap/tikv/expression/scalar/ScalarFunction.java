@@ -1,3 +1,18 @@
+/*
+ * Copyright 2017 PingCAP, Inc.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package com.pingcap.tikv.expression.scalar;
 
 import com.pingcap.tidb.tipb.Expr;
@@ -5,8 +20,10 @@ import com.pingcap.tidb.tipb.ExprType;
 import com.pingcap.tidb.tipb.FieldType;
 import com.pingcap.tidb.tipb.ScalarFuncSig;
 import com.pingcap.tikv.expression.TiExpr;
+import com.pingcap.tikv.exception.TiExpressionException;
 import com.pingcap.tikv.expression.TiFunctionExpression;
 import com.pingcap.tikv.types.DataType;
+import com.pingcap.tikv.util.ScalarFuncInfer;
 
 /**
  * Scalar function
@@ -22,20 +39,37 @@ public abstract class ScalarFunction extends TiFunctionExpression {
    *
    * @return the pb code
    */
-  abstract ScalarFuncSig getSignature();
+  ScalarFuncSig getSignature() {
+    return ScalarFuncInfer.of(
+        getArgTypeCode(),
+        getExprType()
+    );
+  }
 
-  /**
-   * Get scalar function argument type
-   *
-   * Note:In DAG mode, all the arguments' type should
-   * be the same
-   */
-  public DataType getArgType() {
+  private DataType getArgType() {
     if (args.isEmpty()) {
-      return null;
+      throw new TiExpressionException(
+          "Scalar function's argument list cannot be empty!"
+      );
     }
 
     return args.get(0).getType();
+  }
+
+  /**
+   * Get scalar function argument type code
+   * Note:In DAG mode, all the arguments' type should
+   * be the same
+   *
+   * @return the arg type code
+   */
+  public Integer getArgTypeCode() {
+    return getArgType().getTypeCode();
+  }
+
+  @Override
+  public DataType getType() {
+    return getArgType();
   }
 
   @Override
@@ -44,7 +78,13 @@ public abstract class ScalarFunction extends TiFunctionExpression {
     // Scalar function type
     builder.setTp(ExprType.ScalarFunc);
     // Return type
-    builder.setFieldType(FieldType.newBuilder().setTp(getType().getTypeCode()).build());
+    builder.setFieldType(
+        FieldType.newBuilder()
+            .setTp(
+                getType().getTypeCode()
+            )
+            .build()
+    );
     // Set function signature
     builder.setSig(getSignature());
     for (TiExpr arg : args) {

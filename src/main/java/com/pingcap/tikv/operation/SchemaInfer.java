@@ -99,8 +99,11 @@ public class SchemaInfer {
 
     if (dagRequest.hasAggregate()) {
       dagRequest.getAggregates().forEach(expr -> types.add(expr.getType()));
+      // In DAG mode, if there is any group by statement in a request, all the columns specified
+      // in group by expression will be returned, so when we decode a result row, we need to pay
+      // extra attention to decoding.
       if (dagRequest.hasGroupBy()) {
-        this.types.addAll(dagRequest.getGroupByDTList());
+        types.addAll(dagRequest.getGroupByDTList());
       }
     } else {
       // Extract all column type information from TiExpr

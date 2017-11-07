@@ -15,31 +15,29 @@
 
 package com.pingcap.tikv;
 
-import static com.pingcap.tikv.util.KeyRangeUtils.makeRange;
-
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Range;
 import com.google.protobuf.ByteString;
-import com.pingcap.tidb.tipb.Select;
 import com.pingcap.tikv.exception.TiClientInternalException;
 import com.pingcap.tikv.kvproto.Kvrpcpb.KvPair;
 import com.pingcap.tikv.kvproto.Metapb.Store;
 import com.pingcap.tikv.meta.TiDAGRequest;
-import com.pingcap.tikv.meta.TiSelectRequest;
 import com.pingcap.tikv.meta.TiTimestamp;
 import com.pingcap.tikv.operation.DAGIterator;
 import com.pingcap.tikv.operation.IndexScanIterator;
 import com.pingcap.tikv.operation.ScanIterator;
-import com.pingcap.tikv.operation.SelectIterator;
 import com.pingcap.tikv.region.RegionStoreClient;
 import com.pingcap.tikv.region.TiRegion;
 import com.pingcap.tikv.row.Row;
 import com.pingcap.tikv.util.Comparables;
 import com.pingcap.tikv.util.Pair;
 import com.pingcap.tikv.util.RangeSplitter.RegionTask;
+
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
+
+import static com.pingcap.tikv.util.KeyRangeUtils.makeRange;
 
 public class Snapshot {
   private final TiTimestamp timestamp;
@@ -84,18 +82,9 @@ public class Snapshot {
    * @param dagRequest is DAGRequest.
    * @return a Iterator that contains all result from this select request.
    */
-//  public Iterator<Row> select(TiSelectRequest selReq) {
-//    return new SelectIterator(selReq, getSession(), session.getRegionManager(), false);
-//  }
-
   public Iterator<Row> select(TiDAGRequest dagRequest) {
     return new DAGIterator(dagRequest, getSession(), session.getRegionManager(), false);
   }
-
-//  public Iterator<Row> selectByIndex(TiSelectRequest selReq) {
-//    Iterator<Row> iter = new SelectIterator(selReq, getSession(), session.getRegionManager(), true);
-//    return new IndexScanIterator(this, selReq, iter);
-//  }
 
   public Iterator<Row> selectByIndex(TiDAGRequest dagRequest) {
     Iterator<Row> iter = new DAGIterator(dagRequest, getSession(), session.getRegionManager(), true);
@@ -106,13 +95,10 @@ public class Snapshot {
    * Below is lower level API for env like Spark which already did key range split Perform table
    * scan
    *
-   * @param req SelectRequest for coprocessor
+   * @param req DAGRequest for coprocessor
    * @param task RegionTask of the coprocessor request to send
    * @return Row iterator to iterate over resulting rows
    */
-//  public Iterator<Row> select(TiSelectRequest req, RegionTask task) {
-//    return new SelectIterator(req, ImmutableList.of(task), getSession(), false);
-//  }
   public Iterator<Row> select(TiDAGRequest req, RegionTask task) {
     return new DAGIterator(req, ImmutableList.of(task), getSession(), false);
   }
@@ -121,18 +107,13 @@ public class Snapshot {
    * Below is lower level API for env like Spark which already did key range split Perform index
    * double read
    *
-   * @param req SelectRequest for coprocessor
+   * @param req DAGRequest for coprocessor
    * @param task RegionTask of the coprocessor request to send
    * @return Row iterator to iterate over resulting rows
    */
-//  public Iterator<Row> selectByIndex(TiSelectRequest req, RegionTask task) {
-//    Iterator<Row> iter =
-//        new SelectIterator(req, ImmutableList.of(task), getSession(), true);
-//    return new IndexScanIterator(this, req, iter);
-//  }
   public Iterator<Row> selectByIndex(TiDAGRequest req, RegionTask task) {
     Iterator<Row> iter =
-            new DAGIterator(req, ImmutableList.of(task), getSession(), true);
+        new DAGIterator(req, ImmutableList.of(task), getSession(), true);
     return new IndexScanIterator(this, req, iter);
   }
 
@@ -158,7 +139,7 @@ public class Snapshot {
         curKeyRange = makeRange(curRegion.getStartKey(), curRegion.getEndKey());
 
         try (RegionStoreClient client =
-            RegionStoreClient.create(lastPair.first, lastPair.second, getSession())) {
+                 RegionStoreClient.create(lastPair.first, lastPair.second, getSession())) {
           List<KvPair> partialResult = client.batchGet(keyBuffer, timestamp.getVersion());
           // TODO: Add lock check
           result.addAll(partialResult);

@@ -77,6 +77,7 @@ public class TimestampType extends DataType {
       LocalDateTime localDateTime = fromPackedLong(IntegerType.readUVarLong(cdi));
       if (localDateTime == null) {
         row.setNull(pos);
+        return;
       }
       Timestamp timestamp = Timestamp.from(ZonedDateTime.of(localDateTime, defaultZone).toInstant());
       row.setTimestamp(pos, timestamp);

@@ -16,30 +16,13 @@
 package com.pingcap.tikv.expression.scalar;
 
 import com.pingcap.tidb.tipb.ExprType;
-import com.pingcap.tidb.tipb.ScalarFuncSig;
 import com.pingcap.tikv.expression.TiExpr;
 import com.pingcap.tikv.types.DataType;
 import com.pingcap.tikv.types.IntegerType;
-import com.pingcap.tikv.util.ScalarFuncInfer;
-
-import static com.pingcap.tidb.tipb.ScalarFuncSig.*;
 
 public class IfNull extends ScalarFunction {
   public IfNull(TiExpr... arg) {
     super(arg);
-  }
-
-  @Override
-  ScalarFuncSig getSignature() {
-    return ScalarFuncInfer.infer(
-            getArgType(),
-            IfNullInt,
-            IfNullDecimal,
-            IfNullReal,
-            IfNullDuration,
-            IfNullTime,
-            IfNullString
-    );
   }
 
   @Override
@@ -53,7 +36,8 @@ public class IfNull extends ScalarFunction {
   }
 
   @Override
-  protected void validateArguments(TiExpr... args) throws RuntimeException {}
+  protected void validateArguments(TiExpr... args) throws RuntimeException {
+  }
 
   @Override
   public DataType getType() {

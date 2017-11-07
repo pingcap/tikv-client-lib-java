@@ -42,22 +42,53 @@ make tikv
 ## How to use for now
 Since it's not quite complete, a usage sample for now can be given is:
 ```java
-	TiConfiguration conf = TiConfiguration.createDefault("127.0.0.1:2379");
-        TiSession session = TiSession.create(conf);
-        Catalog cat = session.getCatalog();
-        TiDBInfo db = cat.getDatabase("test");
-        TiTableInfo table = cat.getTable(db, "t2");
+// Init tidb cluster configuration
+TiConfiguration conf = TiConfiguration.createDefault("127.0.0.1:2379");
+TiSession session = TiSession.create(conf);
+Catalog cat = session.getCatalog();
+TiDBInfo db = cat.getDatabase("tpch_test");
+TiTableInfo table = cat.getTable(db, "customer");
+Snapshot snapshot = session.createSnapshot();
+ 
+// Generate select ranges
+ByteString startKey = TableCodec.encodeRowKeyWithHandle(table.getId(), Long.MIN_VALUE);
+ByteString endKey = TableCodec.encodeRowKeyWithHandle(table.getId(), Long.MAX_VALUE);
+Coprocessor.KeyRange keyRange = Coprocessor.KeyRange.newBuilder().setStart(startKey).setEnd(endKey).build();
+List<Coprocessor.KeyRange> ranges = new ArrayList<>();
+ranges.add(keyRange);
 
-....
-        Snapshot snapshot = session.createSnapshot();
-        Iterator<Row> it = snapshot.newSelect(table)
-                .addRange(TiRange.create(0L, Long.MAX_VALUE))
-                .doSelect();
+ 
+// Create select request
+TiSelectRequest selectRequest = new TiSelectRequest();
+selectRequest.addRanges(ranges);
+selectRequest.addField(TiColumnRef.create("c_mktsegment", table));
+selectRequest.setTableInfo(table);
+selectRequest.setStartTs(session.getTimestamp().getVersion());
+selectRequest.addWhere(new GreaterEqual(TiConstant.create(5), TiConstant.create(5)));
+selectRequest.addGroupByItem(TiByItem.create(TiColumnRef.create("c_mktsegment"), false));
+selectRequest.setLimit(10);
+selectRequest.bind();
+ 
+// Fetch data
+Iterator<Row> iterator = snapshot.select(selectRequest);
+System.out.println("Show result:");
+while (iterator.hasNext()) {
+  Row rowData = iterator.next();
+  for (int i = 0; i < rowData.fieldCount(); i++) {
+    System.out.print(rowData.get(i, null) + "\t");
+  }
+  System.out.println();
+}
 
-        while (it.hasNext()) {
-            Row r = it.next();
-            long val = r.getLong(0);
-        }
+```
+Result:
+```java
+Show result:
+BUILDING	
+AUTOMOBILE	
+MACHINERY	
+HOUSEHOLD	
+FURNITURE	
 ```
 
 ## TODO

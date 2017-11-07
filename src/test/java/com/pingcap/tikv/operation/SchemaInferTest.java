@@ -62,12 +62,10 @@ public class SchemaInferTest {
   @Test
   public void selectAggSchemaInferTest() throws Exception {
     // select sum(number) from t1;
-    // SingleGroup is added as dummy variable.
     TiDAGRequest tiDAGRequest = new TiDAGRequest();
     tiDAGRequest.addAggregate(sum);
     List<DataType> dataTypes = SchemaInfer.create(tiDAGRequest).getTypes();
     assertEquals(1, dataTypes.size());
-//    assertEquals(DataTypeFactory.of(TYPE_BLOB), dataTypes.get(0));
     assertEquals(DataTypeFactory.of(TYPE_NEW_DECIMAL), dataTypes.get(0));
   }
 
@@ -77,11 +75,11 @@ public class SchemaInferTest {
     TiDAGRequest dagRequest = new TiDAGRequest();
     dagRequest.getFields().add(name);
     dagRequest.addAggregate(sum);
-    dagRequest.getGroupByItems().add(complexGroupBy);
-//    List<DataType> dataTypes = SchemaInfer.create(dagRequest).getTypes();
-//    assertEquals(2, dataTypes.size());
-//    assertEquals(DataTypeFactory.of(TYPE_BLOB), dataTypes.get(0));
-//    assertEquals(DataTypeFactory.of(TYPE_NEW_DECIMAL), dataTypes.get(0));
+    dagRequest.getGroupByItems().add(simpleGroupBy);
+    List<DataType> dataTypes = SchemaInfer.create(dagRequest).getTypes();
+    assertEquals(2, dataTypes.size());
+    assertEquals(DataTypeFactory.of(TYPE_NEW_DECIMAL), dataTypes.get(0));
+    assertEquals(DataTypeFactory.of(TYPE_VARCHAR), dataTypes.get(1));
   }
 
   @Test
@@ -91,9 +89,9 @@ public class SchemaInferTest {
     dagRequest.getFields().add(name);
     dagRequest.addAggregate(sum);
     dagRequest.getGroupByItems().add(complexGroupBy);
-//    List<DataType> dataTypes = SchemaInfer.create(dagRequest).getTypes();
-//    assertEquals(2, dataTypes.size());
-//    assertEquals(DataTypeFactory.of(TYPE_BLOB), dataTypes.get(0));
-//    assertEquals(DataTypeFactory.of(TYPE_NEW_DECIMAL), dataTypes.get(0));
+    List<DataType> dataTypes = SchemaInfer.create(dagRequest).getTypes();
+    assertEquals(2, dataTypes.size());
+    assertEquals(DataTypeFactory.of(TYPE_NEW_DECIMAL), dataTypes.get(0));
+    assertEquals(DataTypeFactory.of(TYPE_VARCHAR), dataTypes.get(1));
   }
 }

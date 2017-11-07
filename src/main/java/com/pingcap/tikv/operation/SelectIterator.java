@@ -23,7 +23,7 @@ import com.pingcap.tikv.codec.CodecDataInput;
 import com.pingcap.tikv.exception.TiClientInternalException;
 import com.pingcap.tikv.kvproto.Coprocessor.KeyRange;
 import com.pingcap.tikv.kvproto.Metapb.Store;
-import com.pingcap.tikv.meta.TiDAGRequest;
+import com.pingcap.tikv.meta.TiSelectRequest;
 import com.pingcap.tikv.region.RegionManager;
 import com.pingcap.tikv.region.RegionStoreClient;
 import com.pingcap.tikv.region.TiRegion;
@@ -40,6 +40,12 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.NoSuchElementException;
 
+/**
+ * @deprecated
+ * We switched entire push mode to DAG, so selectIterator may not be used anymore.
+ * However, we are keeping the class here for backward compatibility.
+ */
+@Deprecated
 public class SelectIterator implements Iterator<Row> {
 
   protected final TiSession session;
@@ -50,26 +56,25 @@ public class SelectIterator implements Iterator<Row> {
   private boolean eof = false;
   private SchemaInfer schemaInfer;
   private final boolean indexScan;
-  //  private TiSelectRequest tiReq;
-  private TiDAGRequest dagRequest;
+  private TiSelectRequest tiReq;
   private static final DataType[] handleTypes =
-          new DataType[]{DataTypeFactory.of(Types.TYPE_LONG)};
+      new DataType[]{DataTypeFactory.of(Types.TYPE_LONG)};
 
   public SelectIterator(
-          TiDAGRequest req,
-          List<RegionTask> regionTasks,
-          TiSession session,
-          boolean indexScan) {
+      TiSelectRequest req,
+      List<RegionTask> regionTasks,
+      TiSession session,
+      boolean indexScan) {
     this.regionTasks = regionTasks;
-    dagRequest = req;
-    schemaInfer = SchemaInfer.create(req);
+    this.tiReq = req;
     this.session = session;
+    // we moved to DAG mode and the below interface do not work
+//    this.schemaInfer = SchemaInfer.create(req);
     this.indexScan = indexScan;
   }
 
-
   private List<Chunk> createClientAndSendReq(RegionTask regionTask,
-                                             TiDAGRequest req) {
+                                             TiSelectRequest req) {
     List<KeyRange> ranges = regionTask.getRanges();
     TiRegion region = regionTask.getRegion();
     Store store = regionTask.getStore();
@@ -89,7 +94,7 @@ public class SelectIterator implements Iterator<Row> {
     }
   }
 
-  public SelectIterator(TiDAGRequest req, TiSession session, RegionManager rm,
+  public SelectIterator(TiSelectRequest req, TiSession session, RegionManager rm,
                         boolean indexScan) {
     this(req, RangeSplitter.newSplitter(rm).splitRangeByRegion(req.getRanges()), session, indexScan);
   }
@@ -100,43 +105,13 @@ public class SelectIterator implements Iterator<Row> {
     }
 
     RegionTask regionTask = regionTasks.get(index++);
-    List<Chunk> chunks = createClientAndSendReq(regionTask, this.dagRequest);
-//    ByteString string = chunks.get(0).getRowsData();
-//    String utfString = string.toStringUtf8();
-//    CodecDataInput codecDataInput = new CodecDataInput(string);
-//    RowReader rowReader = RowReaderFactory.createRowReader(codecDataInput);
-//
-//    DataType[] types = new DataType[]{
-//            schemaInfer.getType(0),
-//            schemaInfer.getType(1),
-////            schemaInfer.getType(2)
-//    };
-//    for (int i = 0; i < 200; i++) {
-//      Row row = rowReader.readRow(types);
-//      //    return reader.readRow(this.schemaInfer.getTypes().toArray(new DataType[0]));
-//      System.out.print(row.get(0, null) + " ");
-//      System.out.println(row.get(1, schemaInfer.getType(1)));
-////      System.out.println(" handle:" + row.get(2, null));
-//    }
+    List<Chunk> chunks = createClientAndSendReq(regionTask, this.tiReq);
     if (chunks == null) {
       return false;
     }
     chunkIterator = new ChunkIterator(chunks);
     return true;
   }
-//  private boolean readNextRegion() {
-//    if (eof || index >= regionTasks.size()) {
-//      return false;
-//    }
-//
-//    RegionTask regionTask = regionTasks.get(index++);
-//    List<Chunk> chunks = createClientAndSendReq(regionTask, this.tiReq);
-//    if (chunks == null) {
-//      return false;
-//    }
-//    chunkIterator = new ChunkIterator(chunks);
-//    return true;
-//  }
 
   @Override
   public boolean hasNext() {

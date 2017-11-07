@@ -1,3 +1,18 @@
+/*
+ * Copyright 2017 PingCAP, Inc.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package com.pingcap.tikv.operation;
 
 import com.pingcap.tidb.tipb.Chunk;
@@ -62,15 +77,16 @@ public class DAGIterator implements Iterator<Row> {
       return false;
     }
 
-    while (null == chunkList ||
-        chunkIndex >= chunkList.size() ||
-        dataInput.available() <= 0
-        ) {
-      if (advanceNextResponse()) {
-        return true;
+    while (chunkList == null ||
+            chunkIndex >= chunkList.size() ||
+            dataInput.available() <= 0
+            ) {
+      // First we check if our chunk list has remaining chunk
+      if (tryAdvanceChunkIndex()) {
+        createDataInputReader();
       }
-
-      if (!readNextRegionChunks()) {
+      // If not, check next region
+      else if (!readNextRegionChunks()) {
         return false;
       }
     }
@@ -91,15 +107,24 @@ public class DAGIterator implements Iterator<Row> {
     }
   }
 
+  private boolean tryAdvanceChunkIndex() {
+    if (chunkList == null || chunkIndex >= chunkList.size() - 1) {
+      return false;
+    }
+
+    chunkIndex++;
+    return true;
+  }
+
   private boolean readNextRegionChunks() {
-    if (taskIndex >= regionTasks.size()) {
+    if (regionTasks == null || taskIndex >= regionTasks.size()) {
       return false;
     }
 
     RangeSplitter.RegionTask regionTask = regionTasks.get(taskIndex++);
     responseIterator = processByStreaming(regionTask, this.dagRequest);
 
-    return advanceNextResponse();
+//    return advanceNextResponse();
 //    List<Chunk> chunks = createClientAndSendReq(regionTask, this.dagRequest);
 //    if (null == chunks || chunks.isEmpty()) {
 //      return false;
@@ -108,6 +133,14 @@ public class DAGIterator implements Iterator<Row> {
 //    chunkIndex = 0;
 //    createDataInputReader();
 //    return true;
+    List<Chunk> chunks = createClientAndSendReq(regionTask, this.dagRequest);
+    if (chunks == null || chunks.isEmpty()) {
+      return false;
+    }
+    chunkList = chunks;
+    chunkIndex = 0;
+    createDataInputReader();
+    return true;
   }
 
   private void createDataInputReader() {

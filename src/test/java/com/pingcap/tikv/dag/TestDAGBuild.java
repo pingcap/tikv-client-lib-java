@@ -11,8 +11,7 @@ import com.pingcap.tikv.expression.TiByItem;
 import com.pingcap.tikv.expression.TiColumnRef;
 import com.pingcap.tikv.expression.TiConstant;
 import com.pingcap.tikv.expression.aggregate.Count;
-import com.pingcap.tikv.expression.scalar.Equal;
-import com.pingcap.tikv.expression.scalar.Plus;
+import com.pingcap.tikv.expression.scalar.*;
 import com.pingcap.tikv.kvproto.Coprocessor;
 import com.pingcap.tikv.meta.TiDAGRequest;
 import com.pingcap.tikv.meta.TiDBInfo;
@@ -41,6 +40,7 @@ public class TestDAGBuild {
   List<TiDBInfo> databaseInfoList = cat.listDatabases();
   public TiColumnRef custKey = TiColumnRef.create("c_custkey");
   public TiColumnRef mktsegment = TiColumnRef.create("c_mktsegment");
+  private TiColumnRef shipdate = TiColumnRef.create("l_shipdate");
   private TiByItem complexGroupBy = TiByItem.create(new Plus(mktsegment, TiConstant.create("1")), false);
 
   TiTableInfo table;
@@ -54,6 +54,12 @@ public class TestDAGBuild {
     Logger log = Logger.getLogger("io.grpc");
     log.setLevel(Level.ALL);
 
+    bindRanges();
+  }
+
+  private void bindRanges() {
+    ranges.clear();
+
     ByteString startKey = TableCodec.encodeRowKeyWithHandle(table.getId(), Long.MIN_VALUE);
     ByteString endKey = TableCodec.encodeRowKeyWithHandle(table.getId(), Long.MAX_VALUE);
     Coprocessor.KeyRange keyRange = Coprocessor.KeyRange.newBuilder().setStart(startKey).setEnd(endKey).build();
@@ -61,28 +67,44 @@ public class TestDAGBuild {
   }
 
   private void showIterRes(Iterator<Row> iterator) {
-    System.out.println("Result:");
+    System.out.println("Result is:");
+    int count = 0;
+
     while (iterator.hasNext()) {
       Row rowData = iterator.next();
+      count++;
       for (int i = 0; i < rowData.fieldCount(); i++) {
         System.out.print(rowData.get(i, null) + "\t");
       }
       System.out.println();
     }
+    System.out.println("Total data count: " + count);
   }
 
   @Test
   public void testAggGroupBy() {
     TiDAGRequest dagRequest = new TiDAGRequest();
     dagRequest.addRanges(ranges);
-    dagRequest.addField(TiColumnRef.create("c_mktsegment", table));
+    dagRequest.addRequiredColumn(TiColumnRef.create("c_mktsegment", table));
     dagRequest.setTableInfo(table);
     dagRequest.setStartTs(session.getTimestamp().getVersion());
     dagRequest.addAggregate(new Count(custKey));
     dagRequest.addGroupByItem(TiByItem.create(TiColumnRef.create("c_mktsegment"), false));
-    dagRequest.bind();
+    dagRequest.resolve();
     Iterator<Row> iterator = snapshot.select(dagRequest);
-    showIterRes(iterator);
+    Assert.assertTrue(iterator.hasNext());
+  }
+
+  @Test
+  public void testSelectAll() {
+    TiDAGRequest dagRequest = new TiDAGRequest();
+    dagRequest.setTableInfo(table);
+    dagRequest.addRanges(ranges);
+    dagRequest.addRequiredColumn(mktsegment);
+    dagRequest.setStartTs(session.getTimestamp().getVersion());
+    dagRequest.resolve();
+    Iterator<Row> iterator = snapshot.select(dagRequest);
+    Assert.assertTrue(iterator.hasNext());
   }
 
   @Test
@@ -94,9 +116,9 @@ public class TestDAGBuild {
     dagRequest.addAggregate(new Count(custKey));
     dagRequest.addGroupByItem(TiByItem.create(TiColumnRef.create("c_name"), false));
     dagRequest.addGroupByItem(TiByItem.create(TiColumnRef.create("c_mktsegment"), false));
-    dagRequest.bind();
+    dagRequest.resolve();
     Iterator<Row> iterator = snapshot.select(dagRequest);
-    showIterRes(iterator);
+    Assert.assertTrue(iterator.hasNext());
   }
 
   @Test
@@ -106,9 +128,10 @@ public class TestDAGBuild {
     dagRequest.setTableInfo(table);
     dagRequest.setStartTs(session.getTimestamp().getVersion());
     dagRequest.addAggregate(new Count(TiColumnRef.create("c_custkey")));
-    dagRequest.bind();
+    dagRequest.resolve();
     Iterator<Row> iterator = snapshot.select(dagRequest);
-    showIterRes(iterator);
+    Assert.assertTrue(iterator.hasNext());
+//    showIterRes(iterator);
   }
 
   @Test
@@ -116,13 +139,12 @@ public class TestDAGBuild {
     TiDAGRequest dagRequest = new TiDAGRequest();
     dagRequest.addRanges(ranges);
     dagRequest.setTableInfo(table);
-    dagRequest.addField(TiColumnRef.create("c_custkey"));
+    dagRequest.addRequiredColumn(TiColumnRef.create("c_custkey"));
     dagRequest.setStartTs(session.getTimestamp().getVersion());
     dagRequest.addWhere(new Equal(TiConstant.create(3), TiConstant.create(1)));
-    dagRequest.bind();
+    dagRequest.resolve();
     Iterator<Row> iterator = snapshot.select(dagRequest);
     Assert.assertTrue(!iterator.hasNext());
-    showIterRes(iterator);
   }
 
   @Test
@@ -130,27 +152,48 @@ public class TestDAGBuild {
     TiDAGRequest dagRequest = new TiDAGRequest();
     dagRequest.addRanges(ranges);
     dagRequest.setTableInfo(table);
-    dagRequest.addField(custKey);
+    dagRequest.addRequiredColumn(custKey);
     dagRequest.setStartTs(session.getTimestamp().getVersion());
     dagRequest.addWhere(new Equal(TiConstant.create(1), TiConstant.create(1)));
-//    dagRequest.addGroupByItem(complexGroupBy);
-    dagRequest.bind();
+    dagRequest.resolve();
     Iterator<Row> iterator = snapshot.select(dagRequest);
     Assert.assertTrue(iterator.hasNext());
-    showIterRes(iterator);
   }
 
   @Test
   public void testComplexWhere() {
     TiDAGRequest dagRequest = new TiDAGRequest();
     dagRequest.addRanges(ranges);
-    dagRequest.addField(mktsegment);
+    dagRequest.addRequiredColumn(mktsegment);
     dagRequest.setTableInfo(table);
     dagRequest.setStartTs(session.getTimestamp().getVersion());
     dagRequest.addWhere(new Equal(new Plus(TiConstant.create(1), custKey), TiConstant.create(4)));
-    dagRequest.bind();
+    dagRequest.resolve();
     Iterator<Row> iterator = snapshot.select(dagRequest);
     Assert.assertTrue(iterator.hasNext());
-    showIterRes(iterator);
+  }
+
+  @Test
+  public void testExpBug() {
+    table = cat.getTable(db, "lineitem");
+    bindRanges();
+
+    TiDAGRequest dagRequest = new TiDAGRequest();
+    dagRequest.addRanges(ranges);
+    dagRequest.setTableInfo(table);
+    dagRequest.addRequiredColumn(shipdate);
+    dagRequest.setStartTs(session.getTimestamp().getVersion());
+    dagRequest.setLimit(65);
+    dagRequest.resolve();
+    Iterator<Row> iterator = snapshot.select(dagRequest);
+    Assert.assertTrue(iterator.hasNext());
+  }
+
+  private void showIterCount(Iterator<Row> iterator) {
+    int count = 0;
+    while (iterator.hasNext()) {
+      count++;
+    }
+    System.out.println("Data count: " + count);
   }
 }
