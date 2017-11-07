@@ -59,7 +59,6 @@ public class Main {
         System.out.print(rowData.get(i, null) + "\t");
       }
       System.out.println("     " + cnt++);
-//      System.out.println(rowData.get(0, null) + " " + rowData.get(1, null));
     }
   }
 }
