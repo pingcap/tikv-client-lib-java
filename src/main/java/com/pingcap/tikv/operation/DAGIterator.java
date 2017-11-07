@@ -78,9 +78,9 @@ public class DAGIterator implements Iterator<Row> {
     }
 
     while (chunkList == null ||
-            chunkIndex >= chunkList.size() ||
-            dataInput.available() <= 0
-            ) {
+        chunkIndex >= chunkList.size() ||
+        dataInput.available() <= 0
+        ) {
       // First we check if our chunk list has remaining chunk
       if (tryAdvanceChunkIndex()) {
         createDataInputReader();
@@ -123,7 +123,7 @@ public class DAGIterator implements Iterator<Row> {
 
     RangeSplitter.RegionTask regionTask = regionTasks.get(taskIndex++);
     responseIterator = processByStreaming(regionTask, this.dagRequest);
-
+    return responseIterator != null && advanceNextResponse();
 //    return advanceNextResponse();
 //    List<Chunk> chunks = createClientAndSendReq(regionTask, this.dagRequest);
 //    if (null == chunks || chunks.isEmpty()) {
@@ -133,14 +133,14 @@ public class DAGIterator implements Iterator<Row> {
 //    chunkIndex = 0;
 //    createDataInputReader();
 //    return true;
-    List<Chunk> chunks = createClientAndSendReq(regionTask, this.dagRequest);
-    if (chunks == null || chunks.isEmpty()) {
-      return false;
-    }
-    chunkList = chunks;
-    chunkIndex = 0;
-    createDataInputReader();
-    return true;
+//    List<Chunk> chunks = createClientAndSendReq(regionTask, this.dagRequest);
+//    if (chunks == null || chunks.isEmpty()) {
+//      return false;
+//    }
+//    chunkList = chunks;
+//    chunkIndex = 0;
+//    createDataInputReader();
+//    return true;
   }
 
   private void createDataInputReader() {

@@ -36,6 +36,7 @@ import com.pingcap.tikv.kvproto.TikvGrpc;
 import com.pingcap.tikv.kvproto.TikvGrpc.TikvBlockingStub;
 import com.pingcap.tikv.kvproto.TikvGrpc.TikvStub;
 import com.pingcap.tikv.operation.KVErrorHandler;
+import com.pingcap.tikv.streaming.StreamingResponse;
 import com.pingcap.tikv.util.Pair;
 import io.grpc.ManagedChannel;
 
@@ -194,19 +195,20 @@ public class RegionStoreClient extends AbstractGRPCClient<TikvBlockingStub, Tikv
             .setData(req.toByteString())
             .addAllRanges(ranges)
             .build();
-    KVErrorHandler<Iterator<Coprocessor.Response>> handler =
+
+    KVErrorHandler<StreamingResponse> handler =
         new KVErrorHandler<>(
             regionManager,
             this,
             region,
-            resp ->
-                resp.hasNext() && resp.next().hasRegionError() ? resp.next().getRegionError() : null
+            StreamingResponse::getFirstError
         );
 
-    Iterator<Coprocessor.Response> responseIterator = callServerStreamingWithRetry(
+    StreamingResponse responseIterator = callServerStreamingWithRetry(
         TikvGrpc.METHOD_COPROCESSOR_STREAM,
         reqToSend,
         handler);
+
     return coprocessorHelper(responseIterator);
   }
 
@@ -237,11 +239,13 @@ public class RegionStoreClient extends AbstractGRPCClient<TikvBlockingStub, Tikv
     return coprocessorHelper(resp);
   }
 
-  private Iterator<SelectResponse> coprocessorHelper(Iterator<Coprocessor.Response> responseIterator) {
+  private Iterator<SelectResponse> coprocessorHelper(StreamingResponse response) {
+    Iterator<Coprocessor.Response> responseIterator = response.iterator();
     // If we got nothing to handle, return null
-    if (null == responseIterator || !responseIterator.hasNext())
+    if (!responseIterator.hasNext())
       return null;
 
+    // Simply wrap it
     return new Iterator<SelectResponse>() {
       @Override
       public boolean hasNext() {
