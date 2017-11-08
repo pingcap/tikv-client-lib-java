@@ -36,16 +36,17 @@ import com.pingcap.tikv.kvproto.TikvGrpc;
 import com.pingcap.tikv.kvproto.TikvGrpc.TikvBlockingStub;
 import com.pingcap.tikv.kvproto.TikvGrpc.TikvStub;
 import com.pingcap.tikv.operation.KVErrorHandler;
+import com.pingcap.tikv.streaming.StreamingResponse;
 import com.pingcap.tikv.util.Pair;
 import io.grpc.ManagedChannel;
 
+import java.util.Iterator;
 import java.util.List;
 import java.util.function.Supplier;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
-import static com.pingcap.tikv.types.RequestTypes.REQ_TYPE_DAG;
-import static com.pingcap.tikv.types.RequestTypes.REQ_TYPE_INDEX;
+import static com.pingcap.tikv.types.RequestTypes.*;
 
 // RegionStore itself is not thread-safe
 public class RegionStoreClient extends AbstractGRPCClient<TikvBlockingStub, TikvStub> implements RegionErrorReceiver {
@@ -178,12 +179,37 @@ public class RegionStoreClient extends AbstractGRPCClient<TikvBlockingStub, Tikv
             .setData(req.toByteString())
             .addAllRanges(ranges)
             .build();
-
     KVErrorHandler<Coprocessor.Response> handler =
         new KVErrorHandler<>(
             regionManager, this, region, resp -> resp.hasRegionError() ? resp.getRegionError() : null);
     Coprocessor.Response resp = callWithRetry(TikvGrpc.METHOD_COPROCESSOR, reqToSend, handler);
     return coprocessorHelper(resp);
+  }
+
+  public Iterator<SelectResponse> coprocessStreaming(DAGRequest req, List<KeyRange> ranges) {
+    Supplier<Coprocessor.Request> reqToSend = () ->
+        Coprocessor.Request.newBuilder()
+            .setContext(region.getContext())
+            // TODO: If no executors...?
+            .setTp(req.getExecutors(0).hasIdxScan() ? REQ_TYPE_INDEX : REQ_TYPE_DAG)
+            .setData(req.toByteString())
+            .addAllRanges(ranges)
+            .build();
+
+    KVErrorHandler<StreamingResponse> handler =
+        new KVErrorHandler<>(
+            regionManager,
+            this,
+            region,
+            StreamingResponse::getFirstError
+        );
+
+    StreamingResponse responseIterator = callServerStreamingWithRetry(
+        TikvGrpc.METHOD_COPROCESSOR_STREAM,
+        reqToSend,
+        handler);
+
+    return coprocessorHelper(responseIterator);
   }
 
   /**
@@ -201,7 +227,7 @@ public class RegionStoreClient extends AbstractGRPCClient<TikvBlockingStub, Tikv
     Supplier<Coprocessor.Request> reqToSend = () ->
         Coprocessor.Request.newBuilder()
             .setContext(region.getContext())
-            .setTp(req.hasIndexInfo() ? REQ_TYPE_INDEX : REQ_TYPE_DAG)
+            .setTp(req.hasIndexInfo() ? REQ_TYPE_INDEX : REQ_TYPE_SELECT)
             .setData(req.toByteString())
             .addAllRanges(ranges)
             .build();
@@ -211,6 +237,26 @@ public class RegionStoreClient extends AbstractGRPCClient<TikvBlockingStub, Tikv
             regionManager, this, region, resp -> resp.hasRegionError() ? resp.getRegionError() : null);
     Coprocessor.Response resp = callWithRetry(TikvGrpc.METHOD_COPROCESSOR, reqToSend, handler);
     return coprocessorHelper(resp);
+  }
+
+  private Iterator<SelectResponse> coprocessorHelper(StreamingResponse response) {
+    Iterator<Coprocessor.Response> responseIterator = response.iterator();
+    // If we got nothing to handle, return null
+    if (!responseIterator.hasNext())
+      return null;
+
+    // Simply wrap it
+    return new Iterator<SelectResponse>() {
+      @Override
+      public boolean hasNext() {
+        return responseIterator.hasNext();
+      }
+
+      @Override
+      public SelectResponse next() {
+        return coprocessorHelper(responseIterator.next());
+      }
+    };
   }
 
   private SelectResponse coprocessorHelper(Coprocessor.Response resp) {

@@ -45,7 +45,7 @@ public class DAGIterator implements Iterator<Row> {
   private final boolean indexScan;
   private TiDAGRequest dagRequest;
   private static final DataType[] handleTypes =
-          new DataType[]{DataTypeFactory.of(Types.TYPE_LONG)};
+      new DataType[]{DataTypeFactory.of(Types.TYPE_LONG)};
   private RowReader rowReader;
   private CodecDataInput dataInput;
   private boolean eof = false;
@@ -53,6 +53,7 @@ public class DAGIterator implements Iterator<Row> {
   private int chunkIndex;
   private List<Chunk> chunkList;
   private SchemaInfer schemaInfer;
+  private Iterator<SelectResponse> responseIterator;
 
   public DAGIterator(TiDAGRequest req,
                      List<RangeSplitter.RegionTask> regionTasks,
@@ -66,7 +67,7 @@ public class DAGIterator implements Iterator<Row> {
   }
 
   public DAGIterator(TiDAGRequest req, TiSession session, RegionManager rm,
-                        boolean indexScan) {
+                     boolean indexScan) {
     this(req, RangeSplitter.newSplitter(rm).splitRangeByRegion(req.getRanges()), session, indexScan);
   }
 
@@ -77,9 +78,9 @@ public class DAGIterator implements Iterator<Row> {
     }
 
     while (chunkList == null ||
-            chunkIndex >= chunkList.size() ||
-            dataInput.available() <= 0
-            ) {
+        chunkIndex >= chunkList.size() ||
+        dataInput.available() <= 0
+        ) {
       // First we check if our chunk list has remaining chunk
       if (tryAdvanceChunkIndex()) {
         createDataInputReader();
@@ -121,24 +122,71 @@ public class DAGIterator implements Iterator<Row> {
     }
 
     RangeSplitter.RegionTask regionTask = regionTasks.get(taskIndex++);
-    List<Chunk> chunks = createClientAndSendReq(regionTask, this.dagRequest);
-    if (chunks == null || chunks.isEmpty()) {
-      return false;
-    }
-    chunkList = chunks;
-    chunkIndex = 0;
-    createDataInputReader();
-    return true;
+    responseIterator = processByStreaming(regionTask, this.dagRequest);
+    return responseIterator != null && advanceNextResponse();
+//    return advanceNextResponse();
+//    List<Chunk> chunks = createClientAndSendReq(regionTask, this.dagRequest);
+//    if (null == chunks || chunks.isEmpty()) {
+//      return false;
+//    }
+//    chunkList = chunks;
+//    chunkIndex = 0;
+//    createDataInputReader();
+//    return true;
+//    List<Chunk> chunks = createClientAndSendReq(regionTask, this.dagRequest);
+//    if (chunks == null || chunks.isEmpty()) {
+//      return false;
+//    }
+//    chunkList = chunks;
+//    chunkIndex = 0;
+//    createDataInputReader();
+//    return true;
   }
 
   private void createDataInputReader() {
     Objects.requireNonNull(chunkList, "Chunk list should not be null.");
     if (0 > chunkIndex ||
-            chunkIndex >= chunkList.size()) {
+        chunkIndex >= chunkList.size()) {
       throw new IllegalArgumentException();
     }
     dataInput = new CodecDataInput(chunkList.get(chunkIndex).getRowsData());
     rowReader = RowReaderFactory.createRowReader(dataInput);
+  }
+
+  private boolean hasMoreResponse() {
+    return null != responseIterator && responseIterator.hasNext();
+  }
+
+  private boolean advanceNextResponse() {
+    if (!hasMoreResponse()) return false;
+
+    chunkList = responseIterator.next().getChunksList();
+    if (null == chunkList || chunkList.isEmpty()) {
+      return false;
+    }
+    chunkIndex = 0;
+    createDataInputReader();
+    return true;
+  }
+
+  private Iterator<SelectResponse> processByStreaming(RangeSplitter.RegionTask regionTask,
+                                                      TiDAGRequest req) {
+    List<Coprocessor.KeyRange> ranges = regionTask.getRanges();
+    TiRegion region = regionTask.getRegion();
+    Metapb.Store store = regionTask.getStore();
+
+    RegionStoreClient client;
+    try {
+      client = RegionStoreClient.create(region, store, session);
+      Iterator<SelectResponse> responseIterator = client.coprocessStreaming(req.buildScan(indexScan), ranges);
+      if (null == responseIterator) {
+        eof = true;
+        return null;
+      }
+      return responseIterator;
+    } catch (Exception e) {
+      throw new TiClientInternalException("Error Closing Store client.", e);
+    }
   }
 
   private List<Chunk> createClientAndSendReq(RangeSplitter.RegionTask regionTask,
@@ -152,7 +200,7 @@ public class DAGIterator implements Iterator<Row> {
       client = RegionStoreClient.create(region, store, session);
       SelectResponse resp = client.coprocess(req.buildScan(indexScan), ranges);
       // if resp is null, then indicates eof.
-      if (resp == null) {
+      if (null == resp) {
         eof = true;
         return null;
       }

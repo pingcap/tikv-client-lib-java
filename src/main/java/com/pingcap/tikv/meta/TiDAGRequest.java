@@ -24,6 +24,11 @@ import static com.google.common.base.Preconditions.checkArgument;
 import static com.pingcap.tikv.predicates.PredicateUtils.mergeCNFExpressions;
 import static java.util.Objects.requireNonNull;
 
+/**
+ * Type TiDAGRequest.
+ *
+ * Used for constructing a new DAG request to TiKV
+ */
 public class TiDAGRequest implements Serializable {
   public enum TruncateMode {
     IgnoreTruncation(0x1),
@@ -70,6 +75,7 @@ public class TiDAGRequest implements Serializable {
   private long startTs;
   private TiExpr having;
   private boolean distinct;
+  private boolean handleNeeded;
 
   public void resolve() {
     getFields().forEach(expr -> expr.bind(tableInfo));
@@ -124,6 +130,19 @@ public class TiDAGRequest implements Serializable {
     tableInfo.getColumns().forEach(tiColumnInfo -> tblScanBuilder.addColumns(tiColumnInfo.toProto(tableInfo)));
     executorBuilder.setTp(ExecType.TypeTableScan);
     tblScanBuilder.setTableId(tableInfo.getId());
+    // Currently, according to TiKV's implementation, if handle
+    // is needed, we should add an extra column with an ID of -1
+    // to the TableScan executor
+    if (isHandleNeeded()) {
+      ColumnInfo handleColumn = ColumnInfo.newBuilder()
+          .setColumnId(-1)
+          .setPkHandle(true)
+          // We haven't changed the field name in protobuf file, but
+          // we need to set this to true in order to retrieve the handle,
+          // so the name 'setPkHandle' may sounds strange.
+          .build();
+      tblScanBuilder.addColumns(handleColumn);
+    }
     dagRequestBuilder.addExecutors(executorBuilder.setTblScan(tblScanBuilder));
     executorBuilder.clear();
 
@@ -169,12 +188,17 @@ public class TiDAGRequest implements Serializable {
     }
 
     getFields().forEach(tiColumnInfo -> dagRequestBuilder.addOutputOffsets(tiColumnInfo.getColumnInfo().getOffset()));
+    // if handle is needed, we should append one output offset
+    if (isHandleNeeded()) {
+      dagRequestBuilder.addOutputOffsets(tableInfo.getColumns().size());
+    }
 
     DAGRequest request = dagRequestBuilder
         .setTimeZoneOffset(timeZoneOffset)
         .setFlags(flags)
         .setStartTs(startTs)
         .build();
+
     if (!validateRequest(request)) {
       throw new DAGRequestException("Invalid DAG request.");
     }
@@ -438,12 +462,35 @@ public class TiDAGRequest implements Serializable {
     return getFields().stream().map(TiColumnRef::getColumnInfo).collect(Collectors.toList());
   }
 
+  /**
+   * Gets group by dt list.
+   *
+   * @return the group by dt list
+   */
   public List<DataType> getGroupByDTList() {
     return getGroupByItems()
         .stream()
         .map(TiByItem::getExpr)
         .map(TiExpr::getType)
         .collect(Collectors.toList());
+  }
+
+  /**
+   * Returns whether handle is needed.
+   *
+   * @return the boolean
+   */
+  public boolean isHandleNeeded() {
+    return handleNeeded;
+  }
+
+  /**
+   * Sets handle needed.
+   *
+   * @param handleNeeded the handle needed
+   */
+  public void setHandleNeeded(boolean handleNeeded) {
+    this.handleNeeded = handleNeeded;
   }
 
   @Override

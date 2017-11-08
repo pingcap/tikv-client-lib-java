@@ -50,14 +50,15 @@ public class Main {
     dagRequest.addAggregate(new Count(TiColumnRef.create("c_custkey")));
     dagRequest.addGroupByItem(TiByItem.create(TiColumnRef.create("c_mktsegment"), false));
     dagRequest.resolve();
-    Iterator<com.pingcap.tikv.row.Row> iterator = snapshot.select(dagRequest);
+    Iterator<Row> iterator = snapshot.select(dagRequest);
     System.out.println("Show result:");
+    int cnt = 0;
     while (iterator.hasNext()) {
       Row rowData = iterator.next();
       for (int i = 0; i < rowData.fieldCount(); i++) {
         System.out.print(rowData.get(i, null) + "\t");
       }
-      System.out.println();
+      System.out.println("     " + cnt++);
     }
   }
 }
