@@ -16,12 +16,7 @@
 package com.pingcap.tikv.expression.scalar;
 
 import com.pingcap.tidb.tipb.ExprType;
-import com.pingcap.tidb.tipb.ScalarFuncSig;
 import com.pingcap.tikv.expression.TiExpr;
-import com.pingcap.tikv.types.DataType;
-import com.pingcap.tikv.util.ScalarFuncInfer;
-
-import static com.pingcap.tidb.tipb.ScalarFuncSig.*;
 
 public class Plus extends ScalarFunction {
   public Plus(TiExpr lhs, TiExpr rhs) {
@@ -36,27 +31,5 @@ public class Plus extends ScalarFunction {
   @Override
   public String getName() {
     return "Plus";
-  }
-
-  /**
-   * return left child expression's type.
-   *
-   * @return a dataType that plus results.
-   */
-  @Override
-  public DataType getType() {
-    return this.args.get(0).getType();
-  }
-
-  @Override
-  ScalarFuncSig getSignature() {
-    return ScalarFuncInfer.infer(
-        getArgType(),
-        PlusInt,
-        PlusDecimal,
-        PlusReal,
-        null,
-        null
-    );
   }
 }

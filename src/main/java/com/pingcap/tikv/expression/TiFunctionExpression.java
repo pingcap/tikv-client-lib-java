@@ -109,7 +109,7 @@ public abstract class TiFunctionExpression implements TiExpr {
   @Override
   public String toString() {
     return String.format("%s(%s)",
-        getName(),
-        Joiner.on(", ").skipNulls().join(args));
+                         getName(),
+                         Joiner.on(", ").skipNulls().join(args));
   }
 }

@@ -44,12 +44,12 @@ public class Main {
 
     TiDAGRequest dagRequest = new TiDAGRequest();
     dagRequest.addRanges(ranges);
-    dagRequest.addField(TiColumnRef.create("c_mktsegment", table));
+    dagRequest.addRequiredColumn(TiColumnRef.create("c_mktsegment", table));
     dagRequest.setTableInfo(table);
     dagRequest.setStartTs(session.getTimestamp().getVersion());
     dagRequest.addAggregate(new Count(TiColumnRef.create("c_custkey")));
     dagRequest.addGroupByItem(TiByItem.create(TiColumnRef.create("c_mktsegment"), false));
-    dagRequest.bind();
+    dagRequest.resolve();
     Iterator<com.pingcap.tikv.row.Row> iterator = snapshot.select(dagRequest);
     System.out.println("Show result:");
     while (iterator.hasNext()) {

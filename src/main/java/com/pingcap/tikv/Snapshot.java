@@ -95,7 +95,7 @@ public class Snapshot {
    * Below is lower level API for env like Spark which already did key range split Perform table
    * scan
    *
-   * @param req  SelectRequest for coprocessor
+   * @param req DAGRequest for coprocessor
    * @param task RegionTask of the coprocessor request to send
    * @return Row iterator to iterate over resulting rows
    */
@@ -107,7 +107,7 @@ public class Snapshot {
    * Below is lower level API for env like Spark which already did key range split Perform index
    * double read
    *
-   * @param req  SelectRequest for coprocessor
+   * @param req DAGRequest for coprocessor
    * @param task RegionTask of the coprocessor request to send
    * @return Row iterator to iterate over resulting rows
    */

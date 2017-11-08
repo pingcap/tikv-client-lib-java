@@ -13,23 +13,10 @@
  * limitations under the License.
  */
 
-package com.pingcap.tikv.expression.scalar;
+package com.pingcap.tikv.exception;
 
-import com.pingcap.tidb.tipb.ExprType;
-import com.pingcap.tikv.expression.TiExpr;
-
-public class Minus extends ScalarFunction {
-  public Minus(TiExpr lhs, TiExpr rhs) {
-    super(lhs, rhs);
-  }
-
-  @Override
-  protected ExprType getExprType() {
-    return ExprType.Minus;
-  }
-
-  @Override
-  public String getName() {
-    return "Minus";
+public class DAGRequestException extends RuntimeException {
+  public DAGRequestException(String msg) {
+    super(msg);
   }
 }

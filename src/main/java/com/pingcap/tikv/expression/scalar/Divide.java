@@ -16,13 +16,7 @@
 package com.pingcap.tikv.expression.scalar;
 
 import com.pingcap.tidb.tipb.ExprType;
-import com.pingcap.tidb.tipb.ScalarFuncSig;
 import com.pingcap.tikv.expression.TiExpr;
-import com.pingcap.tikv.types.DataType;
-import com.pingcap.tikv.util.ScalarFuncInfer;
-
-import static com.pingcap.tidb.tipb.ScalarFuncSig.DivideDecimal;
-import static com.pingcap.tidb.tipb.ScalarFuncSig.DivideReal;
 
 public class Divide extends ScalarFunction {
   public Divide(TiExpr lhs, TiExpr rhs) {
@@ -39,20 +33,4 @@ public class Divide extends ScalarFunction {
     return "Divide";
   }
 
-  @Override
-  public DataType getType() {
-    throw new UnsupportedOperationException();
-  }
-
-  @Override
-  ScalarFuncSig getSignature() {
-    return ScalarFuncInfer.infer(
-        getArgType(),
-        null,
-        DivideDecimal,
-        DivideReal,
-        null,
-        null
-    );
-  }
 }
