@@ -19,6 +19,7 @@ import com.google.protobuf.ByteString;
 import java.io.ByteArrayInputStream;
 import java.io.DataInput;
 import java.io.DataInputStream;
+import java.io.IOException;
 
 public class CodecDataInput implements DataInput {
   private final DataInputStream inputStream;
@@ -116,6 +117,16 @@ public class CodecDataInput implements DataInput {
     }
   }
 
+  public int readPartialUnsignedShort() {
+    try {
+      byte readBuffer[] = new byte[2];
+      inputStream.read(readBuffer, 0, 2);
+      return ((readBuffer[0] & 0xff) << 8) + ((readBuffer[1] & 0xff) << 0);
+    } catch (IOException e) {
+      throw new RuntimeException(e);
+    }
+  }
+
   @Override
   public char readChar() {
     try {
@@ -138,6 +149,23 @@ public class CodecDataInput implements DataInput {
   public long readLong() {
     try {
       return inputStream.readLong();
+    } catch (Exception e) {
+      throw new RuntimeException(e);
+    }
+  }
+
+  public final long readPartialLong() {
+    try {
+      byte readBuffer[] = new byte[8];
+      inputStream.read(readBuffer, 0, 8);
+      return (((long) readBuffer[0] << 56) +
+          ((long) (readBuffer[1] & 255) << 48) +
+          ((long) (readBuffer[2] & 255) << 40) +
+          ((long) (readBuffer[3] & 255) << 32) +
+          ((long) (readBuffer[4] & 255) << 24) +
+          ((readBuffer[5] & 255) << 16) +
+          ((readBuffer[6] & 255) << 8) +
+          ((readBuffer[7] & 255) << 0));
     } catch (Exception e) {
       throw new RuntimeException(e);
     }
@@ -177,6 +205,17 @@ public class CodecDataInput implements DataInput {
     } catch (Exception e) {
       throw new RuntimeException(e);
     }
+  }
+
+  public int peekByte() {
+    mark(currentPos());
+    int b = readByte() & 0xFF;
+    reset();
+    return b;
+  }
+
+  public int currentPos() {
+    return size() - available();
   }
 
   public void mark(int givenPos) {

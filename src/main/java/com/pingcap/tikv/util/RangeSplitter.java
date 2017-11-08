@@ -15,19 +15,27 @@
 
 package com.pingcap.tikv.util;
 
-import static com.google.common.base.Preconditions.checkArgument;
-import static com.pingcap.tikv.util.KeyRangeUtils.formatByteString;
-import static java.util.Objects.requireNonNull;
-
 import com.google.common.collect.ImmutableList;
 import com.google.common.net.HostAndPort;
 import com.google.protobuf.ByteString;
+import com.pingcap.tikv.codec.TableCodec;
+import com.pingcap.tikv.codec.TableCodec.DecodeResult.Status;
+import com.pingcap.tikv.exception.TiClientInternalException;
 import com.pingcap.tikv.kvproto.Coprocessor.KeyRange;
 import com.pingcap.tikv.kvproto.Metapb;
+import com.pingcap.tikv.kvproto.Metapb.Store;
 import com.pingcap.tikv.region.RegionManager;
 import com.pingcap.tikv.region.TiRegion;
+import gnu.trove.list.array.TLongArrayList;
+
 import java.io.Serializable;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+import static com.pingcap.tikv.util.KeyRangeUtils.formatByteString;
+import static java.util.Objects.requireNonNull;
 
 public class RangeSplitter {
   public static class RegionTask implements Serializable {
@@ -113,8 +121,111 @@ public class RangeSplitter {
     return Comparables.wrap(lhs).compareTo(Comparables.wrap(rhs));
   }
 
+  public List<RegionTask> splitHandlesByRegion(long tableId, TLongArrayList handles) {
+    // Max value for current index handle range
+    ImmutableList.Builder<RegionTask> regionTasks = ImmutableList.builder();
+    handles.sort();
+
+    int startPos = 0;
+    TableCodec.DecodeResult decodeResult = new TableCodec.DecodeResult();
+    while (startPos < handles.size()) {
+      long curHandle = handles.get(startPos);
+      byte[] key = TableCodec.encodeRowKeyWithHandleBytes(tableId, curHandle);
+      Pair<TiRegion, Metapb.Store> regionStorePair = regionManager.getRegionStorePairByKey(ByteString.copyFrom(key));
+      byte[] endKey = regionStorePair.first.getEndKey().toByteArray();
+      TableCodec.tryDecodeRowKey(tableId, endKey, decodeResult);
+      if (decodeResult.status == Status.MIN) {
+        throw new TiClientInternalException("EndKey is less than current rowKey");
+      } else if (decodeResult.status == Status.MAX || decodeResult.status == Status.UNKNOWN_INF) {
+        createTask(startPos, handles.size(), tableId, handles, regionStorePair, regionTasks);
+        break;
+      }
+
+      // Region range is a close-open range
+      // If region end key match exactly or slightly less than a handle,
+      // that handle should be excluded from current region
+      // If region end key is greater than the handle, that handle should be included
+      long regionEndHandle = decodeResult.handle;
+      int pos = handles.binarySearch(regionEndHandle, startPos, handles.size());
+
+      if (pos < 0) {
+        // not found in handles, pos is the next greater pos
+        // [startPos, pos) all included
+        pos = -(pos + 1);
+      } else if (decodeResult.status == Status.GREATER) {
+        // found handle and then further consider decode status
+        // End key decode to a value v: regionEndHandle < v < regionEndHandle + 1
+        // handle at pos included
+        pos ++;
+      }
+      createTask(startPos, pos, tableId, handles, regionStorePair, regionTasks);
+      // pos equals to start leads to an dead loop
+      // startPos and its handle is used for searching region in PD.
+      // The returning close-open range should at least include startPos's handle
+      // so only if PD error and startPos is not included in current region then startPos == pos
+      if (startPos >= pos) {
+        throw new TiClientInternalException("searchKey is not included in region returned by PD");
+      }
+      startPos = pos;
+    }
+    return regionTasks.build();
+  }
+
+  private void createTask(
+      int startPos,
+      int endPos,
+      long tableId,
+      TLongArrayList handles,
+      Pair<TiRegion, Metapb.Store> regionStorePair,
+      ImmutableList.Builder<RegionTask> regionTasks) {
+    TiRegion region = regionStorePair.first;
+    Store store = regionStorePair.second;
+    List<KeyRange> newKeyRanges = new ArrayList<>(endPos - startPos + 1);
+    long startHandle = handles.get(startPos);
+    long endHandle = startHandle;
+    for (int i = startPos + 1; i < endPos; i++) {
+      long curHandle = handles.get(i);
+      if (endHandle + 1 == curHandle) {
+        endHandle = curHandle;
+      } else {
+        newKeyRanges.add(KeyRangeUtils.makeCoprocRangeWithHandle(
+            tableId,
+            startHandle,
+            endHandle + 1));
+        startHandle = curHandle;
+        endHandle = startHandle;
+      }
+    }
+    newKeyRanges.add(KeyRangeUtils.makeCoprocRangeWithHandle(tableId, startHandle, endHandle + 1));
+    regionTasks.add(new RegionTask(regionStorePair.first, regionStorePair.second, newKeyRanges));
+  }
+
+  public List<RegionTask> splitRangeByRegion(List<KeyRange> keyRanges, int splitFactor) {
+    List<RegionTask> tempResult = splitRangeByRegion(keyRanges);
+    // rule out query within one region
+    if (tempResult.size() <= 1) {
+      return tempResult;
+    }
+
+    ImmutableList.Builder<RegionTask> splitTasks = ImmutableList.builder();
+    for (RegionTask task : tempResult) {
+      // rule out queries already split
+      if (task.getRanges().size() != 1) {
+        continue;
+      }
+      List<KeyRange> splitRange = KeyRangeUtils.split(task.getRanges().get(0), splitFactor);
+      for (KeyRange range : splitRange) {
+        splitTasks.add(new RegionTask(task.getRegion(), task.getStore(), ImmutableList.of(range)));
+      }
+    }
+    return splitTasks.build();
+  }
+
   public List<RegionTask> splitRangeByRegion(List<KeyRange> keyRanges) {
-    checkArgument(keyRanges != null && keyRanges.size() != 0);
+    if (keyRanges == null || keyRanges.size() == 0) {
+      return ImmutableList.of();
+    }
+
     int i = 0;
     KeyRange range = keyRanges.get(i++);
     Map<Long, List<KeyRange>> idToRange = new HashMap<>(); // region id to keyRange list

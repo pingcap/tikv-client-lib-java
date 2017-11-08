@@ -28,6 +28,8 @@ import com.pingcap.tikv.meta.TiColumnInfo;
 
 /** Base class for all integer types: Tiny, Short, Medium, Int, Long and LongLong */
 public class IntegerType extends DataType {
+  public static final IntegerType DEF_LONG_TYPE = new IntegerType(Types.TYPE_LONG);
+  public static final IntegerType DEF_LONG_LONG_TYPE = new IntegerType(Types.TYPE_LONG_LONG);
 
   static IntegerType of(int tp) {
     return new IntegerType(tp);
@@ -39,6 +41,10 @@ public class IntegerType extends DataType {
 
   @Override
   public Object decodeNotNull(int flag, CodecDataInput cdi) {
+    return decodeNotNullPrimitive(flag, cdi);
+  }
+
+  public static long decodeNotNullPrimitive(int flag, CodecDataInput cdi) {
     switch (flag) {
       case UVARINT_FLAG:
         return readUVarLong(cdi);
@@ -49,7 +55,7 @@ public class IntegerType extends DataType {
       case INT_FLAG:
         return readLong(cdi);
       default:
-        throw new TiClientInternalException("Invalid " + toString() + " flag: " + flag);
+        throw new TiClientInternalException("Invalid IntegerType flag: " + flag);
     }
   }
 
@@ -220,6 +226,10 @@ public class IntegerType extends DataType {
    */
   public static long readLong(CodecDataInput cdi) {
     return TableCodec.flipSignBit(cdi.readLong());
+  }
+
+  public static long readPartialLong(CodecDataInput cdi) {
+    return TableCodec.flipSignBit(cdi.readPartialLong());
   }
 
   /**

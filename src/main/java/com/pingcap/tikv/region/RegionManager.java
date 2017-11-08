@@ -28,6 +28,7 @@ import com.pingcap.tikv.ReadOnlyPDClient;
 import com.pingcap.tikv.TiSession;
 import com.pingcap.tikv.exception.GrpcException;
 import com.pingcap.tikv.exception.TiClientInternalException;
+import com.pingcap.tikv.kvproto.Kvrpcpb.CommandPri;
 import com.pingcap.tikv.kvproto.Kvrpcpb.IsolationLevel;
 import com.pingcap.tikv.kvproto.Metapb.Peer;
 import com.pingcap.tikv.kvproto.Metapb.Region;
@@ -122,6 +123,7 @@ public class RegionManager {
       for (TiRegion r : regionCache.asMap().values()) {
         if(r.getLeader().getStoreId() == storeId) {
           regionCache.invalidate(r.getId());
+          keyToRegionIdCache.remove(makeRange(r.getStartKey(), r.getEndKey()));
         }
       }
     }
@@ -162,6 +164,9 @@ public class RegionManager {
 
   public Pair<TiRegion, Store> getRegionStorePairByKey(ByteString key) {
     TiRegion region = cache.getRegionByKey(key);
+    if (region == null) {
+      throw new TiClientInternalException("Region not exist for key:" + key);
+    }
     if (!region.isValid()) {
       throw new TiClientInternalException("Region invalid: " + region.toString());
     }
@@ -187,7 +192,7 @@ public class RegionManager {
   public void onRegionStale(long regionID, List<Region> regions) {
     cache.invalidateRegion(regionID);
     for (Region r : regions) {
-      cache.putRegion(new TiRegion(r, r.getPeers(0), IsolationLevel.RC));
+      cache.putRegion(new TiRegion(r, r.getPeers(0), IsolationLevel.RC, CommandPri.Low));
     }
   }
 

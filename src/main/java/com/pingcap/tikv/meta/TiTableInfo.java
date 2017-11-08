@@ -61,7 +61,7 @@ public class TiTableInfo implements Serializable {
     this.collate = collate;
     this.columns = ImmutableList.copyOf(requireNonNull(columns, "columns is null"));
     this.pkIsHandle = pkIsHandle;
-    this.indices = indices != null ? ImmutableList.copyOf(indices) : null;
+    this.indices = indices != null ? ImmutableList.copyOf(indices) : ImmutableList.of();
     this.comment = comment;
     this.autoIncId = autoIncId;
     this.maxColumnId = maxColumnId;

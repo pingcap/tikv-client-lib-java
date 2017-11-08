@@ -7,6 +7,8 @@ import com.pingcap.tikv.KVMockServer;
 import com.pingcap.tikv.PDMockServer;
 import com.pingcap.tikv.TiConfiguration;
 import com.pingcap.tikv.TiSession;
+import com.pingcap.tikv.kvproto.Kvrpcpb;
+import com.pingcap.tikv.kvproto.Kvrpcpb.CommandPri;
 import com.pingcap.tikv.kvproto.Kvrpcpb.IsolationLevel;
 import com.pingcap.tikv.meta.MetaUtils.MetaMockHelper;
 import com.pingcap.tikv.meta.TiDBInfo;
@@ -30,7 +32,8 @@ public class CatalogTest {
     pdServer = new PDMockServer();
     pdServer.start(CLUSTER_ID);
     kvServer = new KVMockServer();
-    kvServer.start(new TiRegion(MetaMockHelper.region, MetaMockHelper.region.getPeers(0), IsolationLevel.RC));
+    kvServer.start(new TiRegion(MetaMockHelper.region, MetaMockHelper.region.getPeers(0), IsolationLevel.RC,
+        CommandPri.Low));
     // No PD needed in this test
     conf = TiConfiguration.createDefault("127.0.0.1:" + pdServer.port);
   }

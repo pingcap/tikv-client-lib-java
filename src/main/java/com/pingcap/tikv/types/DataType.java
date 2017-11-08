@@ -15,6 +15,17 @@
 
 package com.pingcap.tikv.types;
 
+import static com.pingcap.tikv.types.Types.AutoIncrementFlag;
+import static com.pingcap.tikv.types.Types.MultipleKeyFlag;
+import static com.pingcap.tikv.types.Types.NoDefaultValueFlag;
+import static com.pingcap.tikv.types.Types.NotNullFlag;
+import static com.pingcap.tikv.types.Types.OnUpdateNowFlag;
+import static com.pingcap.tikv.types.Types.PriKeyFlag;
+import static com.pingcap.tikv.types.Types.TimestampFlag;
+import static com.pingcap.tikv.types.Types.UniqueKeyFlag;
+import static com.pingcap.tikv.types.Types.UnsignedFlag;
+import static com.pingcap.tikv.types.Types.ZerofillFlag;
+
 import com.google.common.collect.ImmutableList;
 import com.google.protobuf.ByteString;
 import com.pingcap.tikv.codec.CodecDataInput;
@@ -22,11 +33,8 @@ import com.pingcap.tikv.codec.CodecDataOutput;
 import com.pingcap.tikv.meta.Collation;
 import com.pingcap.tikv.meta.TiColumnInfo;
 import com.pingcap.tikv.row.Row;
-
 import java.io.Serializable;
 import java.util.List;
-
-import static com.pingcap.tikv.types.Types.*;
 
 /** Base Type for encoding and decoding TiDB row information. */
 public abstract class DataType implements Serializable {
@@ -39,17 +47,17 @@ public abstract class DataType implements Serializable {
 
   // encoding/decoding flag
   private static final int NULL_FLAG = 0;
-  static final int BYTES_FLAG = 1;
-  static final int COMPACT_BYTES_FLAG = 2;
-  static final int INT_FLAG = 3;
-  static final int UINT_FLAG = 4;
-  static final int FLOATING_FLAG = 5;
-  static final int DECIMAL_FLAG = 6;
-  static final int DURATION_FLAG = 7;
-  static final int VARINT_FLAG = 8;
-  static final int UVARINT_FLAG = 9;
-  private static final int JSON_FLAG = 10;
-  private static final int MAX_FLAG = 250;
+  public static final int BYTES_FLAG = 1;
+  public static final int COMPACT_BYTES_FLAG = 2;
+  public static final int INT_FLAG = 3;
+  public static final int UINT_FLAG = 4;
+  public static final int FLOATING_FLAG = 5;
+  public static final int DECIMAL_FLAG = 6;
+  public static final int DURATION_FLAG = 7;
+  public static final int VARINT_FLAG = 8;
+  public static final int UVARINT_FLAG = 9;
+  public static final int JSON_FLAG = 10;
+  public static final int MAX_FLAG = 250;
   // MySQL type
   protected int tp;
   // Not Encode/Decode flag, this is used to strict mysql type
@@ -126,23 +134,31 @@ public abstract class DataType implements Serializable {
     }
   }
 
-  public static void indexMaxValue(CodecDataOutput cdo) {
+  public static void encodeIndexMaxValue(CodecDataOutput cdo) {
     cdo.writeByte(MAX_FLAG);
   }
 
-  public static void indexMinValue(CodecDataOutput cdo) {
+  public static void encodeIndexMinValue(CodecDataOutput cdo) {
     cdo.writeByte(BYTES_FLAG);
   }
 
-  public static ByteString indexMaxValue() {
+  public static int indexMinValueFlag() {
+    return BYTES_FLAG;
+  }
+
+  public static int indexMaxValueFlag() {
+    return MAX_FLAG;
+  }
+
+  public static ByteString encodeIndexMaxValue() {
     CodecDataOutput cdo = new CodecDataOutput();
-    indexMaxValue(cdo);
+    encodeIndexMaxValue(cdo);
     return cdo.toByteString();
   }
 
-  public static ByteString indexMinValue() {
+  public static ByteString encodeIndexMinValue() {
     CodecDataOutput cdo = new CodecDataOutput();
-    indexMinValue(cdo);
+    encodeIndexMinValue(cdo);
     return cdo.toByteString();
   }
 
@@ -152,7 +168,7 @@ public abstract class DataType implements Serializable {
    * @param cdo destination of data.
    */
   public void encodeMaxValue(CodecDataOutput cdo) {
-    indexMaxValue(cdo);
+    encodeIndexMaxValue(cdo);
   }
 
   /**
@@ -161,7 +177,7 @@ public abstract class DataType implements Serializable {
    * @param cdo destination of data.
    */
   public void encodeMinValue(CodecDataOutput cdo) {
-    indexMinValue(cdo);
+    encodeIndexMinValue(cdo);
   }
 
   /**

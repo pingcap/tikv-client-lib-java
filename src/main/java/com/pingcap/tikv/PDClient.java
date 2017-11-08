@@ -23,6 +23,8 @@ import com.google.protobuf.ByteString;
 import com.pingcap.tikv.codec.CodecDataOutput;
 import com.pingcap.tikv.exception.GrpcException;
 import com.pingcap.tikv.exception.TiClientInternalException;
+import com.pingcap.tikv.kvproto.Kvrpcpb;
+import com.pingcap.tikv.kvproto.Kvrpcpb.CommandPri;
 import com.pingcap.tikv.kvproto.Kvrpcpb.IsolationLevel;
 import com.pingcap.tikv.kvproto.Metapb.Store;
 import com.pingcap.tikv.kvproto.PDGrpc;
@@ -89,13 +91,13 @@ public class PDClient extends AbstractGRPCClient<PDBlockingStub, PDStub>
         new PDErrorHandler<>(r -> r.getHeader().hasError() ? r.getHeader().getError() : null, this);
 
     GetRegionResponse resp = callWithRetry(PDGrpc.METHOD_GET_REGION, request, handler);
-    return new TiRegion(resp.getRegion(), resp.getLeader(), isolationLevel);
+    return new TiRegion(resp.getRegion(), resp.getLeader(), conf.getIsolationLevel(), conf.getCommandPriority());
   }
 
   @Override
   public Future<TiRegion> getRegionByKeyAsync(ByteString key) {
     FutureObserver<TiRegion, GetRegionResponse> responseObserver =
-        new FutureObserver<>(resp -> new TiRegion(resp.getRegion(), resp.getLeader(), isolationLevel));
+        new FutureObserver<>(resp -> new TiRegion(resp.getRegion(), resp.getLeader(), conf.getIsolationLevel(), conf.getCommandPriority()));
     Supplier<GetRegionRequest> request = () ->
         GetRegionRequest.newBuilder().setHeader(header).setRegionKey(key).build();
 
@@ -113,21 +115,13 @@ public class PDClient extends AbstractGRPCClient<PDBlockingStub, PDStub>
         new PDErrorHandler<>(r -> r.getHeader().hasError() ? r.getHeader().getError() : null, this);
     GetRegionResponse resp = callWithRetry(PDGrpc.METHOD_GET_REGION_BY_ID, request, handler);
     // Instead of using default leader instance, explicitly set no leader to null
-    return new TiRegion(resp.getRegion(), resp.getLeader(), isolationLevel);
-  }
-
-  /**
-   * Change default read committed to other isolation level.
-   * @param level is a enum which indicates isolation level.
-   */
-  private void setIsolationLevel(IsolationLevel level) {
-    this.isolationLevel = level;
+    return new TiRegion(resp.getRegion(), resp.getLeader(), conf.getIsolationLevel(), conf.getCommandPriority());
   }
 
   @Override
   public Future<TiRegion> getRegionByIDAsync(long id) {
     FutureObserver<TiRegion, GetRegionResponse> responseObserver =
-        new FutureObserver<>(resp -> new TiRegion(resp.getRegion(), resp.getLeader(), isolationLevel));
+        new FutureObserver<>(resp -> new TiRegion(resp.getRegion(), resp.getLeader(), conf.getIsolationLevel(), conf.getCommandPriority()));
 
     Supplier<GetRegionByIDRequest> request = () ->
         GetRegionByIDRequest.newBuilder().setHeader(header).setRegionId(id).build();
@@ -329,7 +323,6 @@ public class PDClient extends AbstractGRPCClient<PDBlockingStub, PDStub>
     PDClient client = null;
     try {
       client = new PDClient(session);
-      client.setIsolationLevel(IsolationLevel.RC);
       client.initCluster();
     } catch (Exception e) {
       if (client != null) {

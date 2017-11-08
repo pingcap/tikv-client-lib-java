@@ -16,8 +16,14 @@
 package com.pingcap.tikv.codec;
 
 import com.google.protobuf.ByteString;
+import com.pingcap.tikv.codec.TableCodec.DecodeResult.Status;
+import com.pingcap.tikv.types.DataType;
 import com.pingcap.tikv.types.IntegerType;
+import com.pingcap.tikv.util.FastByteComparisons;
 import com.pingcap.tikv.util.Pair;
+import java.text.SimpleDateFormat;
+import java.util.Date;
+import java.util.List;
 import java.util.Objects;
 
 // Basically all protobuf ByteString involves buffer copy
@@ -54,6 +60,51 @@ public class TableCodec {
     }
   }
 
+  public static String decodeIndexSeekKeyToString(ByteString indexKey, List<DataType> types) {
+    Objects.requireNonNull(indexKey, "indexKey cannot be null");
+    CodecDataInput cdi = new CodecDataInput(indexKey);
+    cdi.skipBytes(TBL_PREFIX.length);
+    IntegerType.readLong(cdi);
+    cdi.skipBytes(IDX_PREFIX_SEP.length);
+    IntegerType.readLong(cdi);
+
+    StringBuilder sb = new StringBuilder();
+    for (int i = 0; i < types.size(); i++) {
+      DataType type = types.get(i);
+      // Here is a hack since range is always on last position
+      // If last flag is min flag without any other bytes,
+      // then we don't try decoding as bytes type
+      int remaining = cdi.available();
+      if (remaining == 0) break;
+
+      if (i != 0) {
+        sb.append(", ");
+      }
+      int flag = cdi.peekByte();
+      if (remaining == 1 && flag == DataType.indexMinValueFlag()) {
+        sb.append("-INF");
+        cdi.skipBytes(1);
+      } else if (remaining == 1 && flag == DataType.indexMaxValueFlag()) {
+        sb.append("+INF");
+        cdi.skipBytes(1);
+      } else {
+        Object v = type.decode(cdi);
+        if (v == null) {
+          sb.append("NULL");
+        } else {
+          if (v instanceof Date) {
+            SimpleDateFormat fmt = new SimpleDateFormat("yyyy-MM-dd");
+            sb.append(fmt.format((Date)v));
+          } else {
+            sb.append(v.toString());
+          }
+        }
+      }
+    }
+
+    return sb.toString();
+  }
+
   // appendTableRecordPrefix appends table record prefix  "t[tableID]_r".
   // tablecodec.go:appendTableRecordPrefix
   private static void appendTableRecordPrefix(CodecDataOutput cdo, long tableId) {
@@ -74,12 +125,17 @@ public class TableCodec {
 
   // encodeRowKeyWithHandle encodes the table id, row handle into a bytes buffer/array
   public static ByteString encodeRowKeyWithHandle(long tableId, long handle) {
-    CodecDataOutput cdo = new CodecDataOutput();
-    writeRowKeyWithHandle(cdo, tableId, handle);
-    return cdo.toByteString();
+    return ByteString.copyFrom(encodeRowKeyWithHandleBytes(tableId, handle));
   }
 
-  public static long decodeRowKey(ByteString rowKey) {
+  // encodeRowKeyWithHandle encodes the table id, row handle into a bytes buffer/array
+  public static byte [] encodeRowKeyWithHandleBytes(long tableId, long handle) {
+    CodecDataOutput cdo = new CodecDataOutput();
+    writeRowKeyWithHandle(cdo, tableId, handle);
+    return cdo.toBytes();
+  }
+
+  public static long decodeRowKey(byte[] rowKey) {
     Objects.requireNonNull(rowKey, "rowKey cannot be null");
     CodecDataInput cdi = new CodecDataInput(rowKey);
     cdi.skipBytes(TBL_PREFIX.length);
@@ -87,6 +143,58 @@ public class TableCodec {
     cdi.skipBytes(REC_PREFIX_SEP.length);
 
     return IntegerType.readLong(cdi);
+  }
+
+  public static class DecodeResult {
+    public long handle;
+    public enum Status {
+      MIN,
+      MAX,
+      EQUAL,
+      LESS,
+      GREATER,
+      UNKNOWN_INF
+    }
+    public Status status;
+  }
+
+  public static void tryDecodeRowKey(long tableId, byte[] rowKey, DecodeResult outResult) {
+    Objects.requireNonNull(rowKey, "rowKey cannot be null");
+    if (rowKey.length == 0) {
+      outResult.status = Status.UNKNOWN_INF;
+      return;
+    }
+    CodecDataOutput cdo = new CodecDataOutput();
+    appendTableRecordPrefix(cdo, tableId);
+    byte [] tablePrefix = cdo.toBytes();
+
+    int res = FastByteComparisons.compareTo(
+        tablePrefix, 0, tablePrefix.length,
+        rowKey, 0, Math.min(rowKey.length, tablePrefix.length));
+
+    if (res > 0) {
+      outResult.status = Status.MIN;
+      return;
+    }
+    if (res < 0) {
+      outResult.status = Status.MAX;
+      return;
+    }
+
+    CodecDataInput cdi = new CodecDataInput(rowKey);
+    cdi.skipBytes(tablePrefix.length);
+    if (cdi.available() == 8) {
+      outResult.status = Status.EQUAL;
+    } else if (cdi.available() < 8) {
+      outResult.status = Status.LESS;
+    } else if (cdi.available() > 8) {
+      outResult.status = Status.GREATER;
+    }
+    outResult.handle = IntegerType.readPartialLong(cdi);
+  }
+
+  public static long decodeRowKey(ByteString rowKey) {
+    return decodeRowKey(rowKey.toByteArray());
   }
 
   public static void writeRowKeyWithHandle(CodecDataOutput cdo, long tableId, long handle) {

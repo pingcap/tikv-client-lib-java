@@ -69,7 +69,7 @@ public class TiSelectRequest implements Serializable {
   private TiExpr having;
   private boolean distinct;
 
-  public void bind() {
+  public void resolve() {
     getFields().forEach(expr -> expr.bind(tableInfo));
     getWhere().forEach(expr -> expr.bind(tableInfo));
     getGroupByItems().forEach(item -> item.getExpr().bind(tableInfo));
@@ -157,6 +157,10 @@ public class TiSelectRequest implements Serializable {
         .setTimeZoneOffset(timeZoneOffset)
         .setStartTs(startTs)
         .build();
+  }
+
+  public boolean isIndexScan() {
+    return indexInfo != null;
   }
 
   public TiSelectRequest setTableInfo(TiTableInfo tableInfo) {
@@ -323,7 +327,7 @@ public class TiSelectRequest implements Serializable {
    *
    * @param column is column referred during selectReq
    */
-  public TiSelectRequest addField(TiColumnRef column) {
+  public TiSelectRequest addRequiredColumn(TiColumnRef column) {
     fields.add(requireNonNull(column, "columnRef is null"));
     return this;
   }
@@ -364,42 +368,55 @@ public class TiSelectRequest implements Serializable {
   public String toString() {
     StringBuilder sb = new StringBuilder();
     if (tableInfo != null) {
-      sb.append(String.format("[table: %s] ", tableInfo.getName()));
+      sb.append(String.format("\n Table: %s", tableInfo.getName()));
+    }
+    if (indexInfo != null) {
+      sb.append(String.format("\n Index: %s", indexInfo.toString()));
     }
 
     if (getRanges().size() != 0) {
-      sb.append(", Ranges: ");
-      List<String> rangeStrings = getRanges()
-          .stream()
-          .map(r -> KeyRangeUtils.toString(r))
-          .collect(Collectors.toList());
+      sb.append("\n Ranges: ");
+      List<String> rangeStrings;
+      if (indexInfo == null) {
+        rangeStrings = getRanges()
+            .stream()
+            .map(r -> KeyRangeUtils.toString(r))
+            .collect(Collectors.toList());
+      } else {
+        List<DataType> types = KeyRangeUtils.getIndexColumnTypes(tableInfo, indexInfo);
+        rangeStrings = getRanges()
+            .stream()
+            .map(r -> KeyRangeUtils.toString(r, types))
+            .collect(Collectors.toList());
+      }
       sb.append(Joiner.on(", ").skipNulls().join(rangeStrings));
     }
 
     if (getFields().size() != 0) {
-      sb.append(", Columns: ");
+      sb.append("\n Columns: ");
       sb.append(Joiner.on(", ").skipNulls().join(getFields()));
     }
 
     if (getWhere().size() != 0) {
-      sb.append(", Aggregates: ");
+      sb.append("\n Filter: ");
       sb.append(Joiner.on(", ").skipNulls().join(getWhere()));
     }
 
     if (getAggregates().size() != 0) {
-      sb.append(", Aggregates: ");
+      sb.append("\n Aggregates: ");
       sb.append(Joiner.on(", ").skipNulls().join(getAggregates()));
     }
 
     if (getGroupByItems().size() != 0) {
-      sb.append(", Group By: ");
+      sb.append("\n Group By: ");
       sb.append(Joiner.on(", ").skipNulls().join(getGroupByItems()));
     }
 
     if (getOrderByItems().size() != 0) {
-      sb.append(", Order By: ");
+      sb.append("\n Order By: ");
       sb.append(Joiner.on(", ").skipNulls().join(getOrderByItems()));
     }
+    sb.append("\n");
     return sb.toString();
   }
 }

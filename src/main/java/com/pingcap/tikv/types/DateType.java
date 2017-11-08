@@ -22,16 +22,18 @@ import static com.pingcap.tikv.types.TimestampType.toPackedLong;
 
 import com.pingcap.tikv.codec.CodecDataInput;
 import com.pingcap.tikv.codec.CodecDataOutput;
-import com.pingcap.tikv.codec.InvalidCodecFormatException;
+import com.pingcap.tikv.exception.TiClientInternalException;
 import com.pingcap.tikv.meta.TiColumnInfo;
-import java.sql.Date;
+import java.text.SimpleDateFormat;
 import java.time.LocalDateTime;
-import java.time.LocalTime;
+import java.sql.Date;
 
 public class DateType extends DataType {
   static DateType of(int tp) {
     return new DateType(tp);
   }
+  private static final SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd");
+  private static final IntegerType codecObject = IntegerType.DEF_LONG_LONG_TYPE;
 
   private DateType(int tp) {
     super(tp);
@@ -39,32 +41,32 @@ public class DateType extends DataType {
 
   @Override
   public Object decodeNotNull(int flag, CodecDataInput cdi) {
-    if (flag == UVARINT_FLAG) {
-      // read packedUint
-      LocalDateTime localDateTime = fromPackedLong(IntegerType.readUVarLong(cdi));
-      if (localDateTime == null) {
-        return null;
-      }
-      //TODO revisit this later.
-      return new Date(localDateTime.getYear() - 1900,
-                            localDateTime.getMonthValue() - 1,
-                            localDateTime.getDayOfMonth());
-    } else {
-      throw new InvalidCodecFormatException("Invalid Flag type for DateType: " + flag);
+    long val = IntegerType.decodeNotNullPrimitive(flag, cdi);
+    LocalDateTime localDateTime = fromPackedLong(val);
+    if (localDateTime == null) {
+      return null;
     }
+    //TODO revisit this later.
+    return new Date(localDateTime.getYear() - 1900,
+        localDateTime.getMonthValue() - 1,
+        localDateTime.getDayOfMonth());
   }
 
   @Override
   public void encodeNotNull(CodecDataOutput cdo, EncodeType encodeType, Object value) {
     Date in;
-    // TODO, is LocalDateTime enough here?
-    if (value instanceof Date) {
-      in = (Date) value;
-    } else {
-      throw new UnsupportedOperationException("Can not cast Object to LocalDateTime ");
+    try {
+      if (value instanceof Date) {
+        in = (Date) value;
+      } else {
+        // format ensure only date part without time
+        in = new Date(format.parse(value.toString()).getTime());
+      }
+    } catch (Exception e) {
+      throw new TiClientInternalException("Can not cast Object to LocalDateTime: " + value, e);
     }
-    long val = toPackedLong(LocalDateTime.of(in.toLocalDate(), LocalTime.of(0, 0, 0)));
-    IntegerType.writeULong(cdo, val);
+    long val = toPackedLong(in);
+    codecObject.encodeNotNull(cdo, encodeType, val);
   }
 
   DateType(TiColumnInfo.InternalTypeHolder holder) {

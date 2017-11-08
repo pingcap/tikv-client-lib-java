@@ -21,6 +21,7 @@ import static java.util.Objects.requireNonNull;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.BoundType;
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.Iterables;
 import com.google.common.collect.Range;
 import com.google.protobuf.ByteString;
 import com.pingcap.tikv.codec.CodecDataOutput;
@@ -44,13 +45,17 @@ import java.util.Set;
 // TODO: Rethink value binding part since we abstract away datum of TiDB
 public class ScanBuilder {
   public static class ScanPlan {
-    public ScanPlan(List<KeyRange> keyRanges, List<TiExpr> filters) {
+    public ScanPlan(List<KeyRange> keyRanges, List<TiExpr> filters, TiIndexInfo index, double cost) {
       this.filters = filters;
       this.keyRanges = keyRanges;
+      this.cost = cost;
+      this.index = index;
     }
 
     private final List<KeyRange> keyRanges;
     private final List<TiExpr> filters;
+    private final double cost;
+    private TiIndexInfo index;
 
     public List<KeyRange> getKeyRanges() {
       return keyRanges;
@@ -59,13 +64,40 @@ public class ScanBuilder {
     public List<TiExpr> getFilters() {
       return filters;
     }
+
+    public double getCost() {
+      return cost;
+    }
+
+    public boolean isIndexScan() {
+      return index != null && !index.isFakePrimaryKey();
+    }
+
+    public TiIndexInfo getIndex() {
+      return index;
+    }
   }
 
-  private static final KeyRange INDEX_FULL_RANGE =
-      KeyRange.newBuilder()
-          .setStart(DataType.indexMinValue())
-          .setEnd(DataType.indexMaxValue())
-          .build();
+  // Build scan plan picking access path with lowest cost by estimation
+  public ScanPlan buildScan(List<TiExpr> conditions, TiTableInfo table) {
+    TiIndexInfo pkIndex = TiIndexInfo.generateFakePrimaryKeyIndex(table);
+    ScanPlan minPlan = buildScan(conditions, pkIndex, table);
+    double minCost = minPlan.getCost();
+    for (TiIndexInfo index : table.getIndices()) {
+      ScanPlan plan = buildScan(conditions, index, table);
+      if (plan.getCost() < minCost) {
+        minPlan = plan;
+        minCost = plan.getCost();
+      }
+    }
+    return minPlan;
+  }
+
+  public ScanPlan buildTableScan(List<TiExpr> conditions, TiTableInfo table) {
+    TiIndexInfo pkIndex = TiIndexInfo.generateFakePrimaryKeyIndex(table);
+    ScanPlan plan = buildScan(conditions, pkIndex, table);
+    return plan;
+  }
 
   public ScanPlan buildScan(List<TiExpr> conditions, TiIndexInfo index, TiTableInfo table) {
     requireNonNull(table, "Table cannot be null to encoding keyRange");
@@ -76,6 +108,9 @@ public class ScanBuilder {
     }
 
     IndexMatchingResult result = extractConditions(conditions, table, index);
+    double cost = SelectivityCalculator.calcPseudoSelectivity(Iterables.concat(result.accessConditions,
+                                                                               result.accessPoints));
+
     RangeBuilder builder = new RangeBuilder();
     List<IndexRange> irs =
         builder.exprsToIndexRanges(
@@ -89,7 +124,7 @@ public class ScanBuilder {
       keyRanges = buildIndexScanKeyRange(table, index, irs);
     }
 
-    return new ScanPlan(keyRanges, result.residualConditions);
+    return new ScanPlan(keyRanges, result.residualConditions, index, cost);
   }
 
   private List<KeyRange> buildTableScanKeyRange(TiTableInfo table, List<IndexRange> indexRanges) {
@@ -227,7 +262,7 @@ public class ScanBuilder {
           type.encode(cdo, DataType.EncodeType.KEY, ub);
           uKey = cdo.toBytes();
           if (r.upperBoundType().equals(BoundType.CLOSED)) {
-            uKey = KeyUtils.prefixNext(lKey);
+            uKey = KeyUtils.prefixNext(uKey);
           }
         }
 
@@ -245,7 +280,24 @@ public class ScanBuilder {
     }
 
     if (ranges.isEmpty()) {
-      ranges.add(INDEX_FULL_RANGE);
+      CodecDataOutput cdo = new CodecDataOutput();
+      DataType.encodeIndexMinValue(cdo);
+      byte[] bytesMin = cdo.toBytes();
+      cdo.reset();
+
+      DataType.encodeIndexMaxValue(cdo);
+      byte[] bytesMax = cdo.toBytes();
+      cdo.reset();
+
+      TableCodec.writeIndexSeekKey(cdo, table.getId(), index.getId(), bytesMin);
+      ByteString rangeMin = cdo.toByteString();
+
+      cdo.reset();
+
+      TableCodec.writeIndexSeekKey(cdo, table.getId(), index.getId(), bytesMax);
+      ByteString rangeMax = cdo.toByteString();
+
+      ranges.add(KeyRange.newBuilder().setStart(rangeMin).setEnd(rangeMax).build());
     }
     return ranges;
   }

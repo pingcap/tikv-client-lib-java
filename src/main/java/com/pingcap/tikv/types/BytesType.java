@@ -66,8 +66,10 @@ public class BytesType extends DataType {
       throw new UnsupportedOperationException("can not cast non String type to String");
     }
     if (encodeType == EncodeType.KEY) {
+      cdo.write(BYTES_FLAG);
       writeBytes(cdo, bytes);
     } else {
+      cdo.write(COMPACT_BYTES_FLAG);
       writeCompactBytes(cdo, bytes);
     }
   }

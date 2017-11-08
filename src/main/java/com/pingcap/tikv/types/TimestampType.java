@@ -28,6 +28,7 @@ import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
+import java.util.Date;
 
 public class TimestampType extends DataType {
   private final ZoneId defaultZone = ZoneId.of("UTC");
@@ -101,14 +102,13 @@ public class TimestampType extends DataType {
   @Override
   public void encodeNotNull(CodecDataOutput cdo, EncodeType encodeType, Object value) {
     LocalDateTime localDateTime;
-    // TODO, is LocalDateTime enough here?
     if (value instanceof LocalDateTime) {
       localDateTime = (LocalDateTime) value;
     } else {
       throw new UnsupportedOperationException("Can not cast Object to LocalDateTime ");
     }
     long val = toPackedLong(localDateTime);
-    IntegerType.writeULong(cdo, val);
+    IntegerType.writeULongFull(cdo, val, true);
   }
 
   /**
@@ -118,17 +118,38 @@ public class TimestampType extends DataType {
    * @return a packed long.
    */
   public static long toPackedLong(LocalDateTime time) {
-    int year = time.getYear();
-    int month = time.getMonthValue();
-    int day = time.getDayOfMonth();
-    int hour = time.getHour();
-    int minute = time.getMinute();
-    int second = time.getSecond();
-    // 1 microsecond = 1000 nano second
-    int micro = time.getNano() / 1000;
+    return toPackedLong(time.getYear(),
+        time.getMonthValue(),
+        time.getDayOfMonth(),
+        time.getHour(),
+        time.getMinute(),
+        time.getSecond(),
+        time.getNano() / 1000);
+  }
+
+  /**
+   * Encode a date/time parts to a packed long.
+   *
+   * @return a packed long.
+   */
+  public static long toPackedLong(int year, int month, int day, int hour, int minute, int second, int micro) {
     long ymd = (year * 13 + month) << 5 | day;
     long hms = hour << 12 | minute << 6 | second;
     return ((ymd << 17 | hms) << 24) | micro;
+  }
+
+  /**
+   * Encode a Date to a packed long with all time fields zero.
+   *
+   * @param date Date object that need to be encoded.
+   * @return a packed long.
+   */
+  public static long toPackedLong(Date date) {
+    return toPackedLong(
+        date.getYear() + 1900,
+        date.getMonth() + 1,
+        date.getDate(),
+        0, 0, 0, 0);
   }
 
   /**

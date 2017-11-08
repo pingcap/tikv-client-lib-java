@@ -17,15 +17,20 @@
 
 package com.pingcap.tikv.types;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotEquals;
+import static org.junit.Assert.assertNull;
 
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.Date;
 import org.junit.Test;
 
 public class TimestampTest {
   @Test
-  public void fromPackedLongAndToPackedLongTest() {
+  public void fromPackedLongAndToPackedLongTest() throws ParseException {
 
     LocalDateTime time = LocalDateTime.of(1999, 12, 12, 1, 1, 1, 1000);
     LocalDateTime time1 = TimestampType.fromPackedLong(TimestampType.toPackedLong(time));
@@ -56,5 +61,11 @@ public class TimestampTest {
     LocalDateTime time9 = LocalDateTime.parse("2017-01-05 23:59:59:5756010", formatter);
     LocalDateTime time10 = TimestampType.fromPackedLong(TimestampType.toPackedLong(time9));
     assertEquals(time9, time10);
+
+    SimpleDateFormat formatter1 = new SimpleDateFormat("yyyy-MM-dd");
+    Date date1 = formatter1.parse("2099-10-30");
+    long time11 = TimestampType.toPackedLong(date1);
+    LocalDateTime time12 = TimestampType.fromPackedLong(time11);
+    assertEquals(time12.toLocalDate(), new java.sql.Date(date1.getTime()).toLocalDate());
   }
 }
