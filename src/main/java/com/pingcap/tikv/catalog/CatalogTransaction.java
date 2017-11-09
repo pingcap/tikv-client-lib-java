@@ -129,13 +129,13 @@ public class CatalogTransaction {
     return ByteString.copyFrom(String.format("%s:%d", DB_PREFIX, id).getBytes());
   }
 
-  public long getLatestSchemaVersion() {
+  long getLatestSchemaVersion() {
     ByteString versionBytes = bytesGet(KEY_SCHEMA_VERSION);
     CodecDataInput cdi = new CodecDataInput(versionBytes.toByteArray());
     return Long.parseLong(new String(cdi.toByteArray(), StandardCharsets.UTF_8));
   }
 
-  public List<TiDBInfo> getDatabases() {
+  List<TiDBInfo> getDatabases() {
     List<Pair<ByteString, ByteString>> fields = hashGetFields(KEY_DB);
     ImmutableList.Builder<TiDBInfo> builder = ImmutableList.builder();
     for (Pair<ByteString, ByteString> pair : fields) {
@@ -153,7 +153,7 @@ public class CatalogTransaction {
     return parseFromJson(json, TiDBInfo.class);
   }
 
-  public List<TiTableInfo> getTables(long dbId) {
+  List<TiTableInfo> getTables(long dbId) {
     ByteString dbKey = encodeDatabaseID(dbId);
     List<Pair<ByteString, ByteString>> fields = hashGetFields(dbKey);
     ImmutableList.Builder<TiTableInfo> builder = ImmutableList.builder();

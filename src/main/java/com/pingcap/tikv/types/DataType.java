@@ -49,7 +49,7 @@ public abstract class DataType implements Serializable {
   static final int VARINT_FLAG = 8;
   static final int UVARINT_FLAG = 9;
   private static final int JSON_FLAG = 10;
-  private static final int MAX_FLAG = 250;
+  static final int MAX_FLAG = 250;
   // MySQL type
   protected int tp;
   // Not Encode/Decode flag, this is used to strict mysql type
@@ -94,11 +94,15 @@ public abstract class DataType implements Serializable {
     this.tp = tp;
   }
 
+  public void setLength(int length) {
+    this.length = length;
+  }
+
   protected boolean isNullFlag(int flag) {
     return flag == NULL_FLAG;
   }
 
-  protected void decodeValueNoNullToRow(Row row, int pos, Object value) {
+  private void decodeValueNoNullToRow(Row row, int pos, Object value) {
     row.set(pos, this, value);
   }
 
@@ -121,15 +125,16 @@ public abstract class DataType implements Serializable {
     int flag = cdi.readUnsignedByte();
     if (isNullFlag(flag)) {
       row.setNull(pos);
+      return;
     }
     decodeValueNoNullToRow(row, pos, decodeNotNull(flag, cdi));
   }
 
-  public static void indexMaxValue(CodecDataOutput cdo) {
+  private static void indexMaxValue(CodecDataOutput cdo) {
     cdo.writeByte(MAX_FLAG);
   }
 
-  public static void indexMinValue(CodecDataOutput cdo) {
+  private static void indexMinValue(CodecDataOutput cdo) {
     cdo.writeByte(BYTES_FLAG);
   }
 

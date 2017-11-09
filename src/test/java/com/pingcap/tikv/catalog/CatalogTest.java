@@ -10,7 +10,7 @@ import com.pingcap.tikv.meta.MetaUtils.MetaMockHelper;
 import com.pingcap.tikv.meta.TiDBInfo;
 import com.pingcap.tikv.meta.TiTableInfo;
 import com.pingcap.tikv.region.TiRegion;
-import com.pingcap.tikv.util.RefelctionWrapper;
+import com.pingcap.tikv.util.ReflectionWrapper;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -56,7 +56,7 @@ public class CatalogTest {
     helper.addDatabase(265, "other");
     helper.setSchemaVersion(667);
 
-    RefelctionWrapper wrapper = new RefelctionWrapper(cat);
+    ReflectionWrapper wrapper = new ReflectionWrapper(cat);
     wrapper.call("reloadCache");
 
     dbs = cat.listDatabases();
@@ -98,7 +98,7 @@ public class CatalogTest {
     helper.addTable(130, 44, "other");
     helper.setSchemaVersion(667);
 
-    RefelctionWrapper wrapper = new RefelctionWrapper(cat);
+    ReflectionWrapper wrapper = new ReflectionWrapper(cat);
     wrapper.call("reloadCache");
 
     tables = cat.listTables(db);

@@ -17,6 +17,7 @@
 
 package com.pingcap.tikv.types;
 
+import com.google.protobuf.ByteString;
 import com.pingcap.tikv.codec.CodecDataInput;
 import com.pingcap.tikv.codec.CodecDataOutput;
 import com.pingcap.tikv.codec.InvalidCodecFormatException;
@@ -63,6 +64,8 @@ public class RawBytesType extends BytesType {
     byte[] bytes;
     if (value instanceof byte[]) {
       bytes = (byte[]) value;
+    } else if (value instanceof ByteString) {
+      bytes = ((ByteString) value).toByteArray();
     } else {
       throw new UnsupportedOperationException("can not cast non bytes type to bytes array");
     }

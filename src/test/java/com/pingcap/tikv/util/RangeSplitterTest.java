@@ -1,21 +1,23 @@
 package com.pingcap.tikv.util;
 
-import static com.pingcap.tikv.GrpcUtils.encodeKey;
-import static org.junit.Assert.assertEquals;
-
 import com.google.common.collect.ImmutableList;
 import com.google.protobuf.ByteString;
 import com.pingcap.tikv.codec.CodecDataOutput;
 import com.pingcap.tikv.kvproto.Coprocessor.KeyRange;
 import com.pingcap.tikv.kvproto.Kvrpcpb.IsolationLevel;
 import com.pingcap.tikv.kvproto.Metapb;
+import com.pingcap.tikv.meta.TiKey;
 import com.pingcap.tikv.region.RegionManager;
 import com.pingcap.tikv.region.TiRegion;
 import com.pingcap.tikv.types.IntegerType;
+import org.junit.Test;
+
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
-import org.junit.Test;
+
+import static com.pingcap.tikv.GrpcUtils.encodeKey;
+import static org.junit.Assert.assertEquals;
 
 public class RangeSplitterTest {
   static class MockRegionManager extends RegionManager {
@@ -27,14 +29,15 @@ public class RangeSplitterTest {
             .stream()
             .collect(Collectors.toMap(kr -> kr, kr -> region(regionRanges.indexOf(kr), kr)));
 
-    public MockRegionManager() {
+    MockRegionManager() {
       super(null);
     }
 
     @Override
+    @SuppressWarnings("unchecked")
     public Pair<TiRegion, Metapb.Store> getRegionStorePairByKey(ByteString key) {
       for (Map.Entry<KeyRange, TiRegion> entry : mockRegionMap.entrySet()) {
-        if (KeyRangeUtils.toRange(entry.getKey()).contains(Comparables.wrap(key))) {
+        if (TiKey.toRange(entry.getKey()).contains(TiKey.create(key))) {
           TiRegion region = entry.getValue();
           return Pair.create(region, Metapb.Store.newBuilder().setId(region.getId()).build());
         }

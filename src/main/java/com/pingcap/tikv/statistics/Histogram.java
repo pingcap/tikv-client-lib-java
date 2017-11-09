@@ -17,23 +17,24 @@
 package com.pingcap.tikv.statistics;
 
 import com.google.common.collect.ImmutableList;
+import com.pingcap.tikv.exception.HistogramException;
 import com.pingcap.tikv.expression.TiColumnRef;
 import com.pingcap.tikv.expression.TiConstant;
 import com.pingcap.tikv.expression.TiExpr;
 import com.pingcap.tikv.expression.scalar.Equal;
-import com.pingcap.tikv.meta.TiSelectRequest;
+import com.pingcap.tikv.meta.TiKey;
 import com.pingcap.tikv.meta.TiTableInfo;
 import com.pingcap.tikv.row.Row;
 import com.pingcap.tikv.types.DataType;
 import com.pingcap.tikv.types.DataTypeFactory;
 import com.pingcap.tikv.types.Types;
 import com.pingcap.tikv.util.Bucket;
-import com.pingcap.tikv.util.Comparables;
 import com.pingcap.tikv.util.DBReader;
 
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Objects;
 
 public class Histogram {
 
@@ -59,6 +60,16 @@ public class Histogram {
 
   public Histogram(long id,
                    long numberOfDistinctValue,
+                   List<Bucket> buckets) {
+    this.id = id;
+    this.numberOfDistinctValue = numberOfDistinctValue;
+    this.buckets = buckets;
+    this.nullCount = 0;
+    this.lastUpdateVersion = 0;
+  }
+
+  public Histogram(long id,
+                   long numberOfDistinctValue,
                    List<Bucket> buckets,
                    long nullCount,
                    long lastUpdateVersion) {
@@ -73,7 +84,7 @@ public class Histogram {
     return numberOfDistinctValue;
   }
 
-  public void setNumberOfDistinctValue(long numberOfDistinctValue) {
+  void setNumberOfDistinctValue(long numberOfDistinctValue) {
     this.numberOfDistinctValue = numberOfDistinctValue;
   }
 
@@ -89,15 +100,15 @@ public class Histogram {
     return nullCount;
   }
 
-  public void setNullCount(long nullCount) {
+  void setNullCount(long nullCount) {
     this.nullCount = nullCount;
   }
 
-  public long getLastUpdateVersion() {
+  long getLastUpdateVersion() {
     return lastUpdateVersion;
   }
 
-  public void setLastUpdateVersion(long lastUpdateVersion) {
+  void setLastUpdateVersion(long lastUpdateVersion) {
     this.lastUpdateVersion = lastUpdateVersion;
   }
 
@@ -109,8 +120,8 @@ public class Histogram {
     this.id = id;
   }
 
-  //Loads histogram from storage
-  protected Histogram histogramFromStorage(
+  /** Loads histogram from storage */
+  Histogram histogramFromStorage(
       long tableID, long colID, long isIndex, long distinct, long lastUpdateVersion,
       long nullCount, DBReader dbReader, DataType type) {
 
@@ -122,9 +133,8 @@ public class Histogram {
             new Equal(TiColumnRef.create(HIST_ID, table), TiConstant.create(colID))
         );
 
-    List<String> returnFields = ImmutableList.of(BUCKET_ID, COUNT, REPEATS, LOWER_BOUND, UPPER_BOUND);
-    TiSelectRequest selReq = dbReader.getSelectRequest("stats_buckets", firstAnd, returnFields);
-    List<Row> rows = dbReader.getSelectedRows(selReq);
+    List<String> returnFields = ImmutableList.of(BUCKET_ID, COUNT, REPEATS, LOWER_BOUND, UPPER_BOUND, TABLE_ID, IS_INDEX, HIST_ID);
+    List<Row> rows = dbReader.getSelectedRows("stats_buckets", firstAnd, returnFields);
 
     this.id = colID;
     this.numberOfDistinctValue = distinct;
@@ -132,32 +142,25 @@ public class Histogram {
     this.nullCount = nullCount;
 
     int len = 0;
-    ArrayList<Bucket> tmpBuckets = new ArrayList<>(256);
-    for(int i = 0; i < 256; i ++) tmpBuckets.add(new Bucket());
+    List<Bucket> tmpBuckets = new ArrayList<>(rows.size());
+    for(int i = 0; i < rows.size(); i ++) tmpBuckets.add(new Bucket(TiKey.create(1)));
 
     for (Row row: rows) {
       long bucketID = row.getLong(0);
       long count = row.getLong(1);
       long repeats = row.getLong(2);
-      Comparable lowerBound, upperBound;
+      TiKey lowerBound, upperBound;
       try {
-        Bucket bucket = tmpBuckets.get((int) bucketID);
-        bucket.setCount(count);
-        bucket.setRepeats(repeats);
-
         if (isIndex == 1) {
-          lowerBound = Comparables.wrap(row.get(3, DataTypeFactory.of(Types.TYPE_BLOB)));
-          upperBound = Comparables.wrap(row.get(4, DataTypeFactory.of(Types.TYPE_BLOB)));
+          lowerBound = TiKey.encode(row.get(3, DataTypeFactory.of(Types.TYPE_BLOB)));
+          upperBound = TiKey.encode(row.get(4, DataTypeFactory.of(Types.TYPE_BLOB)));
         } else {
-          lowerBound = Comparables.wrap(row.get(3, type));
-          upperBound = Comparables.wrap(row.get(4, type));
+          lowerBound = TiKey.encode(row.get(3, type));
+          upperBound = TiKey.encode(row.get(4, type));
         }
-        bucket.setLowerBound(lowerBound);
-        bucket.setLowerBound(upperBound);
-      } catch (IndexOutOfBoundsException e) {
-        System.err.println("IndexOutOfBoundsException: " + e.getMessage());
-      } catch (Exception e) {
-        System.err.println("Exception: " + e.getMessage());
+        tmpBuckets.add((int) bucketID, new Bucket(count, repeats, lowerBound, upperBound));
+      } catch (HistogramException e) {
+        throw new HistogramException("Bucket size too large");
       }
       ++ len;
     }
@@ -168,8 +171,8 @@ public class Histogram {
     return this;
   }
 
-  // equalRowCount estimates the row count where the column equals to value.
-  protected double equalRowCount(Comparable values) {
+  /** equalRowCount estimates the row count where the column equals to value. */
+  double equalRowCount(TiKey values) {
     int index = lowerBound(values);
     //index not in range
     if (index == -buckets.size() - 1) {
@@ -185,6 +188,7 @@ public class Histogram {
     if (buckets.get(index).lowerBound == null) {
       cmp = 1;
     } else {
+      Objects.requireNonNull(buckets.get(index).lowerBound);
       cmp = values.compareTo(buckets.get(index).lowerBound);
     }
     if (cmp < 0) {
@@ -193,8 +197,8 @@ public class Histogram {
     return totalRowCount() / numberOfDistinctValue;
   }
 
-  // greaterRowCount estimates the row count where the column greater than value.
-  protected double greaterRowCount(Comparable values) {
+  /** greaterRowCount estimates the row count where the column greater than value. */
+  double greaterRowCount(TiKey values) {
     double lessCount = lessRowCount(values);
     double equalCount = equalRowCount(values);
     double greaterCount;
@@ -205,16 +209,15 @@ public class Histogram {
     return greaterCount;
   }
 
-  // greaterAndEqRowCount estimates the row count where the column less than or equal to value.
-  public double greaterAndEqRowCount(Comparable values) {
-
+  /** greaterAndEqRowCount estimates the row count where the column less than or equal to value. */
+  private double greaterAndEqRowCount(TiKey values) {
     double greaterCount = greaterRowCount(values);
     double equalCount = equalRowCount(values);
     return greaterCount + equalCount;
   }
 
-  // lessRowCount estimates the row count where the column less than value.
-  protected double lessRowCount(Comparable values) {
+  /** lessRowCount estimates the row count where the column less than value. */
+  double lessRowCount(TiKey values) {
     int index = lowerBound(values);
     //index not in range
     if (index == -buckets.size() - 1) {
@@ -229,22 +232,31 @@ public class Histogram {
       preCount = buckets.get(index - 1).count;
     }
     double lessThanBucketValueCount = curCount - buckets.get(index).repeats;
-    int c = values.compareTo(buckets.get(index).lowerBound);
+    TiKey lowerBound = buckets.get(index).lowerBound;
+    int c;
+    if(lowerBound != null) {
+      c = values.compareTo(lowerBound);
+    } else {
+      c = 1;
+    }
     if (c <= 0) {
       return preCount;
     }
     return (preCount + lessThanBucketValueCount) / 2;
   }
 
-  // lessAndEqRowCount estimates the row count where the column less than or equal to value.
-  public double lessAndEqRowCount(Comparable values) {
+  /** lessAndEqRowCount estimates the row count where the column less than or equal to value. */
+  public double lessAndEqRowCount(TiKey values) {
     double lessCount = lessRowCount(values);
     double equalCount = equalRowCount(values);
     return lessCount + equalCount;
   }
 
-  // betweenRowCount estimates the row count where column greater or equal to a and less than b.
-  protected double betweenRowCount(Comparable a, Comparable b) {
+  /** betweenRowCount estimates the row count where column greater than or equal to a and less than b. */
+  double betweenRowCount(TiKey a, TiKey b) {
+//    CodecDataInput c = new CodecDataInput(a.getByteString());
+//    CodecDataInput d = new CodecDataInput(b.getByteString());
+//    System.out.println(c.readLine() + " with " + d.readLine());
     double lessCountA = lessRowCount(a);
     double lessCountB = lessRowCount(b);
     if (lessCountA >= lessCountB) {
@@ -269,17 +281,26 @@ public class Histogram {
     return bucketRowCount() / 3 + 1;
   }
 
-  //lowerBound returns the smallest index of the searched key
-  //and returns (-[insertion point] - 1) if the key is not found in buckets
-  //where [insertion point] denotes the index of the first element greater than the key
-  protected int lowerBound(Comparable key) {
-    assert key.getClass() == buckets.get(0).upperBound.getClass();
+  /**
+   * lowerBound returns the smallest index of the searched key
+   * and returns (-[insertion point] - 1) if the key is not found in buckets
+   * where [insertion point] denotes the index of the first element greater than the key
+   */
+  protected int lowerBound(TiKey key) {
+    assert key.getClass() == buckets.get(0).getUpperBound().getClass();
+//    System.out.println(">>>>>>>>>>>>" + TiKey.unwrap(key).getClass() + " " + TiKey.unwrap(buckets.get(0).getUpperBound()).getClass());
+//    for(Bucket bucket: buckets) {
+//      System.out.println(bucket);
+//    }
+//    System.out.println("<<<<<<<<<<<<");
     return Arrays.binarySearch(buckets.toArray(), new Bucket(key));
   }
 
-  // mergeBuckets is used to merge every two neighbor buckets.
-  // parameters: bucketIdx is the index of the last bucket
-  public void mergeBlock(long bucketIdx) {
+  /**
+   * mergeBuckets is used to merge every two neighbor buckets.
+   * @param  bucketIdx: index of the last bucket.
+   */
+  void mergeBlock(int bucketIdx) {
     int curBuck = 0;
     for (int i = 0; i + 1 <= bucketIdx; i += 2) {
       buckets.set(curBuck++, new Bucket(buckets.get(i + 1).count,
@@ -288,13 +309,13 @@ public class Histogram {
           buckets.get(i).upperBound));
     }
     if (bucketIdx % 2 == 0) {
-      buckets.set(curBuck++, buckets.get((int) bucketIdx));
+      buckets.set(curBuck++, buckets.get(bucketIdx));
     }
     buckets = buckets.subList(0, curBuck);
   }
 
-  // getIncreaseFactor will return a factor of data increasing after the last analysis.
-  protected double getIncreaseFactor(long totalCount) {
+  /** getIncreaseFactor will return a factor of data increasing after the last analysis. */
+  double getIncreaseFactor(long totalCount) {
     long columnCount = buckets.get(buckets.size() - 1).count + nullCount;
     if (columnCount == 0) {
       return 1.0;

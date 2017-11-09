@@ -103,4 +103,13 @@ public abstract class TiFunctionExpression implements TiExpr {
     }
     return this;
   }
+
+  @Override
+  public String toString() {
+    String ans = "";
+    for(TiExpr expr: args) {
+      ans = ans.concat(expr.toString());
+    }
+    return ans;
+  }
 }

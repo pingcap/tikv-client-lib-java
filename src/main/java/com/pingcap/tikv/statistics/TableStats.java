@@ -5,14 +5,11 @@ import com.pingcap.tikv.expression.TiColumnRef;
 import com.pingcap.tikv.expression.TiConstant;
 import com.pingcap.tikv.expression.TiExpr;
 import com.pingcap.tikv.expression.scalar.Equal;
-import com.pingcap.tikv.expression.scalar.GreaterEqual;
+import com.pingcap.tikv.expression.scalar.GreaterThan;
 import com.pingcap.tikv.meta.TiColumnInfo;
 import com.pingcap.tikv.meta.TiIndexInfo;
-import com.pingcap.tikv.meta.TiSelectRequest;
 import com.pingcap.tikv.meta.TiTableInfo;
 import com.pingcap.tikv.row.Row;
-import com.pingcap.tikv.types.DataType;
-import com.pingcap.tikv.types.DataTypeFactory;
 import com.pingcap.tikv.util.DBReader;
 
 import java.util.ArrayList;
@@ -48,6 +45,9 @@ public class TableStats {
   public Table tableStatsFromStorage(DBReader dbReader, TiTableInfo tableInfo) {
     long id = tableInfo.getId();
     Table table = statsCache.get(id);
+
+//    tableInfo.printIndices();
+
     if(table == null) {
       int sz = tableInfo.getIndices() == null ? 0 : tableInfo.getIndices().size();
       table = new Table(id, tableInfo.getColumns().size(), sz);
@@ -56,13 +56,13 @@ public class TableStats {
     }
 
     TiTableInfo histogramInfo = dbReader.getTableInfo("stats_histograms");
+
     List<TiExpr> firstAnd = ImmutableList.of(
         new Equal(TiColumnRef.create("table_id", histogramInfo), TiConstant.create(id)));
     List<String> returnFields = ImmutableList.of(
         "table_id", "is_index", "hist_id", "distinct_count", "version", "null_count");
 
-    TiSelectRequest selReq = dbReader.getSelectRequest("stats_histograms", firstAnd, returnFields);
-    List<Row> result = dbReader.getSelectedRows(selReq);
+    List<Row> result = dbReader.getSelectedRows("stats_histograms", firstAnd, returnFields);
 
     for(Row row: result) {
       long histID = row.getLong(2);
@@ -70,15 +70,15 @@ public class TableStats {
       long histVer = row.getLong(4);
       long nullCount = row.getLong(5);
       long is_index = row.getLong(1);
+
       if (is_index > 0) {
         IndexWithHistogram idx = table.getIndices().get(histID);
         for (TiIndexInfo idxInfo : tableInfo.getIndices()) {
           if (histID == idxInfo.getId()) {
             if (idx == null || idx.getLastUpdateVersion() < histVer) {
               Histogram hg = new Histogram();
-              DataType tp = DataTypeFactory.of(0);
               hg = hg.histogramFromStorage(id, histID, is_index, distinct, histVer,
-                  nullCount, dbReader, tp);
+                  nullCount, dbReader, null);
               idx = new IndexWithHistogram(hg, idxInfo);
             }
             break;
@@ -118,18 +118,16 @@ public class TableStats {
     TiTableInfo metaInfo = dbReader.getTableInfo("stats_meta");
 
     List<TiExpr> firstAnd = ImmutableList.of(
-        new GreaterEqual(TiColumnRef.create("version", metaInfo), TiConstant.create(PrevLastVersion)));
+        new GreaterThan(TiColumnRef.create("version", metaInfo), TiConstant.create(PrevLastVersion)));
     List<String> returnFields = ImmutableList.of(
         "version", "table_id", "modify_count", "count");
 
-    TiSelectRequest selReq = dbReader.getSelectRequest("stats_meta", firstAnd, returnFields);
-    List<Row> rows = dbReader.getSelectedRows(selReq);
+    List<Row> rows = dbReader.getSelectedRows("stats_meta", firstAnd, returnFields);
 
     PrevLastVersion = LastVersion;
 
-    ArrayList<Table> tables = new ArrayList<>();
-    ArrayList<Long> deletedTableIDs = new ArrayList<>();
-
+    List<Table> tables = new ArrayList<>();
+    List<Long> deletedTableIDs = new ArrayList<>();
     for (Row row: rows) {
       long version = row.getLong(0);
       long tableID = row.getLong(1);
@@ -139,13 +137,13 @@ public class TableStats {
       LastVersion = version;
       TiTableInfo tableInfo1 = dbReader.getTableInfo(tableID);
       if(tableInfo1 == null) {
-        System.out.println("Unknown table ID [" + tableID + "] in stats meta table, maybe it has been dropped");
+        System.out.println("Unknown table ID#" + tableID + " in stats meta table, maybe it has been dropped");
         deletedTableIDs.add(tableID);
         continue;
       }
-      System.out.println("We have found table " + tableInfo1.getName());
       Table tbl = tableStatsFromStorage(dbReader, tableInfo1);
       if(tbl == null) {
+        System.out.println("Table stats for table#" + tableID + " is not found.");
         deletedTableIDs.add(tableID);
         continue;
       }
@@ -157,7 +155,7 @@ public class TableStats {
     updateTableStats(tables, deletedTableIDs);
   }
 
-  private Table getTableStats(long tblID) {
+  public Table getTableStats(long tblID) {
     Table table = statsCache.get(tblID);
     if(table == null) {
       return Table.PseudoTable(tblID);
@@ -173,7 +171,7 @@ public class TableStats {
     return newCache;
   }
 
-  public void updateTableStats(ArrayList<Table> tables, ArrayList<Long> deletedTableIDs) {
+  private void updateTableStats(List<Table> tables, List<Long> deletedTableIDs) {
     ConcurrentHashMap<Long, Table> newCache = copyFromOldCache();
     for(Table t: tables) {
       if(newCache.containsKey(t.getTableID())) {

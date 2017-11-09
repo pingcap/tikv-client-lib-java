@@ -17,8 +17,8 @@ package com.pingcap.tikv.util;
 
 import java.lang.reflect.Method;
 
-public class RefelctionWrapper {
-  public RefelctionWrapper(Object obj) {
+public class ReflectionWrapper {
+  public ReflectionWrapper(Object obj) {
     this.obj = obj;
   }
 

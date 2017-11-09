@@ -15,19 +15,24 @@
 
 package com.pingcap.tikv.util;
 
-import static com.google.common.base.Preconditions.checkArgument;
-import static com.pingcap.tikv.util.KeyRangeUtils.formatByteString;
-import static java.util.Objects.requireNonNull;
-
 import com.google.common.collect.ImmutableList;
 import com.google.common.net.HostAndPort;
 import com.google.protobuf.ByteString;
 import com.pingcap.tikv.kvproto.Coprocessor.KeyRange;
 import com.pingcap.tikv.kvproto.Metapb;
+import com.pingcap.tikv.meta.TiKey;
 import com.pingcap.tikv.region.RegionManager;
 import com.pingcap.tikv.region.TiRegion;
+
 import java.io.Serializable;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+import static com.google.common.base.Preconditions.checkArgument;
+import static com.pingcap.tikv.meta.TiKey.formatByteString;
+import static java.util.Objects.requireNonNull;
 
 public class RangeSplitter {
   public static class RegionTask implements Serializable {
@@ -91,10 +96,11 @@ public class RangeSplitter {
     this.regionManager = regionManager;
   }
 
-  protected final RegionManager regionManager;
+  private final RegionManager regionManager;
 
   // both arguments represent right side of end points
   // so that empty is +INF
+  @SuppressWarnings("unchecked")
   private static int rightCompareTo(ByteString lhs, ByteString rhs) {
     requireNonNull(lhs, "lhs is null");
     requireNonNull(rhs, "rhs is null");
@@ -110,7 +116,7 @@ public class RangeSplitter {
       return -1;
     }
 
-    return Comparables.wrap(lhs).compareTo(Comparables.wrap(rhs));
+    return TiKey.create(lhs).compareTo(TiKey.create(rhs));
   }
 
   public List<RegionTask> splitRangeByRegion(List<KeyRange> keyRanges) {
