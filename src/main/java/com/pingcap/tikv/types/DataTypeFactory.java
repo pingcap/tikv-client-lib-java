@@ -17,12 +17,13 @@
 
 package com.pingcap.tikv.types;
 
-import static com.pingcap.tikv.types.Types.*;
-
 import com.google.common.collect.ImmutableMap;
 import com.pingcap.tikv.meta.TiColumnInfo.InternalTypeHolder;
+
 import java.util.Map;
 import java.util.function.Function;
+
+import static com.pingcap.tikv.types.Types.*;
 
 /** Create DataType according to Type Flag. */
 public class DataTypeFactory {
@@ -35,7 +36,7 @@ public class DataTypeFactory {
           .put(TYPE_INT24, IntegerType.of(TYPE_INT24))
           .put(TYPE_LONG_LONG, IntegerType.of(TYPE_LONG_LONG))
           .put(TYPE_YEAR, IntegerType.of(TYPE_YEAR))
-          .put(TYPE_BIT, IntegerType.of(TYPE_BIT))
+          .put(TYPE_BIT, BitType.of(TYPE_BIT))
           .put(TYPE_NEW_DECIMAL, DecimalType.of(TYPE_NEW_DECIMAL))
           .put(TYPE_FLOAT, RealType.of(TYPE_FLOAT))
           .put(TYPE_DOUBLE, RealType.of(TYPE_DOUBLE))
@@ -65,7 +66,7 @@ public class DataTypeFactory {
           .put(TYPE_INT24, IntegerType::new)
           .put(TYPE_LONG_LONG, IntegerType::new)
           .put(TYPE_YEAR, IntegerType::new)
-          .put(TYPE_BIT, IntegerType::new)
+          .put(TYPE_BIT, BitType::new)
           .put(TYPE_NEW_DECIMAL, DecimalType::new)
           .put(TYPE_FLOAT, RealType::new)
           .put(TYPE_DOUBLE, RealType::new)

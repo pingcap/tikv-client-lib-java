@@ -214,11 +214,11 @@ public class TestDAGBuild {
     dagRequest.setTableInfo(table);
     dagRequest.addRequiredColumn(ref);
     dagRequest.setStartTs(session.getTimestamp().getVersion());
-//    dagRequest.addWhere(new Not(new IsNull(shipdate)));
-    dagRequest.addWhere(new Equal(ref, ref));
+    dagRequest.addWhere(new Not(new IsNull(ref)));
+//    dagRequest.addWhere(new Equal(ref, ref));
     dagRequest.resolve();
     Iterator<Row> iterator = snapshot.select(dagRequest);
-//    Assert.assertTrue(iterator.hasNext());
+    Assert.assertTrue(iterator.hasNext());
 
   }
 
