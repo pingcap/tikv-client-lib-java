@@ -21,8 +21,12 @@ import com.pingcap.tikv.catalog.Catalog;
 import com.pingcap.tikv.meta.TiTimestamp;
 import com.pingcap.tikv.region.RegionManager;
 import io.grpc.ManagedChannel;
-import io.grpc.ManagedChannelBuilder;
+import io.grpc.netty.NettyChannelBuilder;
+import io.netty.channel.EventLoopGroup;
+
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -30,7 +34,8 @@ import java.util.concurrent.TimeUnit;
 
 
 public class TiSession implements AutoCloseable {
-  private static final Map<String, ManagedChannel> connPool = new HashMap<>();
+  public static final Map<String, ManagedChannel> connPool = new HashMap<>();
+  public static List<Thread> threadList = new ArrayList<>();
   private final TiConfiguration conf;
   // below object creation is either heavy or making connection (pd), pending for lazy loading
   private volatile RegionManager regionManager;
@@ -38,6 +43,7 @@ public class TiSession implements AutoCloseable {
   private volatile Catalog catalog;
   private volatile ExecutorService indexScanThreadPool;
   private volatile ExecutorService tableScanThreadPool;
+  public EventLoopGroup eventLoopGroup;
 
   public TiSession(TiConfiguration conf) {
     this.conf = conf;
@@ -112,7 +118,7 @@ public class TiSession implements AutoCloseable {
 
       // Channel should be lazy without actual connection until first call
       // So a coarse grain lock is ok here
-      channel = ManagedChannelBuilder.forAddress(address.getHostText(), address.getPort())
+      channel = NettyChannelBuilder.forAddress(address.getHostText(), address.getPort())
           .maxInboundMessageSize(conf.getMaxFrameSize())
           .usePlaintext(true)
           .idleTimeout(60, TimeUnit.SECONDS)

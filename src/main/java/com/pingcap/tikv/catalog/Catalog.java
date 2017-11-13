@@ -17,6 +17,7 @@ package com.pingcap.tikv.catalog;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
+import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.pingcap.tikv.Snapshot;
 import com.pingcap.tikv.meta.TiDBInfo;
 import com.pingcap.tikv.meta.TiTableInfo;
@@ -25,10 +26,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.*;
 import java.util.function.Supplier;
 
 public class Catalog implements AutoCloseable {
@@ -113,7 +111,7 @@ public class Catalog implements AutoCloseable {
     this.snapshotProvider = Objects.requireNonNull(snapshotProvider,
                                                    "Snapshot Provider is null");
     metaCache = new CatalogCache(new CatalogTransaction(snapshotProvider.get()));
-    service = Executors.newSingleThreadScheduledExecutor();
+    service = Executors.newSingleThreadScheduledExecutor(new ThreadFactoryBuilder().setDaemon(true).build());
     service.scheduleAtFixedRate(this::reloadCache, refreshPeriod, refreshPeriod, periodUnit);
   }
 
