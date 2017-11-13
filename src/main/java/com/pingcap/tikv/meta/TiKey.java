@@ -149,6 +149,23 @@ public class TiKey<T> implements Comparable<TiKey<T>> {
     return ((byte[]) data);
   }
 
+  private String getStringFromByteString(ByteString string) {
+    if (string.isValidUtf8()) {
+      return string.toStringUtf8();
+    } else {
+      DataType tp = DataTypeFactory.of(TYPE_LONG);
+      CodecDataInput cdi = new CodecDataInput(string);
+      long ans = (long) tp.decode(cdi);
+      if (ans == Long.MAX_VALUE) {
+        return "+∞";
+      } else if(ans == Long.MIN_VALUE) {
+        return "-∞";
+      } else {
+        return String.valueOf(ans);
+      }
+    }
+  }
+
   @Override
   public String toString() {
     CodecDataOutput cdoMax = new CodecDataOutput();
@@ -161,22 +178,9 @@ public class TiKey<T> implements Comparable<TiKey<T>> {
     } else if(d.equals(cdoMin.toBytes())) {
       return "-∞";
     } else if(d instanceof ByteString) {
-      if (((ByteString) d).isValidUtf8()) {
-        return ((ByteString) d).toStringUtf8();
-      } else {
-        DataType tp = DataTypeFactory.of(TYPE_LONG);
-        CodecDataInput cdi = new CodecDataInput(((ByteString) d));
-        long ans = (long) tp.decode(cdi);
-        if (ans == Long.MAX_VALUE) {
-          return "+∞";
-        } else if(ans == Long.MIN_VALUE) {
-          return "-∞";
-        } else {
-          return String.valueOf(ans);
-        }
-      }
+      return getStringFromByteString(((ByteString) d));
     } else if (d instanceof byte[]) {
-      return "byte array[" + data + "]";
+      return getStringFromByteString(ByteString.copyFrom(((byte[]) d)));
     } else {
       return d.toString();
     }
