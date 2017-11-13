@@ -20,11 +20,8 @@ import com.pingcap.tikv.expression.TiBinaryFunctionExpression;
 import com.pingcap.tikv.expression.TiExpr;
 import com.pingcap.tikv.types.IntegerType;
 
-<<<<<<< HEAD
 import static com.google.common.base.Preconditions.checkArgument;
 
-=======
->>>>>>> master
 public class Or extends TiBinaryFunctionExpression {
   public Or(TiExpr lhs, TiExpr rhs) {
     super(lhs, rhs);

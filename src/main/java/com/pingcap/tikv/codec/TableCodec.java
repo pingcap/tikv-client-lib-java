@@ -21,10 +21,6 @@ import com.pingcap.tikv.types.DataType;
 import com.pingcap.tikv.types.IntegerType;
 import com.pingcap.tikv.util.FastByteComparisons;
 import com.pingcap.tikv.util.Pair;
-import java.text.SimpleDateFormat;
-import java.util.Date;
-import java.util.List;
-import java.util.Objects;
 
 import java.text.SimpleDateFormat;
 import java.util.Date;

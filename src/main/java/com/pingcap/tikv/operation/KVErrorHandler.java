@@ -26,7 +26,6 @@ import io.grpc.StatusRuntimeException;
 import org.apache.log4j.Logger;
 
 import java.util.function.Function;
-import org.apache.log4j.Logger;
 
 public class KVErrorHandler<RespT> implements ErrorHandler<RespT> {
   private static final Logger logger = Logger.getLogger(KVErrorHandler.class);

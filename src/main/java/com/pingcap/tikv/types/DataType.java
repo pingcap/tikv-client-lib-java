@@ -15,17 +15,6 @@
 
 package com.pingcap.tikv.types;
 
-import static com.pingcap.tikv.types.Types.AutoIncrementFlag;
-import static com.pingcap.tikv.types.Types.MultipleKeyFlag;
-import static com.pingcap.tikv.types.Types.NoDefaultValueFlag;
-import static com.pingcap.tikv.types.Types.NotNullFlag;
-import static com.pingcap.tikv.types.Types.OnUpdateNowFlag;
-import static com.pingcap.tikv.types.Types.PriKeyFlag;
-import static com.pingcap.tikv.types.Types.TimestampFlag;
-import static com.pingcap.tikv.types.Types.UniqueKeyFlag;
-import static com.pingcap.tikv.types.Types.UnsignedFlag;
-import static com.pingcap.tikv.types.Types.ZerofillFlag;
-
 import com.google.common.collect.ImmutableList;
 import com.google.protobuf.ByteString;
 import com.pingcap.tikv.codec.CodecDataInput;

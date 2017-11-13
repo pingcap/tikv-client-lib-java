@@ -21,11 +21,8 @@ import com.pingcap.tikv.expression.TiExpr;
 import com.pingcap.tikv.types.DataType;
 import com.pingcap.tikv.types.IntegerType;
 
-<<<<<<< HEAD
 import static com.google.common.base.Preconditions.checkArgument;
 
-=======
->>>>>>> master
 public class LogicalXor extends TiBinaryFunctionExpression {
   public LogicalXor(TiExpr lhs, TiExpr rhs) {
     super(lhs, rhs);

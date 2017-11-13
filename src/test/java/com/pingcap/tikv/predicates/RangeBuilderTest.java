@@ -79,8 +79,7 @@ public class RangeBuilderTest {
     List<DataType> types =
         ImmutableList.of(
             DataTypeFactory.of(Types.TYPE_LONG), DataTypeFactory.of(Types.TYPE_STRING));
-    RangeBuilder builder = new RangeBuilder();
-    List<RangeBuilder.IndexRange> indexRanges = builder.exprsToPoints(conds, types);
+    List<RangeBuilder.IndexRange> indexRanges = RangeBuilder.exprsToPoints(conds, types);
     assertEquals(1, indexRanges.size());
     List<Object> acpts = indexRanges.get(0).getAccessPoints();
     assertEquals(2, acpts.size());
@@ -104,7 +103,7 @@ public class RangeBuilderTest {
             DataTypeFactory.of(Types.TYPE_STRING),
             DataTypeFactory.of(Types.TYPE_STRING));
 
-    indexRanges = builder.exprsToPoints(conds, types);
+    indexRanges = RangeBuilder.exprsToPoints(conds, types);
     assertEquals(6, indexRanges.size());
     assertTrue(
         testPointIndexRanges(
@@ -130,10 +129,6 @@ public class RangeBuilderTest {
             new NotEqual(TiColumnRef.create("c1", table), TiConstant.create(50L)) // c1 != 50
             );
     DataType type = DataTypeFactory.of(Types.TYPE_LONG);
-<<<<<<< HEAD
-=======
-    RangeBuilder builder = new RangeBuilder();
->>>>>>> master
     List<Range> ranges = RangeBuilder.exprToRanges(conds, type);
     assertEquals(2, ranges.size());
     assertEquals(Range.closedOpen(TiKey.create(0L), TiKey.create(50L)), ranges.get(0));

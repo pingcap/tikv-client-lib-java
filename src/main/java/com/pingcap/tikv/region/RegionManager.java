@@ -17,8 +17,6 @@
 
 package com.pingcap.tikv.region;
 
-import static com.pingcap.tikv.util.KeyRangeUtils.makeRange;
-
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.collect.RangeMap;
@@ -38,6 +36,8 @@ import com.pingcap.tikv.meta.TiKey;
 import com.pingcap.tikv.util.Pair;
 
 import java.util.List;
+
+import static com.pingcap.tikv.util.KeyRangeUtils.makeRange;
 
 public class RegionManager {
   private RegionCache cache;

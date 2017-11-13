@@ -28,20 +28,13 @@ import com.pingcap.tikv.kvproto.Kvrpcpb.Context;
 import com.pingcap.tikv.kvproto.TikvGrpc;
 import com.pingcap.tikv.meta.TiKey;
 import com.pingcap.tikv.region.TiRegion;
-import com.pingcap.tikv.util.Comparables;
-import com.pingcap.tikv.util.Comparables.ComparableByteString;
 import io.grpc.Server;
 import io.grpc.ServerBuilder;
 import io.grpc.Status;
 
 import java.io.IOException;
 import java.net.ServerSocket;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.SortedMap;
-import java.util.TreeMap;
+import java.util.*;
 import java.util.stream.Collectors;
 
 public class KVMockServer extends TikvGrpc.TikvImplBase {
