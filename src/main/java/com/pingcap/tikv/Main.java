@@ -34,7 +34,7 @@ public class Main {
     }
     //testUniqueIndex();
     //tableScan();
-//    indexScan();
+    indexScan();
     session.close();
   }
 

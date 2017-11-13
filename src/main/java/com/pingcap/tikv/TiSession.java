@@ -21,7 +21,7 @@ import com.pingcap.tikv.catalog.Catalog;
 import com.pingcap.tikv.meta.TiTimestamp;
 import com.pingcap.tikv.region.RegionManager;
 import io.grpc.ManagedChannel;
-import io.grpc.netty.NettyChannelBuilder;
+import io.grpc.ManagedChannelBuilder;
 import io.netty.channel.EventLoopGroup;
 
 import java.util.ArrayList;
@@ -118,7 +118,7 @@ public class TiSession implements AutoCloseable {
 
       // Channel should be lazy without actual connection until first call
       // So a coarse grain lock is ok here
-      channel = NettyChannelBuilder.forAddress(address.getHostText(), address.getPort())
+      channel = ManagedChannelBuilder.forAddress(address.getHostText(), address.getPort())
           .maxInboundMessageSize(conf.getMaxFrameSize())
           .usePlaintext(true)
           .idleTimeout(60, TimeUnit.SECONDS)
