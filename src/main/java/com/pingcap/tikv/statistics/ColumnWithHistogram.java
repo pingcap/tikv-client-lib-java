@@ -67,6 +67,8 @@ public class ColumnWithHistogram {
         } else {
           if(lower instanceof Number) {
             t.encode(cdo, DataType.EncodeType.KEY, lower);
+          } else if(lower instanceof byte[]) {
+            cdo.write(((byte[]) lower));
           } else {
             cdo.write(((ByteString) lower).toByteArray());
           }
@@ -75,9 +77,9 @@ public class ColumnWithHistogram {
           }
         }
         if(!lNull && lOpen) {
-          lowerBound = TiKey.create(ByteString.copyFrom(KeyUtils.prefixNext(cdo.toBytes())));
+          lowerBound = TiKey.create(KeyUtils.prefixNext(cdo.toBytes()));
         } else {
-          lowerBound = TiKey.create(cdo.toByteString());
+          lowerBound = TiKey.create(cdo.toBytes());
         }
 
         cdo.reset();
@@ -86,14 +88,16 @@ public class ColumnWithHistogram {
         } else {
           if(upper instanceof Number) {
             t.encode(cdo, DataType.EncodeType.KEY, upper);
+          } else if(upper instanceof byte[]) {
+            cdo.write(((byte[]) upper));
           } else {
             cdo.write(((ByteString) upper).toByteArray());
           }
         }
         if(!rNull && !rOpen) {
-          upperBound = TiKey.create(ByteString.copyFrom(KeyUtils.prefixNext(cdo.toBytes())));
+          upperBound = TiKey.create(KeyUtils.prefixNext(cdo.toBytes()));
         } else {
-          upperBound = TiKey.create(cdo.toByteString());
+          upperBound = TiKey.create(cdo.toBytes());
         }
 
 

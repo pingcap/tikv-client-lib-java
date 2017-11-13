@@ -1,7 +1,6 @@
 package com.pingcap.tikv.statistics;
 
 import com.google.common.collect.Range;
-import com.google.protobuf.ByteString;
 import com.pingcap.tidb.tipb.ColumnInfo;
 import com.pingcap.tikv.expression.TiBinaryFunctionExpression;
 import com.pingcap.tikv.expression.TiColumnRef;
@@ -234,7 +233,7 @@ public class Table {
     double rowCount = 0;
     for (IndexRange columnRange : columnRanges) {
       List<Object> points = columnRange.getAccessPoints();
-      TiKey<ByteString> lowerBound, upperBound;
+      TiKey<byte[]> lowerBound, upperBound;
       Range rg = columnRange.getRange();
       if (points.size() > 0) {
         lowerBound = TiKey.encode(points.get(0));

@@ -410,8 +410,8 @@ public class MockDBReader extends DBReader {
       boolean ok = false;
 
       if(e0 instanceof TiConstant && e1 instanceof TiColumnRef && ((TiColumnRef) e1).getName().equalsIgnoreCase(columnName)) {
-        TiKey<ByteString> r = TiKey.encode(row.get(i, e0.getType()));
-        TiKey<ByteString> c = TiKey.encode(((TiConstant) e0).getValue());
+        TiKey<byte[]> r = TiKey.encode(row.get(i, e0.getType()));
+        TiKey<byte[]> c = TiKey.encode(((TiConstant) e0).getValue());
 
         switch (Op) {
           case "=":
@@ -440,8 +440,8 @@ public class MockDBReader extends DBReader {
             System.out.println("unknown or unsupported operator " + Op);
         }
       } else if(e1 instanceof TiConstant && e0 instanceof TiColumnRef && ((TiColumnRef) e0).getName().equalsIgnoreCase(columnName)) {
-        TiKey<ByteString> r = TiKey.encode(row.get(i, e1.getType()));
-        TiKey<ByteString> c = TiKey.encode(((TiConstant) e1).getValue());
+        TiKey<byte[]> r = TiKey.encode(row.get(i, e1.getType()));
+        TiKey<byte[]> c = TiKey.encode(((TiConstant) e1).getValue());
 
         switch (Op) {
           case "=":

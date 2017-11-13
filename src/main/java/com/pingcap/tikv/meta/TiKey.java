@@ -17,13 +17,11 @@
 
 package com.pingcap.tikv.meta;
 
-import com.google.common.collect.Range;
 import com.google.common.primitives.UnsignedBytes;
 import com.google.protobuf.ByteString;
 import com.pingcap.tikv.codec.CodecDataInput;
 import com.pingcap.tikv.codec.CodecDataOutput;
 import com.pingcap.tikv.exception.HistogramException;
-import com.pingcap.tikv.kvproto.Coprocessor;
 import com.pingcap.tikv.types.DataType;
 import com.pingcap.tikv.types.DataTypeFactory;
 
@@ -43,31 +41,28 @@ public class TiKey<T> implements Comparable<TiKey<T>> {
     this.data = data;
   }
 
-  public static TiKey<ByteString> create(ByteString data) {
+  public static TiKey<byte[]> create(byte[] data) {
     return new TiKey<>(data);
   }
 
-  public static TiKey<ByteString> create(byte[] data) {
-    return new TiKey<>(ByteString.copyFrom((data)));
+  public static TiKey<ByteString> create(ByteString data) {
+    return new TiKey<>(data);
   }
 
   public static TiKey<Long> create(Number data) {
     return new TiKey<>(data.longValue());
   }
 
-  public static TiKey<ByteString> create(@Nonnull Object data) {
-    if(data instanceof TiKey) {
-      return create(((TiKey) data).data);
+  public static TiKey<byte[]> create(@Nonnull Object data) {
+    data = unwrap(data);
+    if(data instanceof Number) {
+      return new TiKey<>(toByteArray(data));
+    } else if(data instanceof ByteString) {
+      return new TiKey<>(((ByteString) data).toByteArray());
+    } else if(data instanceof byte[]) {
+      return new TiKey<>(((byte[]) data));
     } else {
-      if(data instanceof Number) {
-        return create(toByteString(data));
-      } else if(data instanceof ByteString) {
-        return create(((ByteString) data));
-      } else if(data instanceof byte[]) {
-        return create(ByteString.copyFrom(((byte[]) data)));
-      } else {
-        return new TiKey<>(toByteString(data));
-      }
+      return new TiKey<>(toByteArray(data));
     }
   }
 
@@ -79,7 +74,7 @@ public class TiKey<T> implements Comparable<TiKey<T>> {
     }
   }
 
-  public static TiKey<ByteString> encode(Object o) {
+  public static TiKey<byte[]> encode(Object o) {
     CodecDataOutput cdo = new CodecDataOutput();
     o = unwrap(o);
     DataType tp;
@@ -91,7 +86,7 @@ public class TiKey<T> implements Comparable<TiKey<T>> {
       tp = DataTypeFactory.of(TYPE_BLOB);
     }
     tp.encode(cdo, DataType.EncodeType.KEY, o);
-    return create(cdo.toByteString());
+    return create(cdo.toBytes());
   }
 
   public static int Compare(TiKey<Object> a, TiKey<Object> b) {
@@ -122,33 +117,22 @@ public class TiKey<T> implements Comparable<TiKey<T>> {
   @SuppressWarnings("unchecked")
   public int compareTo(@Nonnull TiKey<T> o) {
     if (data instanceof Comparable) {
-      return TiKey.create(toByteString(data)).compareTo(toByteString(o.data));
+      return TiKey.create(toByteArray(data)).compareTo(toByteArray(o.data));
     } else if (data instanceof byte[]) {
       return compareTo(toByteArray(o.data));
     } else if (data instanceof ByteString) {
-      return compareTo(toByteString(o.data));
+      return TiKey.create(toByteArray(data)).compareTo(toByteArray(o.data));
     } else {
       throw new HistogramException("data type not supported to compare: " +
           data.getClass() + " against " + o.data.getClass());
     }
   }
 
-  private static ByteString toByteString(Object o) {
-    if(o instanceof ByteString) {
-      return ((ByteString) o);
-    } else if(o instanceof Comparable) {
-      return encode(o).getByteString();
-    } else if(o instanceof byte[]) {
-      return ByteString.copyFrom(((byte[]) o));
-    } else {
-      throw new HistogramException("data type not supported to compare: " +
-          ByteString.class + " against " + o.getClass());
-    }
-  }
-
   private static byte[] toByteArray(Object o) {
     if(o instanceof byte[]) {
       return (byte[]) o;
+    } else if(o instanceof Comparable) {
+      return encode(o).getBytes();
     } else if(o instanceof ByteString) {
       return ((ByteString) o).toByteArray();
     } else {
@@ -161,24 +145,29 @@ public class TiKey<T> implements Comparable<TiKey<T>> {
     return (ByteString) data;
   }
 
+  public byte[] getBytes() {
+    return ((byte[]) data);
+  }
+
   @Override
   public String toString() {
     CodecDataOutput cdoMax = new CodecDataOutput();
     DataTypeFactory.of(TYPE_BLOB).encode(cdoMax, DataType.EncodeType.KEY, DataType.encodeIndexMaxValue());
     CodecDataOutput cdoMin = new CodecDataOutput();
     DataTypeFactory.of(TYPE_BLOB).encode(cdoMin, DataType.EncodeType.KEY, DataType.encodeIndexMaxValue());
-    if(data.equals(cdoMax.toByteString())) {
+    Object d = unwrap(data);
+    if (d.equals(cdoMax.toBytes())) {
       return "∞";
-    } else if(data.equals(cdoMin.toByteString())) {
+    } else if(d.equals(cdoMin.toBytes())) {
       return "-∞";
-    } else if(data instanceof ByteString) {
-      if(((ByteString) data).isValidUtf8()) {
-        return ((ByteString) data).toStringUtf8();
+    } else if(d instanceof ByteString) {
+      if (((ByteString) d).isValidUtf8()) {
+        return ((ByteString) d).toStringUtf8();
       } else {
         DataType tp = DataTypeFactory.of(TYPE_LONG);
-        CodecDataInput cdi = new CodecDataInput(((ByteString) data));
+        CodecDataInput cdi = new CodecDataInput(((ByteString) d));
         long ans = (long) tp.decode(cdi);
-        if(ans == Long.MAX_VALUE) {
+        if (ans == Long.MAX_VALUE) {
           return "+∞";
         } else if(ans == Long.MIN_VALUE) {
           return "-∞";
@@ -186,44 +175,10 @@ public class TiKey<T> implements Comparable<TiKey<T>> {
           return String.valueOf(ans);
         }
       }
+    } else if (d instanceof byte[]) {
+      return "byte array[" + data + "]";
     } else {
-      return data.toString();
+      return d.toString();
     }
-  }
-
-  public static Range<TiKey> toRange(Coprocessor.KeyRange range) {
-    if (range == null || (range.getStart().isEmpty() && range.getEnd().isEmpty())) {
-      return Range.all();
-    }
-    if (range.getStart().isEmpty()) {
-      return Range.lessThan(TiKey.create(range.getEnd()));
-    }
-    if (range.getEnd().isEmpty()) {
-      return Range.atLeast(TiKey.create(range.getStart()));
-    }
-    return Range.closedOpen(TiKey.create(range.getStart()), TiKey.create(range.getEnd()));
-  }
-
-  public static Range<TiKey> makeRange(ByteString startKey, ByteString endKey) {
-    if (startKey.isEmpty() && endKey.isEmpty()) {
-      return Range.all();
-    }
-    if (startKey.isEmpty()) {
-      return Range.lessThan(TiKey.create(endKey));
-    } else if (endKey.isEmpty()) {
-      return Range.atLeast(TiKey.create(startKey));
-    }
-    return Range.closedOpen(TiKey.create(startKey), TiKey.create(endKey));
-  }
-
-  public static String formatByteString(ByteString key) {
-    StringBuilder sb = new StringBuilder();
-    for (int i = 0; i < key.size(); i++) {
-      sb.append(key.byteAt(i) & 0xff);
-      if (i < key.size() - 1) {
-        sb.append(",");
-      }
-    }
-    return sb.toString();
   }
 }
