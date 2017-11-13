@@ -203,24 +203,24 @@ public class TestDAGBuild {
     Assert.assertTrue(iterator.hasNext());
   }
 
-  @Test
-  public void testBitBug() {
-    db = cat.getDatabase("tispark_test");
-    table = cat.getTable(db, "full_data_type_table");
-    TiColumnRef ref = TiColumnRef.create("tp_bit");
-    bindRanges();
-    TiDAGRequest dagRequest = new TiDAGRequest();
-    dagRequest.addRanges(ranges);
-    dagRequest.setTableInfo(table);
-    dagRequest.addRequiredColumn(ref);
-    dagRequest.setStartTs(session.getTimestamp().getVersion());
-    dagRequest.addWhere(new Not(new IsNull(ref)));
-//    dagRequest.addWhere(new Equal(ref, ref));
-    dagRequest.resolve();
-    Iterator<Row> iterator = snapshot.select(dagRequest);
-    Assert.assertTrue(iterator.hasNext());
-
-  }
+//  @Test
+//  public void testBitBug() {
+//    db = cat.getDatabase("tispark_test");
+//    table = cat.getTable(db, "full_data_type_table");
+//    TiColumnRef ref = TiColumnRef.create("tp_bit");
+//    bindRanges();
+//    TiDAGRequest dagRequest = new TiDAGRequest();
+//    dagRequest.addRanges(ranges);
+//    dagRequest.setTableInfo(table);
+//    dagRequest.addRequiredColumn(ref);
+//    dagRequest.setStartTs(session.getTimestamp().getVersion());
+//    dagRequest.addWhere(new Not(new IsNull(ref)));
+////    dagRequest.addWhere(new Equal(ref, ref));
+//    dagRequest.resolve();
+//    Iterator<Row> iterator = snapshot.select(dagRequest);
+//    Assert.assertTrue(iterator.hasNext());
+//
+//  }
 
   private void showIterCount(Iterator<Row> iterator) {
     int count = 0;
