@@ -37,7 +37,7 @@ public class TiDBInfo {
       @JsonProperty("-") List<TiTableInfo> tables,
       @JsonProperty("state") int schemaState) {
     this.id = id;
-    this.name = name.getO();
+    this.name = name.getL();
     this.charset = charset;
     this.collate = collate;
     this.tables = tables;
