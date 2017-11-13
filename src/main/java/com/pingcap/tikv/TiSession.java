@@ -66,8 +66,8 @@ public class TiSession implements AutoCloseable {
       synchronized (this) {
         if (client == null) {
           client = PDClient.createRaw(this);
-          res = client;
         }
+        res = client;
       }
     }
     return res;
@@ -81,8 +81,8 @@ public class TiSession implements AutoCloseable {
           catalog = new Catalog(() -> createSnapshot(),
               conf.getMetaReloadPeriod(),
               conf.getMetaReloadPeriodUnit());
-          res = catalog;
         }
+        res = catalog;
       }
     }
     return res;
@@ -94,8 +94,8 @@ public class TiSession implements AutoCloseable {
       synchronized (this) {
         if (regionManager == null) {
           regionManager = new RegionManager(getPDClient());
-          res = regionManager;
         }
+        res = regionManager;
       }
     }
     return res;
@@ -131,8 +131,8 @@ public class TiSession implements AutoCloseable {
           indexScanThreadPool = Executors.newFixedThreadPool(
               conf.getIndexScanConcurrency(),
               new ThreadFactoryBuilder().setDaemon(true).build());
-          res = indexScanThreadPool;
         }
+        res = indexScanThreadPool;
       }
     }
     return res;
@@ -146,8 +146,8 @@ public class TiSession implements AutoCloseable {
           tableScanThreadPool = Executors.newFixedThreadPool(
               conf.getTableScanConcurrency(),
               new ThreadFactoryBuilder().setDaemon(true).build());
-          res = tableScanThreadPool;
         }
+        res = tableScanThreadPool;
       }
     }
     return res;

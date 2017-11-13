@@ -130,6 +130,10 @@ public class RangeBuilderTest {
             new NotEqual(TiColumnRef.create("c1", table), TiConstant.create(50L)) // c1 != 50
             );
     DataType type = DataTypeFactory.of(Types.TYPE_LONG);
+<<<<<<< HEAD
+=======
+    RangeBuilder builder = new RangeBuilder();
+>>>>>>> master
     List<Range> ranges = RangeBuilder.exprToRanges(conds, type);
     assertEquals(2, ranges.size());
     assertEquals(Range.closedOpen(TiKey.create(0L), TiKey.create(50L)), ranges.get(0));

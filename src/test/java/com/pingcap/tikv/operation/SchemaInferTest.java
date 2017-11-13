@@ -17,6 +17,14 @@
 
 package com.pingcap.tikv.operation;
 
+<<<<<<< HEAD
+=======
+import static com.pingcap.tikv.types.Types.TYPE_BLOB;
+import static com.pingcap.tikv.types.Types.TYPE_NEW_DECIMAL;
+import static com.pingcap.tikv.types.Types.TYPE_VARCHAR;
+import static org.junit.Assert.assertEquals;
+
+>>>>>>> master
 import com.google.protobuf.ByteString;
 import com.pingcap.tikv.catalog.CatalogTransaction;
 import com.pingcap.tikv.expression.TiByItem;

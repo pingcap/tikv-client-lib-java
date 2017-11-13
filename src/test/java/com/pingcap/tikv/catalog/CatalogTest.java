@@ -1,9 +1,14 @@
 package com.pingcap.tikv.catalog;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
+
 import com.pingcap.tikv.KVMockServer;
 import com.pingcap.tikv.PDMockServer;
 import com.pingcap.tikv.TiConfiguration;
 import com.pingcap.tikv.TiSession;
+
+import com.pingcap.tikv.kvproto.Kvrpcpb;
 import com.pingcap.tikv.kvproto.Kvrpcpb.CommandPri;
 import com.pingcap.tikv.kvproto.Kvrpcpb.IsolationLevel;
 import com.pingcap.tikv.meta.MetaUtils.MetaMockHelper;
@@ -11,14 +16,10 @@ import com.pingcap.tikv.meta.TiDBInfo;
 import com.pingcap.tikv.meta.TiTableInfo;
 import com.pingcap.tikv.region.TiRegion;
 import com.pingcap.tikv.util.ReflectionWrapper;
-import org.junit.Before;
-import org.junit.Test;
-
 import java.util.List;
 import java.util.stream.Collectors;
-
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
+import org.junit.Before;
+import org.junit.Test;
 
 
 public class CatalogTest {

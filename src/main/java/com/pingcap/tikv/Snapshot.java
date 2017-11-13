@@ -15,6 +15,8 @@
 
 package com.pingcap.tikv;
 
+import static com.pingcap.tikv.util.KeyRangeUtils.makeRange;
+
 import com.google.common.collect.Range;
 import com.google.protobuf.ByteString;
 import com.pingcap.tikv.exception.TiClientInternalException;

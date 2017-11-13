@@ -22,8 +22,11 @@ import com.pingcap.tikv.types.BytesType;
 import com.pingcap.tikv.types.DataType;
 import com.pingcap.tikv.types.IntegerType;
 
+<<<<<<< HEAD
 import static com.google.common.base.Preconditions.checkArgument;
 
+=======
+>>>>>>> master
 public class Like extends TiBinaryFunctionExpression {
   public Like(TiExpr lhs, TiExpr rhs) {
     super(lhs, rhs);

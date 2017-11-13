@@ -15,6 +15,8 @@
 
 package com.pingcap.tikv.catalog;
 
+import static org.junit.Assert.assertEquals;
+
 import com.pingcap.tikv.KVMockServer;
 import com.pingcap.tikv.PDMockServer;
 import com.pingcap.tikv.TiConfiguration;
@@ -25,12 +27,10 @@ import com.pingcap.tikv.meta.MetaUtils.MetaMockHelper;
 import com.pingcap.tikv.meta.TiDBInfo;
 import com.pingcap.tikv.meta.TiTableInfo;
 import com.pingcap.tikv.region.TiRegion;
-import org.junit.Before;
-import org.junit.Test;
 
 import java.util.List;
-
-import static org.junit.Assert.assertEquals;
+import org.junit.Before;
+import org.junit.Test;
 
 
 public class CatalogTransactionTest {

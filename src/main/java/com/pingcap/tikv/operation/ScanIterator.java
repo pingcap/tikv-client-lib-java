@@ -28,6 +28,7 @@ import com.pingcap.tikv.meta.TiKey;
 import com.pingcap.tikv.region.RegionManager;
 import com.pingcap.tikv.region.RegionStoreClient;
 import com.pingcap.tikv.region.TiRegion;
+import com.pingcap.tikv.util.KeyRangeUtils;
 import com.pingcap.tikv.util.Pair;
 
 import java.util.Iterator;
@@ -56,7 +57,7 @@ public class ScanIterator implements Iterator<Kvrpcpb.KvPair> {
       long version) {
     this.startKey = startKey;
     this.batchSize = batchSize;
-    this.scanRange = TiKey.toRange(range);
+    this.scanRange = KeyRangeUtils.toRange(range);
     this.session = session;
     this.regionCache = rm;
     this.version = version;

@@ -30,7 +30,7 @@ import com.pingcap.tikv.types.DataType;
 import java.util.List;
 
 public class KeyRangeUtils {
-  public static Range toRange(Coprocessor.KeyRange range) {
+  public static Range<TiKey> toRange(Coprocessor.KeyRange range) {
     if (range == null || (range.getStart().isEmpty() && range.getEnd().isEmpty())) {
       return Range.all();
     }
@@ -129,7 +129,7 @@ public class KeyRangeUtils {
     return types.build();
   }
 
-  public static Range makeRange(ByteString startKey, ByteString endKey) {
+  public static Range<TiKey> makeRange(ByteString startKey, ByteString endKey) {
     if (startKey.isEmpty() && endKey.isEmpty()) {
       return Range.all();
     }

@@ -17,7 +17,9 @@
 
 package com.pingcap.tikv.types;
 
-import org.junit.Test;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotEquals;
+import static org.junit.Assert.assertNull;
 
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
@@ -25,7 +27,7 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Date;
 
-import static org.junit.Assert.*;
+import org.junit.Test;
 
 public class TimestampTest {
   @Test

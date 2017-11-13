@@ -21,6 +21,10 @@ import com.pingcap.tikv.types.DataType;
 import com.pingcap.tikv.types.IntegerType;
 import com.pingcap.tikv.util.FastByteComparisons;
 import com.pingcap.tikv.util.Pair;
+import java.text.SimpleDateFormat;
+import java.util.Date;
+import java.util.List;
+import java.util.Objects;
 
 import java.text.SimpleDateFormat;
 import java.util.Date;
@@ -82,10 +86,10 @@ public class TableCodec {
         sb.append(", ");
       }
       int flag = cdi.peekByte();
-      if (remaining == 1 && flag == DataType.encodeIndexMinValueFlag()) {
+      if (remaining == 1 && flag == DataType.indexMinValueFlag()) {
         sb.append("-INF");
         cdi.skipBytes(1);
-      } else if (remaining == 1 && flag == DataType.encodeIndexMaxValueFlag()) {
+      } else if (remaining == 1 && flag == DataType.indexMaxValueFlag()) {
         sb.append("+INF");
         cdi.skipBytes(1);
       } else {

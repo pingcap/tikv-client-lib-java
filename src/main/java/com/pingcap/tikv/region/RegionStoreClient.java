@@ -17,6 +17,9 @@
 
 package com.pingcap.tikv.region;
 
+import static com.google.common.base.Preconditions.checkArgument;
+import static com.google.common.base.Preconditions.checkNotNull;
+
 import com.google.protobuf.ByteString;
 import com.google.protobuf.InvalidProtocolBufferException;
 import com.pingcap.tidb.tipb.SelectRequest;
@@ -40,9 +43,6 @@ import io.grpc.ManagedChannel;
 
 import java.util.List;
 import java.util.function.Supplier;
-
-import static com.google.common.base.Preconditions.checkArgument;
-import static com.google.common.base.Preconditions.checkNotNull;
 
 // RegionStore itself is not thread-safe
 public class RegionStoreClient extends AbstractGRPCClient<TikvBlockingStub, TikvStub> implements RegionErrorReceiver {
