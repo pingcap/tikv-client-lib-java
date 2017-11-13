@@ -87,7 +87,7 @@ public class DBReader {
     selReq.addRanges(scanPlan.getKeyRanges()).setTableInfo(tableInfo);
     //add fields
     for(String s: returnFields) {
-      selReq.addField(TiColumnRef.create(s, tableInfo));
+      selReq.addRequiredColumn(TiColumnRef.create(s, tableInfo));
     }
     selReq.setStartTs(snapshot.getVersion());
 
@@ -109,12 +109,10 @@ public class DBReader {
 
     List<Row> rowList = new ArrayList<>();
 
-    for (RangeSplitter.RegionTask task : keyWithRegionTasks) {
-      Iterator<Row> it = snapshot.select(selReq, task);
-      while (it.hasNext()) {
-        Row row = it.next();
-        rowList.add(row);
-      }
+    Iterator<Row> it = snapshot.tableRead(selReq, keyWithRegionTasks);
+    while (it.hasNext()) {
+      Row row = it.next();
+      rowList.add(row);
     }
     return rowList;
   }

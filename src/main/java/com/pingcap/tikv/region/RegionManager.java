@@ -17,68 +17,138 @@
 
 package com.pingcap.tikv.region;
 
+import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
-import com.google.common.cache.CacheLoader;
-import com.google.common.cache.LoadingCache;
 import com.google.common.collect.RangeMap;
 import com.google.common.collect.TreeRangeMap;
-import com.google.common.util.concurrent.SettableFuture;
 import com.google.protobuf.ByteString;
 import com.pingcap.tikv.ReadOnlyPDClient;
 import com.pingcap.tikv.TiSession;
 import com.pingcap.tikv.exception.GrpcException;
 import com.pingcap.tikv.exception.TiClientInternalException;
+import com.pingcap.tikv.kvproto.Kvrpcpb.CommandPri;
 import com.pingcap.tikv.kvproto.Kvrpcpb.IsolationLevel;
 import com.pingcap.tikv.kvproto.Metapb.Peer;
 import com.pingcap.tikv.kvproto.Metapb.Region;
 import com.pingcap.tikv.kvproto.Metapb.Store;
+import com.pingcap.tikv.kvproto.Metapb.StoreState;
 import com.pingcap.tikv.meta.TiKey;
 import com.pingcap.tikv.util.Pair;
 
-import javax.annotation.ParametersAreNonnullByDefault;
 import java.util.List;
-import java.util.Optional;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Future;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
 
-import static com.pingcap.tikv.meta.TiKey.makeRange;
+import static com.pingcap.tikv.util.KeyRangeUtils.makeRange;
 
 public class RegionManager {
+  private RegionCache cache;
   private final ReadOnlyPDClient pdClient;
-  private final LoadingCache<Long, Future<TiRegion>> regionCache;
-  private final LoadingCache<Long, Future<Store>> storeCache;
-  private final RangeMap<TiKey, Long> keyToRegionIdCache;
-  private final ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
-
-  private static final int MAX_CACHE_CAPACITY = 4096;
 
   // To avoid double retrieval, we used the async version of grpc
   // When rpc not returned, instead of call again, it wait for previous one done
   public RegionManager(ReadOnlyPDClient pdClient) {
+    this.cache = new RegionCache(pdClient);
     this.pdClient = pdClient;
-    regionCache =
-        CacheBuilder.newBuilder()
-            .maximumSize(MAX_CACHE_CAPACITY)
-            .build(
-                new CacheLoader<Long, Future<TiRegion>>() {
-                  @ParametersAreNonnullByDefault
-                  public Future<TiRegion> load(Long key) {
-                    return pdClient.getRegionByIDAsync(key);
-                  }
-                });
+  }
 
-    storeCache =
-        CacheBuilder.newBuilder()
-            .maximumSize(MAX_CACHE_CAPACITY)
-            .build(
-                new CacheLoader<Long, Future<Store>>() {
-                  @ParametersAreNonnullByDefault
-                  public Future<Store> load(Long id) {
-                    return pdClient.getStoreAsync(id);
-                  }
-                });
-    keyToRegionIdCache = TreeRangeMap.create();
+  public static class RegionCache {
+    private static final int MAX_CACHE_CAPACITY =     4096;
+    private final Cache<Long, TiRegion>               regionCache;
+    private final Cache<Long, Store>                  storeCache;
+    private final RangeMap<Comparable, Long>          keyToRegionIdCache;
+    private final ReadOnlyPDClient pdClient;
+
+    public RegionCache(ReadOnlyPDClient pdClient) {
+      regionCache =
+          CacheBuilder.newBuilder()
+              .maximumSize(MAX_CACHE_CAPACITY)
+              .build();
+
+      storeCache =
+          CacheBuilder.newBuilder()
+              .maximumSize(MAX_CACHE_CAPACITY)
+              .build();
+
+      keyToRegionIdCache = TreeRangeMap.create();
+      this.pdClient = pdClient;
+    }
+
+    public synchronized TiRegion getRegionByKey(ByteString key) {
+      Long regionId;
+      regionId = keyToRegionIdCache.get(TiKey.create(key));
+
+      if (regionId == null) {
+        TiRegion region = pdClient.getRegionByKey(key);
+        if (!putRegion(region)) {
+          throw new TiClientInternalException("Invalid Region: " + region.toString());
+        }
+        return region;
+      }
+      return regionCache.getIfPresent(regionId);
+    }
+
+    @SuppressWarnings("unchecked")
+    private synchronized boolean putRegion(TiRegion region) {
+      if (!region.hasStartKey() || !region.hasEndKey()) return false;
+
+      regionCache.put(region.getId(), region);
+      keyToRegionIdCache.put(makeRange(region.getStartKey(), region.getEndKey()), region.getId());
+      return true;
+    }
+
+    private synchronized TiRegion getRegionById(long regionId) {
+      TiRegion region = regionCache.getIfPresent(regionId);
+      if (region == null) {
+        region = pdClient.getRegionByID(regionId);
+        if (!putRegion(region)) {
+          throw new TiClientInternalException("Invalid Region: " + region.toString());
+        }
+      }
+      return region;
+    }
+
+    @SuppressWarnings("unchecked")
+    /**
+     * Removes region associated with regionId from regionCache.
+     */
+    public synchronized void invalidateRegion(long regionId) {
+      try {
+        TiRegion region = regionCache.getIfPresent(regionId);
+        keyToRegionIdCache.remove(makeRange(region.getStartKey(), region.getEndKey()));
+      } catch (Exception ignore) {
+      } finally {
+        regionCache.invalidate(regionId);
+      }
+    }
+
+    public synchronized void invalidateAllRegionForStore(long storeId) {
+      for (TiRegion r : regionCache.asMap().values()) {
+        if(r.getLeader().getStoreId() == storeId) {
+          regionCache.invalidate(r.getId());
+          keyToRegionIdCache.remove(makeRange(r.getStartKey(), r.getEndKey()));
+        }
+      }
+    }
+
+    public void invalidateStore(long storeId) {
+      storeCache.invalidate(storeId);
+    }
+
+
+    public synchronized Store getStoreById(long id) {
+      try {
+        Store store = storeCache.getIfPresent(id);
+        if (store == null) {
+          store = pdClient.getStore(id);
+        }
+        if (store.getState().equals(StoreState.Tombstone)) {
+          return null;
+        }
+        storeCache.put(id, store);
+        return store;
+      } catch (Exception e) {
+        throw new GrpcException(e);
+      }
+    }
   }
 
   public TiSession getSession() {
@@ -86,116 +156,78 @@ public class RegionManager {
   }
 
   public TiRegion getRegionByKey(ByteString key) {
-    Long regionId;
-    lock.readLock().lock();
-    try {
-      regionId = keyToRegionIdCache.get(TiKey.create(key));
-    } finally {
-      lock.readLock().unlock();
-    }
-
-    if (regionId == null) {
-      TiRegion region = pdClient.getRegionByKey(key);
-      if (!putRegion(region)) {
-        throw new TiClientInternalException("Invalid Region: " + region.toString());
-      }
-      return region;
-    }
-    return getRegionById(regionId);
+    return cache.getRegionByKey(key);
   }
 
-  public void invalidateRegion(long regionId) {
-    lock.writeLock().lock();
-    try {
-      TiRegion region = regionCache.getUnchecked(regionId).get();
-      keyToRegionIdCache.remove(makeRange(region.getStartKey(), region.getEndKey()));
-    } catch (Exception ignore) {
-    } finally {
-      lock.writeLock().unlock();
-      regionCache.invalidate(regionId);
-    }
-  }
-
-  public void invalidateStore(long storeId) {
-    storeCache.invalidate(storeId);
+  public TiRegion getRegionById(long regionId) {
+    return cache.getRegionById(regionId);
   }
 
   public Pair<TiRegion, Store> getRegionStorePairByKey(ByteString key) {
-    TiRegion region = getRegionByKey(key);
+    TiRegion region = cache.getRegionByKey(key);
+    if (region == null) {
+      throw new TiClientInternalException("Region not exist for key:" + key);
+    }
     if (!region.isValid()) {
       throw new TiClientInternalException("Region invalid: " + region.toString());
     }
     Peer leader = region.getLeader();
     long storeId = leader.getStoreId();
-    return Pair.create(region, getStoreById(storeId));
+    return Pair.create(region, cache.getStoreById(storeId));
   }
 
-  public TiRegion getRegionById(long id) {
-    try {
-      return regionCache.getUnchecked(id).get();
-    } catch (Exception e) {
-      throw new GrpcException(e);
+  public Pair<TiRegion, Store> getRegionStorePairByRegionId(long id) {
+    TiRegion region = cache.getRegionById(id);
+    if (!region.isValid()) {
+      throw new TiClientInternalException("Region invalid: " + region.toString());
     }
+    Peer leader = region.getLeader();
+    long storeId = leader.getStoreId();
+    return Pair.create(region, cache.getStoreById(storeId));
   }
 
   public Store getStoreById(long id) {
-    try {
-      return storeCache.getUnchecked(id).get();
-    } catch (Exception e) {
-      throw new GrpcException(e);
-    }
-  }
-
-
-  @SuppressWarnings("unchecked")
-  private boolean putRegion(TiRegion region) {
-    if (!region.hasStartKey() || !region.hasEndKey()) return false;
-
-    SettableFuture<TiRegion> regionFuture = SettableFuture.create();
-    regionFuture.set(region);
-    regionCache.put(region.getId(), regionFuture);
-
-    lock.writeLock().lock();
-    try {
-      keyToRegionIdCache.put(makeRange(region.getStartKey(), region.getEndKey()), region.getId());
-    } finally {
-      lock.writeLock().unlock();
-    }
-    return true;
+    return cache.getStoreById(id);
   }
 
   public void onRegionStale(long regionID, List<Region> regions) {
-    invalidateRegion(regionID);
-    regions.stream().map(r -> new TiRegion(r, r.getPeers(0), IsolationLevel.RC)).forEach(this::putRegion);
+    cache.invalidateRegion(regionID);
+    for (Region r : regions) {
+      cache.putRegion(new TiRegion(r, r.getPeers(0), IsolationLevel.RC, CommandPri.Low));
+    }
   }
 
   public void updateLeader(long regionID, long storeID) {
-    Optional<Future<TiRegion>> region = Optional.of(regionCache.getUnchecked(regionID));
-    region.ifPresent(
-        r -> {
-          try {
-            if (r.get().switchPeer(storeID)) {
-              invalidateRegion(regionID);
-            }
-          } catch (InterruptedException | ExecutionException e) {
-            e.printStackTrace();
-          }
-        });
+    TiRegion r = cache.getRegionById(regionID);
+    if (r != null) {
+      if (!r.switchPeer(storeID)) {
+        // drop region cache using verID
+        cache.invalidateRegion(regionID);
+      }
+    }
   }
 
+  /**
+   * Clears all cache when a TiKV server does not respond
+   * @param regionID region's id
+   * @param storeID TiKV store's id
+   */
   public void onRequestFail(long regionID, long storeID) {
-    Optional<Future<TiRegion>> region = Optional.ofNullable(regionCache.getIfPresent(regionID));
-    region.ifPresent(
-        r -> {
-          try {
-            if (!r.get().onRequestFail(storeID)) {
-              invalidateRegion(regionID);
-            }
-          } catch (InterruptedException | ExecutionException e) {
-            e.printStackTrace();
-          }
-          // store's meta may be out of date.
-          invalidateStore(storeID);
-        });
+    TiRegion r = cache.getRegionById(regionID);
+    if (r != null) {
+      if (!r.onRequestFail(storeID)) {
+        cache.invalidateRegion(regionID);
+      }
+    }
+
+    cache.invalidateAllRegionForStore(storeID);
+  }
+
+  public void invalidateStore(long storeId) {
+    cache.invalidateStore(storeId);
+  }
+
+  public void invalidateRegion(long regionID) {
+    cache.invalidateRegion(regionID);
   }
 }

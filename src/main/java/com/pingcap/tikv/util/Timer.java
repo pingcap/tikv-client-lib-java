@@ -13,18 +13,22 @@
  * limitations under the License.
  */
 
-package com.pingcap.tikv.exception;
+package com.pingcap.tikv.util;
 
-public class GrpcException extends RuntimeException {
-  public GrpcException(Exception e) {
-    super(e);
+import java.util.concurrent.TimeUnit;
+
+final public class Timer {
+  private long startTime;
+
+  public Timer() {
+    reset();
   }
 
-  public GrpcException(String msg) {
-    super(msg);
+  public long stop(TimeUnit tu) {
+    return tu.convert(System.nanoTime() - startTime, TimeUnit.NANOSECONDS);
   }
 
-  public GrpcException(String msg, Exception e) {
-    super(msg, e);
+  public void reset() {
+    startTime = System.nanoTime();
   }
 }

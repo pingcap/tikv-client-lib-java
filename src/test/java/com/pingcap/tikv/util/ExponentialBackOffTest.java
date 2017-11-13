@@ -1,4 +1,5 @@
 /*
+ *
  * Copyright 2017 PingCAP, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -11,20 +12,24 @@
  * distributed under the License is distributed on an "AS IS" BASIS,
  * See the License for the specific language governing permissions and
  * limitations under the License.
+ *
  */
 
-package com.pingcap.tikv.exception;
+package com.pingcap.tikv.util;
 
-public class GrpcException extends RuntimeException {
-  public GrpcException(Exception e) {
-    super(e);
+import org.junit.Test;
+
+import static org.junit.Assert.assertEquals;
+
+public class ExponentialBackOffTest {
+  @Test
+  public void nextBackOffMillisTest() {
+    BackOff backOff = new ExponentialBackOff(10);
+    for(int i = 1; i < 10; i++) {
+      long nextBackoffMillis = backOff.nextBackOffMillis();
+      int factor = i<<2;
+      assertEquals(nextBackoffMillis, factor*1000);
+    }
   }
 
-  public GrpcException(String msg) {
-    super(msg);
-  }
-
-  public GrpcException(String msg, Exception e) {
-    super(msg, e);
-  }
 }

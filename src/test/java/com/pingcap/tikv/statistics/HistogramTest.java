@@ -65,7 +65,7 @@ public class HistogramTest {
             .build();
 
     chunks.add(chunk);
-    ChunkIterator chunkIterator = new ChunkIterator(chunks);
+    ChunkIterator<ByteString> chunkIterator = ChunkIterator.getRawBytesChunkIterator(chunks);
     DataType blobs = DataTypeFactory.of(TYPE_BLOB);
     DataType ints = DataTypeFactory.of(TYPE_LONG);
     List<Row> rows = new ArrayList<>();

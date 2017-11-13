@@ -51,8 +51,8 @@ public class IndexWithHistogram {
         String l = lOpen ? "(" : "[";
         String r = rOpen ? ")" : "]";
         CodecDataOutput cdo = new CodecDataOutput();
-        Object lower = TiKey.unwrap(!lNull ? rg.lowerEndpoint() : DataType.indexMinValue());
-        Object upper = TiKey.unwrap(!rNull ? rg.upperEndpoint() : DataType.indexMaxValue());
+        Object lower = TiKey.unwrap(!lNull ? rg.lowerEndpoint() : DataType.encodeIndexMinValue());
+        Object upper = TiKey.unwrap(!rNull ? rg.upperEndpoint() : DataType.encodeIndexMaxValue());
 //        System.out.println("=>Index " + l + (!lNull ? TiKey.create(lower) : "-∞")
 //            + "," + (!rNull ? TiKey.create(upper) : "∞") + r);
         t = DataTypeFactory.of(TYPE_LONG);

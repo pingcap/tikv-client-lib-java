@@ -167,12 +167,16 @@ public class TiColumnRef implements TiExpr {
   @Override
   public int hashCode() {
     final int prime = 31;
-    return (int) (prime * ((columnInfo == null) ? 0 : columnInfo.getId())
-                + ((tableInfo == null) ? 0 : tableInfo.getId()));
+    int result = 1;
+    result = result * prime + Long.hashCode(columnInfo.getId());
+    result = result * prime + tableInfo.getName().hashCode();
+    result = result * prime + columnInfo.getName().hashCode();
+    result = result * prime + Long.hashCode(tableInfo.getId());
+    return result;
   }
 
   @Override
   public String toString() {
-    return getName();
+    return String.format("[%s]", getName());
   }
 }

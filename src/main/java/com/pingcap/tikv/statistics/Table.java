@@ -3,7 +3,7 @@ package com.pingcap.tikv.statistics;
 import com.google.common.collect.Range;
 import com.google.protobuf.ByteString;
 import com.pingcap.tidb.tipb.ColumnInfo;
-import com.pingcap.tikv.expression.TiBinaryFunctionExpresson;
+import com.pingcap.tikv.expression.TiBinaryFunctionExpression;
 import com.pingcap.tikv.expression.TiColumnRef;
 import com.pingcap.tikv.expression.TiConstant;
 import com.pingcap.tikv.expression.TiExpr;
@@ -240,20 +240,20 @@ public class Table {
         lowerBound = TiKey.encode(points.get(0));
         upperBound = TiKey.encode(points.get(0));
       } else {
-        lowerBound = TiKey.encode(rg.hasLowerBound()? rg.lowerEndpoint(): DataType.indexMinValue());
-        upperBound = TiKey.encode(rg.hasUpperBound()? rg.upperEndpoint(): DataType.indexMaxValue());
+        lowerBound = TiKey.encode(rg.hasLowerBound()? rg.lowerEndpoint(): DataType.encodeIndexMinValue());
+        upperBound = TiKey.encode(rg.hasUpperBound()? rg.upperEndpoint(): DataType.encodeIndexMaxValue());
       }
-      if (!rg.hasLowerBound() && upperBound.compareTo(TiKey.encode(DataType.indexMaxValue())) == 0) {
+      if (!rg.hasLowerBound() && upperBound.compareTo(TiKey.encode(DataType.encodeIndexMaxValue())) == 0) {
         rowCount += tableRowCount;
-      } else if (rg.hasLowerBound() && lowerBound.compareTo(TiKey.encode(DataType.indexMinValue())) == 0) {
+      } else if (rg.hasLowerBound() && lowerBound.compareTo(TiKey.encode(DataType.encodeIndexMinValue())) == 0) {
         double nullCount = tableRowCount * EQUAL_RATE;
-        if (upperBound.compareTo(TiKey.encode(DataType.indexMaxValue())) == 0) {
+        if (upperBound.compareTo(TiKey.encode(DataType.encodeIndexMaxValue())) == 0) {
           rowCount += tableRowCount - nullCount;
         } else {
           double lessCount = tableRowCount * LESS_RATE;
           rowCount += lessCount - nullCount;
         }
-      } else if (upperBound.compareTo(TiKey.encode(DataType.indexMaxValue())) == 0) {
+      } else if (upperBound.compareTo(TiKey.encode(DataType.encodeIndexMaxValue())) == 0) {
         rowCount += tableRowCount * LESS_RATE;
       } else {
         if (lowerBound.compareTo(upperBound) == 0) {
@@ -322,7 +322,7 @@ public class Table {
   private double pseudoSelectivity(List<TiExpr> exprs) {
     double minFactor = SELECTION_FACTOR;
     for(TiExpr expr: exprs) {
-      if(expr instanceof TiBinaryFunctionExpresson && checkColumnConstant(((TiBinaryFunctionExpresson) expr).getArgs())) {
+      if(expr instanceof TiBinaryFunctionExpression && checkColumnConstant(((TiBinaryFunctionExpression) expr).getArgs())) {
         if(expr instanceof Equal || expr instanceof NullEqual) {
           minFactor *= EQUAL_RATE;;
         } else if(

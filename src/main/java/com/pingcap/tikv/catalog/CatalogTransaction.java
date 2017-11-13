@@ -31,8 +31,7 @@ import com.pingcap.tikv.meta.TiTableInfo;
 import com.pingcap.tikv.types.BytesType;
 import com.pingcap.tikv.types.IntegerType;
 import com.pingcap.tikv.util.Pair;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
+import org.apache.log4j.Logger;
 
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
@@ -43,7 +42,7 @@ import java.util.Objects;
 import static com.google.common.base.Preconditions.checkArgument;
 
 public class CatalogTransaction {
-  protected static final Logger logger = LogManager.getFormatterLogger(Catalog.class);
+  protected static final Logger logger = Logger.getLogger(Catalog.class);
   private final Snapshot snapshot;
   private final byte[] prefix;
 
@@ -169,7 +168,7 @@ public class CatalogTransaction {
     Objects.requireNonNull(json, "json is null");
     Objects.requireNonNull(cls, "cls is null");
 
-    logger.debug("Parse Json %s : %s", cls.getSimpleName(), json.toStringUtf8());
+    logger.debug(String.format("Parse Json %s : %s", cls.getSimpleName(), json.toStringUtf8()));
     ObjectMapper mapper = new ObjectMapper();
     try {
       return mapper.readValue(json.toStringUtf8(), cls);

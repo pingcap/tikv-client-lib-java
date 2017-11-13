@@ -164,9 +164,9 @@ public class TiKey<T> implements Comparable<TiKey<T>> {
   @Override
   public String toString() {
     CodecDataOutput cdoMax = new CodecDataOutput();
-    DataTypeFactory.of(TYPE_BLOB).encode(cdoMax, DataType.EncodeType.KEY, DataType.indexMaxValue());
+    DataTypeFactory.of(TYPE_BLOB).encode(cdoMax, DataType.EncodeType.KEY, DataType.encodeIndexMaxValue());
     CodecDataOutput cdoMin = new CodecDataOutput();
-    DataTypeFactory.of(TYPE_BLOB).encode(cdoMin, DataType.EncodeType.KEY, DataType.indexMinValue());
+    DataTypeFactory.of(TYPE_BLOB).encode(cdoMin, DataType.EncodeType.KEY, DataType.encodeIndexMaxValue());
     if(data.equals(cdoMax.toByteString())) {
       return "∞";
     } else if(data.equals(cdoMin.toByteString())) {

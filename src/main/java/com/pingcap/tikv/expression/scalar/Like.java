@@ -15,16 +15,16 @@
 
 package com.pingcap.tikv.expression.scalar;
 
-import static com.google.common.base.Preconditions.checkArgument;
-
 import com.pingcap.tidb.tipb.ExprType;
-import com.pingcap.tikv.expression.TiBinaryFunctionExpresson;
+import com.pingcap.tikv.expression.TiBinaryFunctionExpression;
 import com.pingcap.tikv.expression.TiExpr;
 import com.pingcap.tikv.types.BytesType;
 import com.pingcap.tikv.types.DataType;
 import com.pingcap.tikv.types.IntegerType;
 
-public class Like extends TiBinaryFunctionExpresson {
+import static com.google.common.base.Preconditions.checkArgument;
+
+public class Like extends TiBinaryFunctionExpression {
   public Like(TiExpr lhs, TiExpr rhs) {
     super(lhs, rhs);
   }

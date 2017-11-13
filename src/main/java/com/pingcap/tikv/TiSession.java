@@ -15,18 +15,30 @@
 
 package com.pingcap.tikv;
 
-import com.pingcap.tikv.policy.RetryNTimes;
-import com.pingcap.tikv.policy.RetryPolicy;
+import com.google.common.net.HostAndPort;
+import com.google.common.util.concurrent.ThreadFactoryBuilder;
+import com.pingcap.tikv.catalog.Catalog;
+import com.pingcap.tikv.meta.TiTimestamp;
+import com.pingcap.tikv.region.RegionManager;
+import io.grpc.ManagedChannel;
+import io.grpc.ManagedChannelBuilder;
 
-/**
- * NOT thread-safe!! A session suppose to be change by single thread in master node and use by
- * slaves for read only purpose
- */
-public class TiSession {
-  private static final RetryPolicy.Builder DEF_RETRY_POLICY_BUILDER = new RetryNTimes.Builder(3);
+import java.util.HashMap;
+import java.util.Map;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
-  private TiConfiguration conf;
-  private RetryPolicy.Builder retryPolicyBuilder = DEF_RETRY_POLICY_BUILDER;
+
+public class TiSession implements AutoCloseable {
+  private static final Map<String, ManagedChannel> connPool = new HashMap<>();
+  private final TiConfiguration conf;
+  // below object creation is either heavy or making connection (pd), pending for lazy loading
+  private volatile RegionManager regionManager;
+  private volatile PDClient client;
+  private volatile Catalog catalog;
+  private volatile ExecutorService indexScanThreadPool;
+  private volatile ExecutorService tableScanThreadPool;
 
   public TiSession(TiConfiguration conf) {
     this.conf = conf;
@@ -36,11 +48,118 @@ public class TiSession {
     return conf;
   }
 
+  public TiTimestamp getTimestamp() {
+    return getPDClient().getTimestamp();
+  }
+
+  public Snapshot createSnapshot() {
+    return new Snapshot(getTimestamp(), this);
+  }
+
+  public Snapshot createSnapshot(TiTimestamp ts) {
+    return new Snapshot(ts, this);
+  }
+
+  public PDClient getPDClient() {
+    PDClient res = client;
+    if (res == null) {
+      synchronized (this) {
+        if (client == null) {
+          client = PDClient.createRaw(this);
+          res = client;
+        }
+      }
+    }
+    return res;
+  }
+
+  public Catalog getCatalog() {
+    Catalog res = catalog;
+    if (res == null) {
+      synchronized (this) {
+        if (catalog == null) {
+          catalog = new Catalog(() -> createSnapshot(),
+              conf.getMetaReloadPeriod(),
+              conf.getMetaReloadPeriodUnit());
+          res = catalog;
+        }
+      }
+    }
+    return res;
+  }
+
+  public synchronized RegionManager getRegionManager() {
+    RegionManager res = regionManager;
+    if (res == null) {
+      synchronized (this) {
+        if (regionManager == null) {
+          regionManager = new RegionManager(getPDClient());
+          res = regionManager;
+        }
+      }
+    }
+    return res;
+  }
+
+  public synchronized ManagedChannel getChannel(String addressStr) {
+    ManagedChannel channel = connPool.get(addressStr);
+    if (channel == null) {
+      HostAndPort address;
+      try {
+        address = HostAndPort.fromString(addressStr);
+      } catch (Exception e) {
+        throw new IllegalArgumentException("failed to form address");
+      }
+
+      // Channel should be lazy without actual connection until first call
+      // So a coarse grain lock is ok here
+      channel = ManagedChannelBuilder.forAddress(address.getHostText(), address.getPort())
+          .maxInboundMessageSize(conf.getMaxFrameSize())
+          .usePlaintext(true)
+          .idleTimeout(60, TimeUnit.SECONDS)
+          .build();
+      connPool.put(addressStr, channel);
+    }
+    return channel;
+  }
+
+  public ExecutorService getThreadPoolForIndexScan() {
+    ExecutorService res = indexScanThreadPool;
+    if (res == null) {
+      synchronized (this) {
+        if (indexScanThreadPool == null) {
+          indexScanThreadPool = Executors.newFixedThreadPool(
+              conf.getIndexScanConcurrency(),
+              new ThreadFactoryBuilder().setDaemon(true).build());
+          res = indexScanThreadPool;
+        }
+      }
+    }
+    return res;
+  }
+
+  public ExecutorService getThreadPoolForTableScan() {
+    ExecutorService res = tableScanThreadPool;
+    if (res == null) {
+      synchronized (this) {
+        if (tableScanThreadPool == null) {
+          tableScanThreadPool = Executors.newFixedThreadPool(
+              conf.getTableScanConcurrency(),
+              new ThreadFactoryBuilder().setDaemon(true).build());
+          res = tableScanThreadPool;
+        }
+      }
+    }
+    return res;
+  }
+
   public static TiSession create(TiConfiguration conf) {
     return new TiSession(conf);
   }
 
-  RetryPolicy.Builder getRetryPolicyBuilder() {
-    return retryPolicyBuilder;
+  @Override
+  public void close() throws Exception {
+    getThreadPoolForTableScan().shutdownNow();
+    getThreadPoolForIndexScan().shutdownNow();
   }
 }
