@@ -22,11 +22,8 @@ import com.pingcap.tikv.meta.TiTimestamp;
 import com.pingcap.tikv.region.RegionManager;
 import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
-import io.netty.channel.EventLoopGroup;
 
-import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -34,8 +31,7 @@ import java.util.concurrent.TimeUnit;
 
 
 public class TiSession implements AutoCloseable {
-  public static final Map<String, ManagedChannel> connPool = new HashMap<>();
-  public static List<Thread> threadList = new ArrayList<>();
+  private static final Map<String, ManagedChannel> connPool = new HashMap<>();
   private final TiConfiguration conf;
   // below object creation is either heavy or making connection (pd), pending for lazy loading
   private volatile RegionManager regionManager;
@@ -43,7 +39,6 @@ public class TiSession implements AutoCloseable {
   private volatile Catalog catalog;
   private volatile ExecutorService indexScanThreadPool;
   private volatile ExecutorService tableScanThreadPool;
-  public EventLoopGroup eventLoopGroup;
 
   public TiSession(TiConfiguration conf) {
     this.conf = conf;
