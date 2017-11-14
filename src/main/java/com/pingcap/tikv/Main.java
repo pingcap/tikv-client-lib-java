@@ -36,7 +36,6 @@ public class Main {
     //tableScan();
     indexScan();
     session.close();
-    System.exit(0);
   }
 
   private static void testUniqueIndex() {
@@ -78,7 +77,7 @@ public class Main {
       for (int i = 0; i < r.fieldCount(); i++) {
         Object v = r.get(i, schemaInfer.getType(i));
         if (v != null)
-          acc += (Long)v;
+          acc += (Long) v;
       }
     }
     System.out.println("acc:" + acc);
@@ -122,7 +121,7 @@ public class Main {
       for (int i = 0; i < r.fieldCount(); i++) {
         Object v = r.get(i, schemaInfer.getType(i));
         if (v instanceof Long)
-          acc += (Long)v;
+          acc += (Long) v;
       }
     }
     System.out.println("acc:" + acc);
@@ -168,7 +167,7 @@ public class Main {
       for (int i = 0; i < r.fieldCount(); i++) {
         Object v = r.get(i, schemaInfer.getType(i));
         if (v != null)
-          acc += (Long)v;
+          acc += (Long) v;
       }
     }
     System.out.println("acc:" + acc);

@@ -17,6 +17,7 @@ package com.pingcap.tikv;
 
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.net.HostAndPort;
+import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.google.protobuf.ByteString;
 import com.pingcap.tikv.codec.CodecDataOutput;
 import com.pingcap.tikv.exception.GrpcException;
@@ -37,14 +38,10 @@ import io.grpc.ManagedChannel;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.List;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.*;
 import java.util.function.Supplier;
 
 import static com.google.common.base.Preconditions.checkNotNull;
-
 
 public class PDClient extends AbstractGRPCClient<PDBlockingStub, PDStub>
     implements ReadOnlyPDClient {
@@ -305,7 +302,7 @@ public class PDClient extends AbstractGRPCClient<PDBlockingStub, PDStub>
     tsoReq = TsoRequest.newBuilder().setHeader(header).build();
     this.pdAddrs = pdAddrs;
     createLeaderWrapper(resp.getLeader().getClientUrls(0));
-    service = Executors.newSingleThreadScheduledExecutor();
+    service = Executors.newSingleThreadScheduledExecutor(new ThreadFactoryBuilder().setDaemon(true).build());
     service.scheduleAtFixedRate(this::updateLeader, 1, 1, TimeUnit.MINUTES);
   }
 
