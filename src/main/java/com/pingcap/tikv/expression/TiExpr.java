@@ -24,7 +24,12 @@ public interface TiExpr extends Serializable {
   Expr toProto();
 
   default boolean isSupportedExpr() {
-    return true;
+    try {
+      Expr expr = toProto();
+      return expr != null;
+    } catch (Exception e) {
+      return false;
+    }
   }
 
   DataType getType();
