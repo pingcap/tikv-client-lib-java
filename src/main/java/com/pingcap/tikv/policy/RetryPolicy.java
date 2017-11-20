@@ -17,6 +17,7 @@ package com.pingcap.tikv.policy;
 
 import com.google.common.collect.ImmutableSet;
 import com.pingcap.tikv.exception.GrpcException;
+import com.pingcap.tikv.exception.GrpcRegionStaleException;
 import com.pingcap.tikv.operation.ErrorHandler;
 import com.pingcap.tikv.util.BackOff;
 import io.grpc.Status;
@@ -42,18 +43,21 @@ public abstract class RetryPolicy<RespT> {
     this.handler = handler;
   }
 
-  private boolean checkNotRecoverableException(Status status) {
-    return unrecoverableStatus.contains(status.getCode());
+  private void rethrowNotRecoverableException(Exception e) {
+    if (e instanceof GrpcRegionStaleException) {
+      throw (GrpcRegionStaleException)e;
+    }
+    Status status = Status.fromThrowable(e);
+    if (unrecoverableStatus.contains(status.getCode())) {
+      throw new GrpcException(e);
+    }
   }
 
   private void handleFailure(Exception e, String methodName, long nextBackMills) {
     if(nextBackMills == BackOff.STOP) {
           throw new GrpcException("retry is exhausted.", e);
     }
-    Status status = Status.fromThrowable(e);
-    if (checkNotRecoverableException(status)) {
-      throw new GrpcException(e);
-    }
+    rethrowNotRecoverableException(e);
     doWait(nextBackMills);
   }
 

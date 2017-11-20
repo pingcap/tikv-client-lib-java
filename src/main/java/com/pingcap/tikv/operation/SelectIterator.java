@@ -22,6 +22,7 @@ import com.pingcap.tidb.tipb.SelectRequest;
 import com.pingcap.tidb.tipb.SelectResponse;
 import com.pingcap.tikv.TiSession;
 import com.pingcap.tikv.codec.CodecDataInput;
+import com.pingcap.tikv.exception.GrpcRegionStaleException;
 import com.pingcap.tikv.exception.TiClientInternalException;
 import com.pingcap.tikv.kvproto.Coprocessor.KeyRange;
 import com.pingcap.tikv.kvproto.Metapb.Store;
@@ -32,7 +33,9 @@ import com.pingcap.tikv.row.Row;
 import com.pingcap.tikv.row.RowReader;
 import com.pingcap.tikv.row.RowReaderFactory;
 import com.pingcap.tikv.types.DataType;
+import com.pingcap.tikv.util.RangeSplitter;
 import com.pingcap.tikv.util.RangeSplitter.RegionTask;
+import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import java.util.NoSuchElementException;
@@ -127,13 +130,25 @@ public abstract class SelectIterator<T, RawT> implements Iterator<T> {
 
     RegionStoreClient client;
     client = RegionStoreClient.create(region, store, session);
-    SelectResponse resp = client.coprocess(request, ranges);
-    // if resp is null, then indicates eof.
-    if (resp == null) {
-      eof = true;
-      return null;
+    try {
+      SelectResponse resp = client.coprocess(request, ranges);
+      // if resp is null, then indicates eof.
+      if (resp == null) {
+        eof = true;
+        return null;
+      }
+      return resp.getChunksList();
+    } catch (GrpcRegionStaleException e) {
+      List<Chunk> resultChunk = new ArrayList<>();
+      List<RegionTask> splitTasks = RangeSplitter.newSplitter(session.getRegionManager()).splitRangeByRegion(ranges);
+      for(RegionTask t : splitTasks) {
+        List<Chunk> resFromCurTask = createClientAndSendReq(t);
+        if(resFromCurTask != null) {
+          resultChunk.addAll(resFromCurTask);
+        }
+      }
+      return resultChunk;
     }
-    return resp.getChunksList();
   }
 
   private boolean readNextRegion() {

@@ -17,6 +17,7 @@
 
 package com.pingcap.tikv.operation;
 
+import com.pingcap.tikv.exception.GrpcRegionStaleException;
 import com.pingcap.tikv.kvproto.Errorpb;
 import com.pingcap.tikv.region.RegionErrorReceiver;
 import com.pingcap.tikv.region.RegionManager;
@@ -81,8 +82,8 @@ public class KVErrorHandler<RespT> implements ErrorHandler<RespT> {
 
       if (error.hasStaleEpoch()) {
         this.regionManager.onRegionStale(
-            ctxRegion.getId(), ctxRegion.getLeader(),error.getStaleEpoch().getNewRegionsList());
-        throw new StatusRuntimeException(Status.fromCode(Status.Code.UNAVAILABLE).withDescription(error.toString()));
+            ctxRegion.getId(), ctxRegion.getLeader(), error.getStaleEpoch().getNewRegionsList());
+        throw new GrpcRegionStaleException(error.toString());
       }
 
       if (error.hasServerIsBusy()) {

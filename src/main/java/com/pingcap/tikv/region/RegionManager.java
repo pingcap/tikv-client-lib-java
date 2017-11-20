@@ -189,7 +189,7 @@ public class RegionManager {
     return cache.getStoreById(id);
   }
 
-  public void onRegionStale(long regionID, Peer peer,  List<Region> regions) {
+  public void onRegionStale(long regionID, Peer peer, List<Region> regions) {
     cache.invalidateRegion(regionID);
     for (Region r : regions) {
       cache.putRegion(new TiRegion(r, peer, IsolationLevel.RC, CommandPri.Low));
