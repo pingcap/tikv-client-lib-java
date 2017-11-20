@@ -47,7 +47,7 @@ public class IndexScanIterator implements Iterator<Row> {
     this.handleIterator = handleIterator;
     this.snapshot = snapshot;
     this.batchSize = conf.getIndexScanBatchSize();
-    this.completionService = new ExecutorCompletionService(session.getThreadPoolForIndexScan());
+    this.completionService = new ExecutorCompletionService<>(session.getThreadPoolForIndexScan());
   }
 
   private TLongArrayList feedBatch() {

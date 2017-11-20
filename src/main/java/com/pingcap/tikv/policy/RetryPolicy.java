@@ -46,13 +46,15 @@ public abstract class RetryPolicy<RespT> {
     return unrecoverableStatus.contains(status.getCode());
   }
 
-  private void handleFailure(Exception e, String methodName, long millis) {
+  private void handleFailure(Exception e, String methodName, long nextBackMills) {
+    if(nextBackMills == BackOff.STOP) {
+          throw new GrpcException("retry is exhausted.", e);
+    }
     Status status = Status.fromThrowable(e);
     if (checkNotRecoverableException(status)) {
-      logger.error(String.format("Failed to recover from last grpc error calling %s.", methodName));
       throw new GrpcException(e);
     }
-    doWait(millis);
+    doWait(nextBackMills);
   }
 
   private void doWait(long millis) {
@@ -64,7 +66,7 @@ public abstract class RetryPolicy<RespT> {
   }
 
   public RespT callWithRetry(Callable<RespT> proc, String methodName) {
-    for(;true ;) {
+    for(;true;) {
       try {
         RespT result = proc.call();
         if (handler != null) {
@@ -72,11 +74,7 @@ public abstract class RetryPolicy<RespT> {
         }
         return result;
       } catch (Exception e) {
-        long nextBackMills  = this.backOff.nextBackOffMillis();
-        if(nextBackMills == BackOff.STOP) {
-          throw new GrpcException("retry is exhausted.", e);
-        }
-        handleFailure(e, methodName, nextBackMills);
+          handleFailure(e, methodName, backOff.nextBackOffMillis());
       }
     }
   }
