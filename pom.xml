@@ -148,8 +148,6 @@
                                 <argument>update</argument>
                                 <argument>--init</argument>
                                 <argument>--recursive</argument>
-                                <argument>--remote</argument>
-                                <argument>--merge</argument>
                             </arguments>
                         </configuration>
                         <phase>validate</phase>
