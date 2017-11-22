@@ -70,13 +70,13 @@ public class TiSelectRequest implements Serializable {
   private boolean distinct;
 
   public void resolve() {
-    getFields().forEach(expr -> expr.bind(tableInfo));
-    getWhere().forEach(expr -> expr.bind(tableInfo));
-    getGroupByItems().forEach(item -> item.getExpr().bind(tableInfo));
-    getOrderByItems().forEach(item -> item.getExpr().bind(tableInfo));
-    getAggregates().forEach(expr -> expr.bind(tableInfo));
+    getFields().forEach(expr -> expr.resolve(tableInfo));
+    getWhere().forEach(expr -> expr.resolve(tableInfo));
+    getGroupByItems().forEach(item -> item.getExpr().resolve(tableInfo));
+    getOrderByItems().forEach(item -> item.getExpr().resolve(tableInfo));
+    getAggregates().forEach(expr -> expr.resolve(tableInfo));
     if (having != null) {
-      having.bind(tableInfo);
+      having.resolve(tableInfo);
     }
   }
 
@@ -127,7 +127,7 @@ public class TiSelectRequest implements Serializable {
       columns =
           getFields()
               .stream()
-              .map(col -> col.bind(tableInfo).getColumnInfo())
+              .map(col -> col.resolve(tableInfo).getColumnInfo())
               .collect(Collectors.toList());
     }
 

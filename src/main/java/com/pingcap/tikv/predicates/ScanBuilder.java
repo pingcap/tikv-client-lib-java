@@ -104,7 +104,7 @@ public class ScanBuilder {
     requireNonNull(conditions, "conditions cannot be null to encoding keyRange");
 
     for (TiExpr expr : conditions) {
-      expr.bind(table);
+      expr.resolve(table);
     }
 
     IndexMatchingResult result = extractConditions(conditions, table, index);
