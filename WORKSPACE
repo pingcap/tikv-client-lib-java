@@ -44,21 +44,6 @@ maven_jar(
 )
 
 maven_jar(
-    name = "org_powermock_powermock_module_junit4",
-    artifact = "org.powermock:powermock-module-junit4:1.6.6",
-)
-
-maven_jar(
-    name = "org_powermock_powermock_module_junit4_common",
-    artifact = "org.powermock:powermock-module-junit4-common:1.6.6",
-)
-
-maven_jar(
-    name = "org_powermock_powermock_core",
-    artifact = "org.powermock:powermock-core:1.6.6",
-)
-
-maven_jar(
     name = "org_javassist_javassist",
     artifact = "org.javassist:javassist:3.21.0-GA",
 )
