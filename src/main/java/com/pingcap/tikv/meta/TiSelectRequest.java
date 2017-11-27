@@ -32,7 +32,9 @@ import com.pingcap.tikv.util.KeyRangeUtils;
 import com.pingcap.tikv.util.Pair;
 import java.io.Serializable;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 public class TiSelectRequest implements Serializable {
@@ -61,6 +63,7 @@ public class TiSelectRequest implements Serializable {
   // we need a cast to target when given
   private final List<Pair<TiExpr, DataType>> aggregates = new ArrayList<>();
   private final List<KeyRange> keyRanges = new ArrayList<>();
+  private final Set<Integer> skipOrdinal = new HashSet<>();
 
   private int limit;
   private int timeZoneOffset;
@@ -86,6 +89,14 @@ public class TiSelectRequest implements Serializable {
     } else {
       return buildTableScan();
     }
+  }
+
+  public void skipAggregatesAt(int ordinal) {
+    skipOrdinal.add(ordinal);
+  }
+
+  public boolean isAggregatesSkipped(int ordinal) {
+    return skipOrdinal.contains(ordinal);
   }
 
   private SelectRequest buildIndexScan() {

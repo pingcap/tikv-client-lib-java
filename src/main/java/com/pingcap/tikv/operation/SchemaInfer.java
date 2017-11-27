@@ -75,8 +75,13 @@ public class SchemaInfer {
 
     // append aggregates if present
     if (!tiSelectRequest.getAggregatePairs().isEmpty()) {
-      for (Pair<TiExpr, DataType> pair : tiSelectRequest.getAggregatePairs()) {
-        rowTrans.addProjection(new Cast(pair.second));
+      for (int i = 0; i < tiSelectRequest.getAggregatePairs().size(); i++) {
+        if (!tiSelectRequest.isAggregatesSkipped(i)) {
+          Pair<TiExpr, DataType> pair = tiSelectRequest.getAggregatePairs().get(i);
+          rowTrans.addProjection(new Cast(pair.second));
+        } else {
+          rowTrans.addProjection(Skip.SKIP_OP);
+        }
       }
     } else {
       for (TiExpr field : tiSelectRequest.getFields()) {
@@ -99,7 +104,6 @@ public class SchemaInfer {
       types.add(DataTypeFactory.of(TYPE_BLOB));
       tiSelectRequest.getAggregates().forEach(expr -> types.add(expr.getType()));
     } else {
-      // Extract all column type information from TiExpr
       tiSelectRequest.getFields().forEach(expr -> types.add(expr.getType()));
     }
   }
