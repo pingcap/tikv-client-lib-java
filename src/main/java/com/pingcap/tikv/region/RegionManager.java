@@ -17,8 +17,6 @@
 
 package com.pingcap.tikv.region;
 
-import static com.pingcap.tikv.util.KeyRangeUtils.makeRange;
-
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.collect.RangeMap;
@@ -36,7 +34,10 @@ import com.pingcap.tikv.kvproto.Metapb.Store;
 import com.pingcap.tikv.kvproto.Metapb.StoreState;
 import com.pingcap.tikv.util.Comparables;
 import com.pingcap.tikv.util.Pair;
+
 import java.util.List;
+
+import static com.pingcap.tikv.util.KeyRangeUtils.makeRange;
 
 public class RegionManager {
   private RegionCache cache;
@@ -87,8 +88,6 @@ public class RegionManager {
 
     @SuppressWarnings("unchecked")
     private synchronized boolean putRegion(TiRegion region) {
-      if (!region.hasStartKey() || !region.hasEndKey()) return false;
-
       regionCache.put(region.getId(), region);
       keyToRegionIdCache.put(makeRange(region.getStartKey(), region.getEndKey()), region.getId());
       return true;
