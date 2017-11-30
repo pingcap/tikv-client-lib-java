@@ -21,10 +21,8 @@ import com.pingcap.tikv.codec.CodecDataInput;
 import com.pingcap.tikv.codec.CodecDataOutput;
 import com.pingcap.tikv.codec.InvalidCodecFormatException;
 import com.pingcap.tikv.meta.TiColumnInfo;
-import com.pingcap.tikv.row.Row;
-import java.sql.Time;
+
 import java.sql.Timestamp;
-import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
@@ -36,7 +34,7 @@ public class TimestampType extends DataType {
     return new TimestampType(tp);
   }
 
-  private TimestampType(int tp) {
+  TimestampType(int tp) {
     super(tp);
   }
 
@@ -46,47 +44,13 @@ public class TimestampType extends DataType {
 
   @Override
   public Object decodeNotNull(int flag, CodecDataInput cdi) {
-    // MysqlTime MysqlDate MysqlDatetime
     if (flag == UVARINT_FLAG) {
       // read packedUint
       LocalDateTime localDateTime = fromPackedLong(IntegerType.readUVarLong(cdi));
       if (localDateTime == null) {
         return null;
       }
-      return Timestamp.from(ZonedDateTime.of(localDateTime, ZoneId.of("UTC")).toInstant());
-    } else if (flag == INT_FLAG) {
-      long nanoSec = IntegerType.readLong(cdi);
-      Duration duration = Duration.ofNanos(nanoSec);
-      return new Time(duration.toMillis());
-    } else {
-      throw new InvalidCodecFormatException("Invalid Flag type for TimestampType: " + flag);
-    }
-  }
-
-  /**
-   * decode a value from cdi to row per tp.
-   *
-   * @param cdi source of data.
-   * @param row destination of data
-   * @param pos position of row.
-   */
-  public void decode(CodecDataInput cdi, Row row, int pos) {
-    int flag = cdi.readUnsignedByte();
-    // MysqlTime MysqlDate MysqlDatetime
-    if (flag == UVARINT_FLAG) {
-      // read packedUint
-      LocalDateTime localDateTime = fromPackedLong(IntegerType.readUVarLong(cdi));
-      if (localDateTime == null) {
-        row.setNull(pos);
-        return;
-      }
-      Timestamp timestamp = Timestamp.from(ZonedDateTime.of(localDateTime, defaultZone).toInstant());
-      row.setTimestamp(pos, timestamp);
-    } else if (flag == INT_FLAG) {
-      long nanoSec = IntegerType.readLong(cdi);
-      Duration duration = Duration.ofNanos(nanoSec);
-      Time time = new Time(duration.toMillis());
-      row.setTime(pos, time);
+      return Timestamp.from(ZonedDateTime.of(localDateTime, defaultZone).toInstant());
     } else {
       throw new InvalidCodecFormatException("Invalid Flag type for TimestampType: " + flag);
     }

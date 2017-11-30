@@ -71,7 +71,7 @@ public class DataTypeFactory {
           .put(TYPE_FLOAT, RealType::new)
           .put(TYPE_DOUBLE, RealType::new)
           .put(TYPE_DURATION, TimestampType::new)
-          .put(TYPE_DATETIME, TimestampType::new)
+          .put(TYPE_DATETIME, DateTimeType::new)
           .put(TYPE_TIMESTAMP, TimestampType::new)
           .put(TYPE_NEW_DATE, TimestampType::new)
           .put(TYPE_DATE, DateType::new)
