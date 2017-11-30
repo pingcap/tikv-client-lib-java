@@ -30,6 +30,24 @@ public class KeyUtils {
     return Arrays.copyOf(key, key.length + 1);
   }
 
+  public static String formatBytes(byte[] bytes) {
+    if (bytes == null) return "null";
+    StringBuilder sb = new StringBuilder();
+    for (int i = 0; i < bytes.length; i++) {
+      int unsignedByte = UnsignedBytes.toInt(bytes[i]);
+      sb.append(unsignedByte);
+      if (i != bytes.length - 1) {
+        sb.append(",");
+      }
+    }
+    return sb.toString();
+  }
+
+  public static String formatBytes(ByteString bytes) {
+    if (bytes == null) return "null";
+    return formatBytes(bytes.toByteArray());
+  }
+
   /**
    * The next key for bytes domain It first plus one at LSB and if LSB overflows, a zero byte is
    * appended at the end Original bytes will be reused if possible

@@ -19,6 +19,7 @@ package com.pingcap.tikv.region;
 
 import com.google.protobuf.ByteString;
 import com.pingcap.tikv.codec.CodecDataInput;
+import com.pingcap.tikv.codec.KeyUtils;
 import com.pingcap.tikv.exception.TiClientInternalException;
 import com.pingcap.tikv.kvproto.Kvrpcpb;
 import com.pingcap.tikv.kvproto.Kvrpcpb.IsolationLevel;
@@ -139,25 +140,13 @@ public class TiRegion implements Serializable {
     return meta;
   }
 
-  /**
-   * records unreachable peer and tries to select another valid peer. It returns false if all peers
-   * are unreachable.
-   *
-   * @param storeID leader store ID
-   * @return false if peers are unreachable.
-   */
-  boolean onRequestFail(long storeID) {
-    if (this.peer.getStoreId() == storeID) {
-      return true;
-    }
-    this.unreachableStores.add(storeID);
-    for (Peer p : this.meta.getPeersList()) {
-      if (unreachableStores.contains(p.getStoreId())) {
-        continue;
-      }
-      this.peer = p;
-      return true;
-    }
-    return false;
+  public String toString() {
+    return String.format("{Region[%d] ConfVer[%d] Version[%d] Store[%d] KeyRange[%s]:[%s]}",
+                          getId(),
+                          getRegionEpoch().getConfVer(),
+                          getRegionEpoch().getVersion(),
+                          getLeader().getStoreId(),
+                          KeyUtils.formatBytes(getStartKey()),
+                          KeyUtils.formatBytes(getEndKey()));
   }
 }

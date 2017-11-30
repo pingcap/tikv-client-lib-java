@@ -17,8 +17,9 @@
 
 package com.pingcap.tikv.region;
 
-import com.google.common.cache.Cache;
-import com.google.common.cache.CacheBuilder;
+
+import static com.pingcap.tikv.codec.KeyUtils.formatBytes;
+import static com.pingcap.tikv.util.KeyRangeUtils.makeRange;
 import com.google.common.collect.RangeMap;
 import com.google.common.collect.TreeRangeMap;
 import com.google.protobuf.ByteString;
@@ -26,20 +27,18 @@ import com.pingcap.tikv.ReadOnlyPDClient;
 import com.pingcap.tikv.TiSession;
 import com.pingcap.tikv.exception.GrpcException;
 import com.pingcap.tikv.exception.TiClientInternalException;
-import com.pingcap.tikv.kvproto.Kvrpcpb.CommandPri;
-import com.pingcap.tikv.kvproto.Kvrpcpb.IsolationLevel;
 import com.pingcap.tikv.kvproto.Metapb.Peer;
-import com.pingcap.tikv.kvproto.Metapb.Region;
 import com.pingcap.tikv.kvproto.Metapb.Store;
 import com.pingcap.tikv.kvproto.Metapb.StoreState;
 import com.pingcap.tikv.util.Comparables;
 import com.pingcap.tikv.util.Pair;
+import java.util.HashMap;
+import java.util.Map;
+import org.apache.log4j.Logger;
 
-import java.util.List;
-
-import static com.pingcap.tikv.util.KeyRangeUtils.makeRange;
 
 public class RegionManager {
+  private static final Logger logger = Logger.getLogger(RegionManager.class);
   private RegionCache cache;
   private final ReadOnlyPDClient pdClient;
 
@@ -51,22 +50,14 @@ public class RegionManager {
   }
 
   public static class RegionCache {
-    private static final int MAX_CACHE_CAPACITY =     4096;
-    private final Cache<Long, TiRegion>               regionCache;
-    private final Cache<Long, Store>                  storeCache;
-    private final RangeMap<Comparable, Long>          keyToRegionIdCache;
+    private final Map<Long, TiRegion>             regionCache;
+    private final Map<Long, Store>                storeCache;
+    private final RangeMap<Comparable, Long>      keyToRegionIdCache;
     private final ReadOnlyPDClient pdClient;
 
     public RegionCache(ReadOnlyPDClient pdClient) {
-      regionCache =
-          CacheBuilder.newBuilder()
-              .maximumSize(MAX_CACHE_CAPACITY)
-              .build();
-
-      storeCache =
-          CacheBuilder.newBuilder()
-              .maximumSize(MAX_CACHE_CAPACITY)
-              .build();
+      regionCache = new HashMap<>();
+      storeCache = new HashMap<>();
 
       keyToRegionIdCache = TreeRangeMap.create();
       this.pdClient = pdClient;
@@ -75,26 +66,41 @@ public class RegionManager {
     public synchronized TiRegion getRegionByKey(ByteString key) {
       Long regionId;
       regionId = keyToRegionIdCache.get(Comparables.wrap(key));
+      if (logger.isDebugEnabled()) {
+        logger.debug(String.format("getRegionByKey key[%s] -> ID[%s]", formatBytes(key), regionId));
+      }
 
       if (regionId == null) {
+        logger.debug("Key not find in keyToRegionIdCache:" + formatBytes(key));
         TiRegion region = pdClient.getRegionByKey(key);
         if (!putRegion(region)) {
           throw new TiClientInternalException("Invalid Region: " + region.toString());
         }
         return region;
       }
-      return regionCache.getIfPresent(regionId);
+      TiRegion region = regionCache.get(regionId);
+      if (logger.isDebugEnabled()) {
+        logger.debug(String.format("getRegionByKey ID[%s] -> Region[%s]", regionId, region));
+      }
+
+      return region;
     }
 
     @SuppressWarnings("unchecked")
     private synchronized boolean putRegion(TiRegion region) {
+      if (logger.isDebugEnabled()) {
+        logger.debug("putRegion: " + region);
+      }
       regionCache.put(region.getId(), region);
       keyToRegionIdCache.put(makeRange(region.getStartKey(), region.getEndKey()), region.getId());
       return true;
     }
 
     private synchronized TiRegion getRegionById(long regionId) {
-      TiRegion region = regionCache.getIfPresent(regionId);
+      TiRegion region = regionCache.get(regionId);
+      if (logger.isDebugEnabled()) {
+        logger.debug(String.format("getRegionByKey ID[%s] -> Region[%s]", regionId, region));
+      }
       if (region == null) {
         region = pdClient.getRegionByID(regionId);
         if (!putRegion(region)) {
@@ -110,31 +116,37 @@ public class RegionManager {
      */
     public synchronized void invalidateRegion(long regionId) {
       try {
-        TiRegion region = regionCache.getIfPresent(regionId);
+        if (logger.isDebugEnabled()) {
+          logger.debug(String.format("invalidateRegion ID[%s]", regionId));
+        }
+        TiRegion region = regionCache.get(regionId);
         keyToRegionIdCache.remove(makeRange(region.getStartKey(), region.getEndKey()));
       } catch (Exception ignore) {
       } finally {
-        regionCache.invalidate(regionId);
+        regionCache.remove(regionId);
       }
     }
 
     public synchronized void invalidateAllRegionForStore(long storeId) {
-      for (TiRegion r : regionCache.asMap().values()) {
+      for (TiRegion r : regionCache.values()) {
         if(r.getLeader().getStoreId() == storeId) {
-          regionCache.invalidate(r.getId());
+          if (logger.isDebugEnabled()) {
+            logger.debug(String.format("invalidateAllRegionForStore Region[%s]", r));
+          }
+          regionCache.remove(r.getId());
           keyToRegionIdCache.remove(makeRange(r.getStartKey(), r.getEndKey()));
         }
       }
     }
 
-    public void invalidateStore(long storeId) {
-      storeCache.invalidate(storeId);
+    public synchronized void invalidateStore(long storeId) {
+      storeCache.remove(storeId);
     }
 
 
     public synchronized Store getStoreById(long id) {
       try {
-        Store store = storeCache.getIfPresent(id);
+        Store store = storeCache.get(id);
         if (store == null) {
           store = pdClient.getStore(id);
         }
@@ -164,7 +176,7 @@ public class RegionManager {
   public Pair<TiRegion, Store> getRegionStorePairByKey(ByteString key) {
     TiRegion region = cache.getRegionByKey(key);
     if (region == null) {
-      throw new TiClientInternalException("Region not exist for key:" + key);
+      throw new TiClientInternalException("Region not exist for key:" + formatBytes(key));
     }
     if (!region.isValid()) {
       throw new TiClientInternalException("Region invalid: " + region.toString());
@@ -188,44 +200,35 @@ public class RegionManager {
     return cache.getStoreById(id);
   }
 
-  public void onRegionStale(long regionID, Peer peer, List<Region> regions) {
-    cache.invalidateRegion(regionID);
-    for (Region r : regions) {
-      cache.putRegion(new TiRegion(r, peer, IsolationLevel.RC, CommandPri.Low));
-    }
+  public void onRegionStale(long regionId) {
+    cache.invalidateRegion(regionId);
   }
 
-  public void updateLeader(long regionID, long storeID) {
-    TiRegion r = cache.getRegionById(regionID);
+  public void updateLeader(long regionId, long storeId) {
+    TiRegion r = cache.getRegionById(regionId);
     if (r != null) {
-      if (!r.switchPeer(storeID)) {
-        // drop region cache using verID
-        cache.invalidateRegion(regionID);
+      if (!r.switchPeer(storeId)) {
+        // drop region cache using verId
+        cache.invalidateRegion(regionId);
       }
     }
   }
 
   /**
    * Clears all cache when a TiKV server does not respond
-   * @param regionID region's id
-   * @param storeID TiKV store's id
+   * @param regionId region's id
+   * @param storeId TiKV store's id
    */
-  public void onRequestFail(long regionID, long storeID) {
-    TiRegion r = cache.getRegionById(regionID);
-    if (r != null) {
-      if (!r.onRequestFail(storeID)) {
-        cache.invalidateRegion(regionID);
-      }
-    }
-
-    cache.invalidateAllRegionForStore(storeID);
+  public void onRequestFail(long regionId, long storeId) {
+    cache.invalidateRegion(regionId);
+    cache.invalidateAllRegionForStore(storeId);
   }
 
   public void invalidateStore(long storeId) {
     cache.invalidateStore(storeId);
   }
 
-  public void invalidateRegion(long regionID) {
-    cache.invalidateRegion(regionID);
+  public void invalidateRegion(long regionId) {
+    cache.invalidateRegion(regionId);
   }
 }

@@ -15,6 +15,9 @@
 
 package com.pingcap.tikv.util;
 
+import static com.pingcap.tikv.util.KeyRangeUtils.formatByteString;
+import static java.util.Objects.requireNonNull;
+
 import com.google.common.collect.ImmutableList;
 import com.google.common.net.HostAndPort;
 import com.google.protobuf.ByteString;
@@ -27,15 +30,11 @@ import com.pingcap.tikv.kvproto.Metapb.Store;
 import com.pingcap.tikv.region.RegionManager;
 import com.pingcap.tikv.region.TiRegion;
 import gnu.trove.list.array.TLongArrayList;
-
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-
-import static com.pingcap.tikv.util.KeyRangeUtils.formatByteString;
-import static java.util.Objects.requireNonNull;
 
 public class RangeSplitter {
   public static class RegionTask implements Serializable {
@@ -74,16 +73,13 @@ public class RangeSplitter {
     @Override
     public String toString() {
       StringBuilder sb = new StringBuilder();
-      sb.append("[Region:");
-      sb.append("id=").append(region.getId());
-      sb.append(" start=").append(formatByteString(region.getStartKey()));
-      sb.append(" end=").append(formatByteString(region.getEndKey()));
-      sb.append("]");
+      sb.append(String.format("Region [%s]", region));
+      sb.append(" ");
 
       for (KeyRange range : ranges) {
         sb.append(
             String.format(
-                "Range Start: %s, Range End: %s",
+                "Range Start: [%s] Range End: [%s]",
                 formatByteString(range.getStart()), formatByteString(range.getEnd())));
       }
 

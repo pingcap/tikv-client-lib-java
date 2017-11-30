@@ -41,9 +41,10 @@ import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.concurrent.ExecutorCompletionService;
 import java.util.function.Function;
+import org.apache.log4j.Logger;
 
 public abstract class SelectIterator<T, RawT> implements Iterator<T> {
-
+  private static final Logger logger = Logger.getLogger(SelectIterator.class);
   protected final TiSession session;
   protected final List<RegionTask> regionTasks;
 
@@ -131,6 +132,9 @@ public abstract class SelectIterator<T, RawT> implements Iterator<T> {
     RegionStoreClient client;
     client = RegionStoreClient.create(region, store, session);
     try {
+      if (logger.isDebugEnabled()) {
+        logger.debug(String.format("RegionTask [%s]", regionTask));
+      }
       SelectResponse resp = client.coprocess(request, ranges);
       // if resp is null, then indicates eof.
       if (resp == null) {
@@ -142,6 +146,12 @@ public abstract class SelectIterator<T, RawT> implements Iterator<T> {
       List<Chunk> resultChunk = new ArrayList<>();
       List<RegionTask> splitTasks = RangeSplitter.newSplitter(session.getRegionManager()).splitRangeByRegion(ranges);
       for(RegionTask t : splitTasks) {
+        if (logger.isDebugEnabled()) {
+          logger.debug(
+              String.format("createClientAndSendReq split for stale region, old region[%s] - new region[%s]",
+              regionTask.getRegion(),
+              t.getRegion()));
+        }
         List<Chunk> resFromCurTask = createClientAndSendReq(t);
         if(resFromCurTask != null) {
           resultChunk.addAll(resFromCurTask);

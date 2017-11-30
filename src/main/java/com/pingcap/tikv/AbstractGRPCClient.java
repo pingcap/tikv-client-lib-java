@@ -30,7 +30,7 @@ import org.apache.log4j.Logger;
 public abstract class AbstractGRPCClient<
         BlockingStubT extends AbstractStub<BlockingStubT>, StubT extends AbstractStub<StubT>>
     implements AutoCloseable {
-  final Logger logger = Logger.getLogger(this.getClass());
+  protected final Logger logger = Logger.getLogger(this.getClass());
   protected TiSession session;
   protected TiConfiguration conf;
 
@@ -51,7 +51,9 @@ public abstract class AbstractGRPCClient<
   protected <ReqT, RespT> RespT callWithRetry(MethodDescriptor<ReqT, RespT> method,
                                               Supplier<ReqT> requestFactory,
                                               ErrorHandler<RespT> handler) {
-    logger.debug(String.format("Calling %s...", method.getFullMethodName()));
+    if (logger.isTraceEnabled()) {
+      logger.trace(String.format("Calling %s...", method.getFullMethodName()));
+    }
     RetryPolicy.Builder<RespT> builder = new Builder<>(conf.getRetryTimes(), conf.getBackOffClass());
     RespT resp =
         builder.create(handler)
@@ -62,7 +64,9 @@ public abstract class AbstractGRPCClient<
                       stub.getChannel(), method, stub.getCallOptions(), requestFactory.get());
                 },
                 method.getFullMethodName());
-    logger.debug(String.format("leaving %s...", method.getFullMethodName()));
+    if (logger.isTraceEnabled()) {
+      logger.trace(String.format("leaving %s...", method.getFullMethodName()));
+    }
     return resp;
   }
 

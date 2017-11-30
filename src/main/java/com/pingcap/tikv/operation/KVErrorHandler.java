@@ -17,6 +17,8 @@
 
 package com.pingcap.tikv.operation;
 
+import com.google.protobuf.ByteString;
+import com.pingcap.tikv.codec.KeyUtils;
 import com.pingcap.tikv.exception.GrpcRegionStaleException;
 import com.pingcap.tikv.kvproto.Errorpb;
 import com.pingcap.tikv.region.RegionErrorReceiver;
@@ -48,6 +50,7 @@ public class KVErrorHandler<RespT> implements ErrorHandler<RespT> {
   public void handle(RespT resp) {
     // if resp is null, then region maybe out of dated. we need handle this on RegionManager.
     if (resp == null) {
+      logger.warn(String.format("Request Failed with unknown reason for region region [%s]", ctxRegion));
       regionManager.onRequestFail(ctxRegion.getId(), ctxRegion.getLeader().getStoreId());
       return;
     }
@@ -56,11 +59,8 @@ public class KVErrorHandler<RespT> implements ErrorHandler<RespT> {
     if (error != null) {
       if (error.hasNotLeader()) {
         // update Leader here
-        logger.warn(String.format("Thread %s: NotLeader Error with region id %d",
-                                  Thread.currentThread().getId(), error.getNotLeader().getRegionId()));
-        logger.warn(String.format("Thread %s: origin call with region id %d and store id %d",
-                                  Thread.currentThread().getId(),
-                                  ctxRegion.getId(),
+        logger.warn(String.format("NotLeader Error with region id %d and store id %d",
+            ctxRegion.getId(),
             ctxRegion.getLeader().getStoreId()));
         long newStoreId = error.getNotLeader().getLeader().getStoreId();
         regionManager.updateLeader(ctxRegion.getId(), newStoreId);
@@ -68,37 +68,38 @@ public class KVErrorHandler<RespT> implements ErrorHandler<RespT> {
         recv.onNotLeader(this.regionManager.getRegionById(ctxRegion.getId()),
                          this.regionManager.getStoreById(newStoreId));
         throw new StatusRuntimeException(Status.fromCode(Status.Code.UNAVAILABLE).withDescription(error.toString()));
-      }
-      if (error.hasStoreNotMatch()) {
-        logger.warn(String.format("Thread %s: Store Not Match happened with region id %d, store id %d",
-                                  Thread.currentThread().getId(), ctxRegion.getId(),
+      } else if (error.hasStoreNotMatch()) {
+        logger.warn(String.format("Store Not Match happened with region id %d, store id %d",
+                                  ctxRegion.getId(),
                                   ctxRegion.getLeader().getStoreId()));
 
         regionManager.invalidateRegion(ctxRegion.getId());
         regionManager.invalidateStore(ctxRegion.getLeader().getStoreId());
         recv.onStoreNotMatch();
         throw new StatusRuntimeException(Status.fromCode(Status.Code.UNAVAILABLE).withDescription(error.toString()));
-      }
-
-      if (error.hasStaleEpoch()) {
-        this.regionManager.onRegionStale(
-            ctxRegion.getId(), ctxRegion.getLeader(), error.getStaleEpoch().getNewRegionsList());
+      } else if (error.hasStaleEpoch()) {
+        logger.warn(String.format("Stale Epoch encountered for region [%s]", ctxRegion.getId()));
+        this.regionManager.onRegionStale(ctxRegion.getId());
         throw new GrpcRegionStaleException(error.toString());
-      }
-
-      if (error.hasServerIsBusy()) {
+      } else if (error.hasServerIsBusy()) {
+        logger.warn(String.format("Server is busy for region [%s]", ctxRegion));
+        throw new StatusRuntimeException(Status.fromCode(Status.Code.UNAVAILABLE).withDescription(error.toString()));
+      } else if (error.hasStaleCommand()) {
+        logger.warn(String.format("Stale command for region [%s]", ctxRegion));
+        throw new StatusRuntimeException(Status.fromCode(Status.Code.UNAVAILABLE).withDescription(error.toString()));
+      } else if (error.hasRaftEntryTooLarge()) {
+        logger.warn(String.format("Raft too large for region [%s]", ctxRegion));
+        throw new StatusRuntimeException(Status.fromCode(Status.Code.UNAVAILABLE).withDescription(error.toString()));
+      } else if (error.hasKeyNotInRegion()) {
+        ByteString invalidKey = error.getKeyNotInRegion().getKey();
+        logger.warn(String.format("Key not in region [%s] for key [%s]", ctxRegion, KeyUtils.formatBytes(invalidKey)));
+      } else {
+        logger.warn(String.format("Unknown error for region [%s]", error));
+        // for other errors, we only drop cache here and throw a retryable exception.
+        regionManager.invalidateRegion(ctxRegion.getId());
+        regionManager.invalidateStore(ctxRegion.getLeader().getStoreId());
         throw new StatusRuntimeException(Status.fromCode(Status.Code.UNAVAILABLE).withDescription(error.toString()));
       }
-
-      if (error.hasStaleCommand()) {
-        throw new StatusRuntimeException(Status.fromCode(Status.Code.UNAVAILABLE).withDescription(error.toString()));
-      }
-
-      if (error.hasRaftEntryTooLarge()) {
-        throw new StatusRuntimeException(Status.fromCode(Status.Code.UNAVAILABLE).withDescription(error.toString()));
-      }
-      // for other errors, we only drop cache here and throw a retryable exception.
-      regionManager.invalidateRegion(ctxRegion.getId());
     }
   }
 }
