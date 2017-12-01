@@ -3,6 +3,7 @@
 *.iml
 target
 proto
+src/main/java/com/pingcap/tikv/TiVersion.java
 
 # ignore eclipse configuration 
 .project
