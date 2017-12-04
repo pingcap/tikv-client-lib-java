@@ -15,10 +15,10 @@
 
 package com.pingcap.tikv.expression;
 
+import com.pingcap.tikv.types.DataType;
+
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
-
-import com.pingcap.tikv.types.DataType;
 
 public abstract class TiUnaryFunctionExpression extends TiFunctionExpression {
   private DataType dataType;

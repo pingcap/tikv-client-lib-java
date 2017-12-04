@@ -15,18 +15,15 @@
 
 package com.pingcap.tikv;
 
-import static com.pingcap.tikv.util.KeyRangeUtils.makeRange;
-
 import com.google.common.collect.Range;
 import com.google.protobuf.ByteString;
 import com.pingcap.tikv.exception.TiClientInternalException;
 import com.pingcap.tikv.kvproto.Kvrpcpb.KvPair;
 import com.pingcap.tikv.kvproto.Metapb.Store;
-import com.pingcap.tikv.meta.TiSelectRequest;
+import com.pingcap.tikv.meta.TiDAGRequest;
 import com.pingcap.tikv.meta.TiTimestamp;
-import com.pingcap.tikv.operation.IndexScanIterator;
-import com.pingcap.tikv.operation.ScanIterator;
-import com.pingcap.tikv.operation.SelectIterator;
+import com.pingcap.tikv.operation.iterator.IndexScanIterator;
+import com.pingcap.tikv.operation.iterator.ScanIterator;
 import com.pingcap.tikv.region.RegionStoreClient;
 import com.pingcap.tikv.region.TiRegion;
 import com.pingcap.tikv.row.Row;
@@ -34,9 +31,14 @@ import com.pingcap.tikv.util.Comparables;
 import com.pingcap.tikv.util.Pair;
 import com.pingcap.tikv.util.RangeSplitter;
 import com.pingcap.tikv.util.RangeSplitter.RegionTask;
+
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
+
+import static com.pingcap.tikv.operation.iterator.CoprocessIterator.getHandleIterator;
+import static com.pingcap.tikv.operation.iterator.CoprocessIterator.getRowIterator;
+import static com.pingcap.tikv.util.KeyRangeUtils.makeRange;
 
 public class Snapshot {
   private final TiTimestamp timestamp;
@@ -78,20 +80,20 @@ public class Snapshot {
   /**
    * Issue a table read request
    *
-   * @param selReq select request for coprocessor
+   * @param dagRequest select request for coprocessor
    * @return a Iterator that contains all result from this select request.
    */
-  public Iterator<Row> tableRead(TiSelectRequest selReq) {
-    if (selReq.isIndexScan()) {
-      Iterator<Long> iter = SelectIterator.getHandleIterator(
-          selReq,
-          RangeSplitter.newSplitter(session.getRegionManager()).splitRangeByRegion(selReq.getRanges()),
+  public Iterator<Row> tableRead(TiDAGRequest dagRequest) {
+    if (dagRequest.isIndexScan()) {
+      Iterator<Long> iter = getHandleIterator(
+          dagRequest,
+          RangeSplitter.newSplitter(session.getRegionManager()).splitRangeByRegion(dagRequest.getRanges()),
           session);
-      return new IndexScanIterator(this, selReq, iter);
+      return new IndexScanIterator(this, dagRequest, iter);
     } else {
-      return SelectIterator.getRowIterator(
-          selReq,
-          RangeSplitter.newSplitter(session.getRegionManager()).splitRangeByRegion(selReq.getRanges()),
+      return getRowIterator(
+          dagRequest,
+          RangeSplitter.newSplitter(session.getRegionManager()).splitRangeByRegion(dagRequest.getRanges()),
           session);
     }
   }
@@ -100,20 +102,20 @@ public class Snapshot {
    * Below is lower level API for env like Spark which already did key range split Perform table
    * scan
    *
-   * @param selReq SelectRequest for coprocessor
+   * @param dagRequest SelectRequest for coprocessor
    * @param task RegionTask of the coprocessor request to send
    * @return Row iterator to iterate over resulting rows
    */
-  public Iterator<Row> tableRead(TiSelectRequest selReq, List<RegionTask> task) {
-    if (selReq.isIndexScan()) {
-      Iterator<Long> iter = SelectIterator.getHandleIterator(
-          selReq,
+  public Iterator<Row> tableRead(TiDAGRequest dagRequest, List<RegionTask> task) {
+    if (dagRequest.isIndexScan()) {
+      Iterator<Long> iter = getHandleIterator(
+          dagRequest,
           task,
           session);
-      return new IndexScanIterator(this, selReq, iter);
+      return new IndexScanIterator(this, dagRequest, iter);
     } else {
-      return SelectIterator.getRowIterator(
-          selReq,
+      return getRowIterator(
+          dagRequest,
           task,
           session);
     }
@@ -141,7 +143,7 @@ public class Snapshot {
         curKeyRange = makeRange(curRegion.getStartKey(), curRegion.getEndKey());
 
         try (RegionStoreClient client =
-            RegionStoreClient.create(lastPair.first, lastPair.second, getSession())) {
+                 RegionStoreClient.create(lastPair.first, lastPair.second, getSession())) {
           List<KvPair> partialResult = client.batchGet(keyBuffer, timestamp.getVersion());
           // TODO: Add lock check
           result.addAll(partialResult);

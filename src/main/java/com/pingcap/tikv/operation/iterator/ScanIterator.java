@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-package com.pingcap.tikv.operation;
+package com.pingcap.tikv.operation.iterator;
 
 import com.google.common.collect.Range;
 import com.google.protobuf.ByteString;

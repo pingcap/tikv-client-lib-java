@@ -15,9 +15,6 @@
 
 package com.pingcap.tikv.meta;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
-
 import com.google.common.collect.ImmutableList;
 import com.google.protobuf.ByteString;
 import com.pingcap.tikv.expression.TiByItem;
@@ -26,20 +23,22 @@ import com.pingcap.tikv.expression.TiConstant;
 import com.pingcap.tikv.expression.TiExpr;
 import com.pingcap.tikv.expression.aggregate.Min;
 import com.pingcap.tikv.expression.aggregate.Sum;
-import com.pingcap.tikv.expression.scalar.Divide;
 import com.pingcap.tikv.expression.scalar.LessEqual;
-import com.pingcap.tikv.expression.scalar.Minus;
 import com.pingcap.tikv.expression.scalar.Plus;
 import com.pingcap.tikv.kvproto.Coprocessor;
 import com.pingcap.tikv.types.DataTypeFactory;
 import com.pingcap.tikv.types.Types;
+import org.junit.Test;
+
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
-import org.junit.Test;
 
-public class TiSelectRequestTest {
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
+
+public class TiDAGRequestTest {
   private static TiTableInfo createTable() {
     return new MetaUtils.TableBuilder()
         .name("testTable")
@@ -54,7 +53,7 @@ public class TiSelectRequestTest {
   @Test
   public void testSerializable() throws Exception {
     TiTableInfo table = createTable();
-    TiSelectRequest selReq = new TiSelectRequest();
+    TiDAGRequest selReq = new TiDAGRequest(TiDAGRequest.PushDownType.NORMAL);
     selReq
         .addRequiredColumn(TiColumnRef.create("c1", table))
         .addRequiredColumn(TiColumnRef.create("c2", table))
@@ -62,14 +61,12 @@ public class TiSelectRequestTest {
         .addAggregate(new Min(TiColumnRef.create("c1", table)))
         .addWhere(new Plus(TiConstant.create(1L), TiConstant.create(2L)))
         .addGroupByItem(
-            TiByItem.create(
-                new Divide(TiColumnRef.create("c2", table), TiConstant.create(100L)), true))
+            TiByItem.create(TiColumnRef.create("c2", table), true))
         .addOrderByItem(
-            TiByItem.create(
-                new Minus(TiColumnRef.create("c2", table), TiConstant.create(999)), false))
+            TiByItem.create(TiColumnRef.create("c3", table), false))
         .setTableInfo(table)
         .setStartTs(666)
-        .setTruncateMode(TiSelectRequest.TruncateMode.IgnoreTruncation)
+        .setTruncateMode(TiDAGRequest.TruncateMode.IgnoreTruncation)
         .setDistinct(true)
         .setIndexInfo(table.getIndices().get(0))
         .setHaving(new LessEqual(TiColumnRef.create("c3", table), TiConstant.create(2L)))
@@ -87,11 +84,11 @@ public class TiSelectRequestTest {
 
     ByteArrayInputStream byteInStream = new ByteArrayInputStream(byteOutStream.toByteArray());
     ObjectInputStream ois = new ObjectInputStream(byteInStream);
-    TiSelectRequest derselReq = (TiSelectRequest) ois.readObject();
+    TiDAGRequest derselReq = (TiDAGRequest) ois.readObject();
     assertTrue(selectRequestEquals(selReq, derselReq));
   }
 
-  public static boolean selectRequestEquals(TiSelectRequest lhs, TiSelectRequest rhs) {
+  public static boolean selectRequestEquals(TiDAGRequest lhs, TiDAGRequest rhs) {
     assertEquals(lhs.getFields().size(), rhs.getFields().size());
     for (int i = 0; i < lhs.getFields().size(); i++) {
       TiExpr lhsExpr = lhs.getFields().get(i);

@@ -17,11 +17,6 @@
 
 package com.pingcap.tikv.operation;
 
-import static com.pingcap.tikv.types.Types.TYPE_BLOB;
-import static com.pingcap.tikv.types.Types.TYPE_NEW_DECIMAL;
-import static com.pingcap.tikv.types.Types.TYPE_VARCHAR;
-import static org.junit.Assert.assertEquals;
-
 import com.google.protobuf.ByteString;
 import com.pingcap.tikv.catalog.CatalogTransaction;
 import com.pingcap.tikv.expression.TiByItem;
@@ -30,12 +25,17 @@ import com.pingcap.tikv.expression.TiConstant;
 import com.pingcap.tikv.expression.TiExpr;
 import com.pingcap.tikv.expression.aggregate.Sum;
 import com.pingcap.tikv.expression.scalar.Plus;
-import com.pingcap.tikv.meta.TiSelectRequest;
+import com.pingcap.tikv.meta.TiDAGRequest;
 import com.pingcap.tikv.meta.TiTableInfo;
 import com.pingcap.tikv.types.DataType;
 import com.pingcap.tikv.types.DataTypeFactory;
-import java.util.List;
 import org.junit.Test;
+
+import java.util.List;
+
+import static com.pingcap.tikv.types.Types.TYPE_NEW_DECIMAL;
+import static com.pingcap.tikv.types.Types.TYPE_VARCHAR;
+import static org.junit.Assert.assertEquals;
 
 public class SchemaInferTest {
   private final String table29 =
@@ -52,9 +52,9 @@ public class SchemaInferTest {
   @Test
   public void simpleSelectSchemaInferTest() throws Exception {
     // select name from t1;
-    TiSelectRequest selectRequest = new TiSelectRequest();
-    selectRequest.getFields().add(name);
-    List<DataType> dataTypes = SchemaInfer.create(selectRequest).getTypes();
+    TiDAGRequest tiDAGRequest = new TiDAGRequest(TiDAGRequest.PushDownType.NORMAL);
+    tiDAGRequest.getFields().add(name);
+    List<DataType> dataTypes = SchemaInfer.create(tiDAGRequest).getTypes();
     assertEquals(1, dataTypes.size());
     assertEquals(DataTypeFactory.of(TYPE_VARCHAR), dataTypes.get(0));
   }
@@ -62,38 +62,36 @@ public class SchemaInferTest {
   @Test
   public void selectAggSchemaInferTest() throws Exception {
     // select sum(number) from t1;
-    // SingleGroup is added as dummy variable.
-    TiSelectRequest selectRequest = new TiSelectRequest();
-    selectRequest.addAggregate(sum);
-    List<DataType> dataTypes = SchemaInfer.create(selectRequest).getTypes();
-    assertEquals(2, dataTypes.size());
-    assertEquals(DataTypeFactory.of(TYPE_BLOB), dataTypes.get(0));
-    assertEquals(DataTypeFactory.of(TYPE_NEW_DECIMAL), dataTypes.get(1));
+    TiDAGRequest tiDAGRequest = new TiDAGRequest(TiDAGRequest.PushDownType.NORMAL);
+    tiDAGRequest.addAggregate(sum);
+    List<DataType> dataTypes = SchemaInfer.create(tiDAGRequest).getTypes();
+    assertEquals(1, dataTypes.size());
+    assertEquals(DataTypeFactory.of(TYPE_NEW_DECIMAL), dataTypes.get(0));
   }
 
   @Test
   public void selectAggWithGroupBySchemaInferTest() throws Exception {
     // select sum(number) from t1 group by name;
-    TiSelectRequest selectRequest = new TiSelectRequest();
-    selectRequest.getFields().add(name);
-    selectRequest.addAggregate(sum);
-    selectRequest.getGroupByItems().add(complexGroupBy);
-    List<DataType> dataTypes = SchemaInfer.create(selectRequest).getTypes();
+    TiDAGRequest dagRequest = new TiDAGRequest(TiDAGRequest.PushDownType.NORMAL);
+    dagRequest.getFields().add(name);
+    dagRequest.addAggregate(sum);
+    dagRequest.getGroupByItems().add(simpleGroupBy);
+    List<DataType> dataTypes = SchemaInfer.create(dagRequest).getTypes();
     assertEquals(2, dataTypes.size());
-    assertEquals(DataTypeFactory.of(TYPE_BLOB), dataTypes.get(0));
-    assertEquals(DataTypeFactory.of(TYPE_NEW_DECIMAL), dataTypes.get(1));
+    assertEquals(DataTypeFactory.of(TYPE_NEW_DECIMAL), dataTypes.get(0));
+    assertEquals(DataTypeFactory.of(TYPE_VARCHAR), dataTypes.get(1));
   }
 
   @Test
   public void complexGroupBySelectTest() throws Exception {
     // select sum(number) from t1 group by name + "1";
-    TiSelectRequest selectRequest = new TiSelectRequest();
-    selectRequest.getFields().add(name);
-    selectRequest.addAggregate(sum);
-    selectRequest.getGroupByItems().add(complexGroupBy);
-    List<DataType> dataTypes = SchemaInfer.create(selectRequest).getTypes();
+    TiDAGRequest dagRequest = new TiDAGRequest(TiDAGRequest.PushDownType.NORMAL);
+    dagRequest.getFields().add(name);
+    dagRequest.addAggregate(sum);
+    dagRequest.getGroupByItems().add(complexGroupBy);
+    List<DataType> dataTypes = SchemaInfer.create(dagRequest).getTypes();
     assertEquals(2, dataTypes.size());
-    assertEquals(DataTypeFactory.of(TYPE_BLOB), dataTypes.get(0));
-    assertEquals(DataTypeFactory.of(TYPE_NEW_DECIMAL), dataTypes.get(1));
+    assertEquals(DataTypeFactory.of(TYPE_NEW_DECIMAL), dataTypes.get(0));
+    assertEquals(DataTypeFactory.of(TYPE_VARCHAR), dataTypes.get(1));
   }
 }

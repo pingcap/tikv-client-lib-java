@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-package com.pingcap.tikv.operation;
+package com.pingcap.tikv.operation.iterator;
 
 import com.google.common.collect.ImmutableList;
 import com.google.protobuf.ByteString;
@@ -27,6 +27,7 @@ import com.pingcap.tikv.exception.TiClientInternalException;
 import com.pingcap.tikv.kvproto.Coprocessor.KeyRange;
 import com.pingcap.tikv.kvproto.Metapb.Store;
 import com.pingcap.tikv.meta.TiSelectRequest;
+import com.pingcap.tikv.operation.SchemaInfer;
 import com.pingcap.tikv.region.RegionStoreClient;
 import com.pingcap.tikv.region.TiRegion;
 import com.pingcap.tikv.row.Row;
@@ -35,6 +36,7 @@ import com.pingcap.tikv.row.RowReaderFactory;
 import com.pingcap.tikv.types.DataType;
 import com.pingcap.tikv.util.RangeSplitter;
 import com.pingcap.tikv.util.RangeSplitter.RegionTask;
+
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
@@ -62,7 +64,7 @@ public abstract class SelectIterator<T, RawT> implements Iterator<T> {
     return new SelectIterator<Row, ByteString>(req.buildScan(false),
                                                regionTasks,
                                                session,
-                                               SchemaInfer.create(req),
+                                               SchemaInfer.create(null),
                                                (chunks) -> ChunkIterator.getRawBytesChunkIterator(chunks)) {
       @Override
       public Row next() {
@@ -83,7 +85,7 @@ public abstract class SelectIterator<T, RawT> implements Iterator<T> {
     return new SelectIterator<Long, Long>(req.buildScan(true),
                                           regionTasks,
                                           session,
-                                          SchemaInfer.create(req),
+                                          SchemaInfer.create(null),
                                           (chunks) -> ChunkIterator.getHandleChunkIterator(chunks)) {
       @Override
       public Long next() {

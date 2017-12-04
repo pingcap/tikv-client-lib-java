@@ -17,11 +17,10 @@ package com.pingcap.tikv.expression.scalar;
 
 import com.pingcap.tidb.tipb.ExprType;
 import com.pingcap.tikv.expression.TiExpr;
-import com.pingcap.tikv.expression.TiFunctionExpression;
 import com.pingcap.tikv.types.DataType;
 import com.pingcap.tikv.types.IntegerType;
 
-public class If extends TiFunctionExpression {
+public class If extends TiScalarFunction {
   public If(TiExpr... arg) {
     super(arg);
   }
@@ -35,9 +34,6 @@ public class If extends TiFunctionExpression {
   public String getName() {
     return "If";
   }
-
-  @Override
-  protected void validateArguments(TiExpr... args) throws RuntimeException {}
 
   @Override
   public DataType getType() {

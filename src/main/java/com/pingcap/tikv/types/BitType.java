@@ -19,11 +19,16 @@ package com.pingcap.tikv.types;
 
 import com.pingcap.tikv.meta.TiColumnInfo;
 
-/**
- * We add this type in order to recognize BitType in spark strategy
- */
 public class BitType extends IntegerType {
+  private BitType(int tp) {
+    super(tp);
+  }
+
   protected BitType(TiColumnInfo.InternalTypeHolder holder) {
     super(holder);
+  }
+
+  static BitType of(int tp) {
+    return new BitType(tp);
   }
 }

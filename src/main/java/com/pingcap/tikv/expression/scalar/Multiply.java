@@ -16,11 +16,9 @@
 package com.pingcap.tikv.expression.scalar;
 
 import com.pingcap.tidb.tipb.ExprType;
-import com.pingcap.tikv.expression.TiBinaryFunctionExpression;
 import com.pingcap.tikv.expression.TiExpr;
-import com.pingcap.tikv.types.DataType;
 
-public class Multiply extends TiBinaryFunctionExpression {
+public class Multiply extends TiScalarFunction {
   public Multiply(TiExpr lhs, TiExpr rhs) {
     super(lhs, rhs);
   }
@@ -33,11 +31,5 @@ public class Multiply extends TiBinaryFunctionExpression {
   @Override
   public String getName() {
     return "Multiply";
-  }
-
-  @Override
-  public DataType getType() {
-    // TODO: Add type inference
-    throw new UnsupportedOperationException();
   }
 }

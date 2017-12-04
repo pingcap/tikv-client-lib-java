@@ -16,11 +16,11 @@
 package com.pingcap.tikv.expression.scalar;
 
 import com.pingcap.tidb.tipb.ExprType;
-import com.pingcap.tikv.expression.TiBinaryFunctionExpression;
+import com.pingcap.tidb.tipb.ScalarFuncSig;
 import com.pingcap.tikv.expression.TiExpr;
 import com.pingcap.tikv.types.DataType;
 
-public class BitXor extends TiBinaryFunctionExpression {
+public class BitXor extends TiScalarFunction {
   public BitXor(TiExpr lhs, TiExpr rhs) {
     super(lhs, rhs);
   }
@@ -38,5 +38,10 @@ public class BitXor extends TiBinaryFunctionExpression {
   @Override
   public DataType getType() {
     throw new UnsupportedOperationException();
+  }
+
+  @Override
+  ScalarFuncSig getSignature() {
+    return ScalarFuncSig.BitXorSig;
   }
 }

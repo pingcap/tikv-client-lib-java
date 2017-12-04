@@ -15,20 +15,23 @@
 
 package com.pingcap.tikv;
 
-import static io.grpc.stub.ClientCalls.asyncBidiStreamingCall;
-
 import com.pingcap.tikv.operation.ErrorHandler;
 import com.pingcap.tikv.policy.RetryNTimes.Builder;
 import com.pingcap.tikv.policy.RetryPolicy;
+import com.pingcap.tikv.streaming.StreamingResponse;
 import io.grpc.MethodDescriptor;
 import io.grpc.stub.AbstractStub;
 import io.grpc.stub.ClientCalls;
 import io.grpc.stub.StreamObserver;
-import java.util.function.Supplier;
 import org.apache.log4j.Logger;
 
+import java.util.function.Supplier;
+
+import static io.grpc.stub.ClientCalls.asyncBidiStreamingCall;
+import static io.grpc.stub.ClientCalls.blockingServerStreamingCall;
+
 public abstract class AbstractGRPCClient<
-        BlockingStubT extends AbstractStub<BlockingStubT>, StubT extends AbstractStub<StubT>>
+    BlockingStubT extends AbstractStub<BlockingStubT>, StubT extends AbstractStub<StubT>>
     implements AutoCloseable {
   protected final Logger logger = Logger.getLogger(this.getClass());
   protected TiSession session;
@@ -42,7 +45,7 @@ public abstract class AbstractGRPCClient<
   public TiSession getSession() {
     return session;
   }
-  
+
   public TiConfiguration getConf() {
     return conf;
   }
@@ -110,6 +113,33 @@ public abstract class AbstractGRPCClient<
                 method.getFullMethodName());
     logger.debug(String.format("leaving %s...", method.getFullMethodName()));
     return observer;
+  }
+
+  protected <ReqT, RespT> StreamingResponse callServerStreamingWithRetry(
+      MethodDescriptor<ReqT, RespT> method,
+      Supplier<ReqT> requestFactory,
+      ErrorHandler<StreamingResponse> handler) {
+    logger.debug(String.format("Calling %s...", method.getFullMethodName()));
+
+    RetryPolicy.Builder<StreamingResponse> builder =
+        new Builder<>(conf.getRetryTimes(), conf.getBackOffClass());
+    StreamingResponse response =
+        builder.create(handler)
+            .callWithRetry(
+                () -> {
+                  BlockingStubT stub = getBlockingStub();
+                  return new StreamingResponse(
+                      blockingServerStreamingCall(
+                          stub.getChannel(),
+                          method,
+                          stub.getCallOptions(),
+                          requestFactory.get()
+                      )
+                  );
+                },
+                method.getFullMethodName());
+    logger.debug(String.format("leaving %s...", method.getFullMethodName()));
+    return response;
   }
 
   protected abstract BlockingStubT getBlockingStub();

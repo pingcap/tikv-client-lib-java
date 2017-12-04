@@ -15,14 +15,12 @@
 
 package com.pingcap.tikv;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
-
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 import com.google.protobuf.ByteString;
-import com.pingcap.tidb.tipb.SelectRequest;
+import com.pingcap.tidb.tipb.DAGRequest;
+import com.pingcap.tidb.tipb.ExecType;
+import com.pingcap.tidb.tipb.Executor;
 import com.pingcap.tidb.tipb.SelectResponse;
 import com.pingcap.tikv.kvproto.Coprocessor.KeyRange;
 import com.pingcap.tikv.kvproto.Kvrpcpb;
@@ -32,12 +30,15 @@ import com.pingcap.tikv.kvproto.Metapb;
 import com.pingcap.tikv.region.RegionStoreClient;
 import com.pingcap.tikv.region.TiRegion;
 import com.pingcap.tikv.util.ZeroBackOff;
-import java.util.List;
-import java.util.Set;
-import java.util.stream.Collectors;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+
+import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
+
+import static org.junit.Assert.*;
 
 public class RegionStoreClientTest {
   private KVMockServer server;
@@ -211,8 +212,13 @@ public class RegionStoreClientTest {
     server.put("key5", "value5");
     server.put("key6", "value6");
     server.put("key7", "value7");
-    SelectRequest.Builder builder = SelectRequest.newBuilder();
+    DAGRequest.Builder builder = DAGRequest.newBuilder();
     builder.setStartTs(1);
+    builder.addExecutors(
+        Executor.newBuilder()
+            .setTp(ExecType.TypeTableScan)
+            .build()
+    );
     List<KeyRange> keyRanges =
         ImmutableList.of(
             createByteStringRange(ByteString.copyFromUtf8("key1"), ByteString.copyFromUtf8("key4")),
@@ -232,7 +238,7 @@ public class RegionStoreClientTest {
             .stream()
             .allMatch(results::contains));
 
-    builder = SelectRequest.newBuilder();
+    builder = DAGRequest.newBuilder();
     builder.setStartTs(1);
     keyRanges =
         ImmutableList.of(

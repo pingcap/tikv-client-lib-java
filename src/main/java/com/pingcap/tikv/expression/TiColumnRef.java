@@ -19,6 +19,7 @@ import com.pingcap.tidb.tipb.Expr;
 import com.pingcap.tidb.tipb.ExprType;
 import com.pingcap.tikv.codec.CodecDataOutput;
 import com.pingcap.tikv.exception.TiClientInternalException;
+import com.pingcap.tikv.exception.TiExpressionException;
 import com.pingcap.tikv.meta.TiColumnInfo;
 import com.pingcap.tikv.meta.TiTableInfo;
 import com.pingcap.tikv.types.DataType;
@@ -70,7 +71,13 @@ public class TiColumnRef implements TiExpr {
     Expr.Builder builder = Expr.newBuilder();
     builder.setTp(ExprType.ColumnRef);
     CodecDataOutput cdo = new CodecDataOutput();
-    IntegerType.writeLong(cdo, columnInfo.getId());
+    // After switching to DAG request mode, expression value
+    // should be the index of table columns we provided in
+    // the first executor of a DAG request.
+    //
+    // Here we use the original columnID minus 1 to represent
+    // what we want.
+    IntegerType.writeLong(cdo, columnInfo.getId() - 1);
     builder.setVal(cdo.toByteString());
     return builder.build();
   }

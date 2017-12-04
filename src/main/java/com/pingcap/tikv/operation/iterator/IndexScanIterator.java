@@ -13,17 +13,18 @@
  * limitations under the License.
  */
 
-package com.pingcap.tikv.operation;
+package com.pingcap.tikv.operation.iterator;
 
 import com.pingcap.tikv.Snapshot;
 import com.pingcap.tikv.TiConfiguration;
 import com.pingcap.tikv.TiSession;
 import com.pingcap.tikv.exception.TiClientInternalException;
-import com.pingcap.tikv.meta.TiSelectRequest;
+import com.pingcap.tikv.meta.TiDAGRequest;
 import com.pingcap.tikv.row.Row;
 import com.pingcap.tikv.util.RangeSplitter;
 import com.pingcap.tikv.util.RangeSplitter.RegionTask;
 import gnu.trove.list.array.TLongArrayList;
+
 import java.util.Iterator;
 import java.util.List;
 import java.util.NoSuchElementException;
@@ -32,7 +33,7 @@ import java.util.concurrent.ExecutorCompletionService;
 
 public class IndexScanIterator implements Iterator<Row> {
   private final Iterator<Long> handleIterator;
-  private final TiSelectRequest selReq;
+  private final TiDAGRequest dagReq;
   private final Snapshot snapshot;
   private Iterator<Row> rowIterator;
   private final ExecutorCompletionService<Iterator<Row>> completionService;
@@ -40,10 +41,10 @@ public class IndexScanIterator implements Iterator<Row> {
   private int batchCount = 0;
   private final int batchSize;
 
-  public IndexScanIterator(Snapshot snapshot, TiSelectRequest req, Iterator<Long> handleIterator) {
+  public IndexScanIterator(Snapshot snapshot, TiDAGRequest req, Iterator<Long> handleIterator) {
     TiSession session = snapshot.getSession();
     TiConfiguration conf = session.getConf();
-    this.selReq = req;
+    this.dagReq = req;
     this.handleIterator = handleIterator;
     this.snapshot = snapshot;
     this.batchSize = conf.getIndexScanBatchSize();
@@ -72,8 +73,8 @@ public class IndexScanIterator implements Iterator<Row> {
           completionService.submit(() -> {
             List<RegionTask> tasks = RangeSplitter
                 .newSplitter(session.getRegionManager())
-                .splitHandlesByRegion(selReq.getTableInfo().getId(), handles);
-            return SelectIterator.getRowIterator(selReq, tasks, session);
+                .splitHandlesByRegion(dagReq.getTableInfo().getId(), handles);
+            return CoprocessIterator.getRowIterator(dagReq, tasks, session);
           });
         }
         while (batchCount > 0) {

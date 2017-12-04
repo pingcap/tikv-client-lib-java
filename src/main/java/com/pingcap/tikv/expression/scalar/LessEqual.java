@@ -16,12 +16,11 @@
 package com.pingcap.tikv.expression.scalar;
 
 import com.pingcap.tidb.tipb.ExprType;
-import com.pingcap.tikv.expression.TiBinaryFunctionExpression;
 import com.pingcap.tikv.expression.TiExpr;
 import com.pingcap.tikv.types.DataType;
 import com.pingcap.tikv.types.IntegerType;
 
-public class LessEqual extends TiBinaryFunctionExpression {
+public class LessEqual extends TiScalarFunction {
   public LessEqual(TiExpr lhs, TiExpr rhs) {
     super(lhs, rhs);
   }

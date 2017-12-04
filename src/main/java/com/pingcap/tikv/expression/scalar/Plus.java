@@ -16,11 +16,9 @@
 package com.pingcap.tikv.expression.scalar;
 
 import com.pingcap.tidb.tipb.ExprType;
-import com.pingcap.tikv.expression.TiBinaryFunctionExpression;
 import com.pingcap.tikv.expression.TiExpr;
-import com.pingcap.tikv.types.DataType;
 
-public class Plus extends TiBinaryFunctionExpression {
+public class Plus extends TiScalarFunction {
   public Plus(TiExpr lhs, TiExpr rhs) {
     super(lhs, rhs);
   }
@@ -33,15 +31,5 @@ public class Plus extends TiBinaryFunctionExpression {
   @Override
   public String getName() {
     return "Plus";
-  }
-
-  /**
-   * return left child expression's type.
-   *
-   * @return a dataType that plus results.
-   */
-  @Override
-  public DataType getType() {
-    return this.args.get(0).getType();
   }
 }

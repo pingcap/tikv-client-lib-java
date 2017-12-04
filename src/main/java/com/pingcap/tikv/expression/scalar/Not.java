@@ -15,15 +15,15 @@
 
 package com.pingcap.tikv.expression.scalar;
 
-import static com.google.common.base.Preconditions.checkArgument;
-
 import com.pingcap.tidb.tipb.ExprType;
+import com.pingcap.tidb.tipb.ScalarFuncSig;
 import com.pingcap.tikv.expression.TiExpr;
-import com.pingcap.tikv.expression.TiUnaryFunctionExpression;
 import com.pingcap.tikv.types.DataType;
 import com.pingcap.tikv.types.IntegerType;
 
-public class Not extends TiUnaryFunctionExpression {
+import static com.google.common.base.Preconditions.checkArgument;
+
+public class Not extends TiScalarFunction {
   public Not(TiExpr arg) {
     super(arg);
   }
@@ -47,5 +47,10 @@ public class Not extends TiUnaryFunctionExpression {
   protected void validateArguments(TiExpr... args) throws RuntimeException {
     super.validateArguments(args);
     checkArgument(this.args.get(0).getType() instanceof IntegerType);
+  }
+
+  @Override
+  ScalarFuncSig getSignature() {
+    return ScalarFuncSig.UnaryNot;
   }
 }

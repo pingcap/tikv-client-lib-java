@@ -15,15 +15,17 @@
 
 package com.pingcap.tikv.expression;
 
-import static com.pingcap.tikv.types.Types.*;
-
 import com.pingcap.tidb.tipb.Expr;
 import com.pingcap.tidb.tipb.ExprType;
 import com.pingcap.tikv.codec.CodecDataOutput;
+import com.pingcap.tikv.exception.TiExpressionException;
 import com.pingcap.tikv.meta.TiTableInfo;
 import com.pingcap.tikv.types.*;
+
 import java.math.BigDecimal;
 import java.util.Objects;
+
+import static com.pingcap.tikv.types.Types.*;
 
 // TODO: This might need a refactor to accept an DataType?
 public class TiConstant implements TiExpr {

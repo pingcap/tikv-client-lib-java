@@ -15,18 +15,20 @@
 
 package com.pingcap.tikv.operation;
 
-import static com.pingcap.tikv.types.Types.TYPE_BLOB;
-
 import com.pingcap.tikv.expression.TiByItem;
 import com.pingcap.tikv.expression.TiExpr;
-import com.pingcap.tikv.meta.TiSelectRequest;
-import com.pingcap.tikv.operation.transformer.*;
+import com.pingcap.tikv.meta.TiDAGRequest;
+import com.pingcap.tikv.operation.transformer.Cast;
+import com.pingcap.tikv.operation.transformer.NoOp;
+import com.pingcap.tikv.operation.transformer.RowTransformer;
 import com.pingcap.tikv.types.DataType;
 import com.pingcap.tikv.types.DataTypeFactory;
 import com.pingcap.tikv.util.Pair;
+
 import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Collectors;
+
+import static com.pingcap.tikv.types.Types.TYPE_LONG;
 
 /**
  * SchemaInfer extract row's type after query is executed. It is pretty rough version. Optimization
@@ -40,51 +42,47 @@ public class SchemaInfer {
   private List<DataType> types;
   private RowTransformer rt;
 
-  public static SchemaInfer create(TiSelectRequest tiSelectRequest) {
-    return new SchemaInfer(tiSelectRequest);
+  public static SchemaInfer create(TiDAGRequest dagRequest) {
+    return new SchemaInfer(dagRequest);
   }
 
-  private SchemaInfer(TiSelectRequest tiSelectRequest) {
+  private SchemaInfer(TiDAGRequest dagRequest) {
     types = new ArrayList<>();
-    extractFieldTypes(tiSelectRequest);
-    buildTransform(tiSelectRequest);
+    extractFieldTypes(dagRequest);
+    extractHandleType(dagRequest);
+    buildTransform(dagRequest);
   }
 
-  private void buildTransform(TiSelectRequest tiSelectRequest) {
+  private void extractHandleType(TiDAGRequest dagRequest) {
+    if (dagRequest.isHandleNeeded()) {
+      // DataType of handle is long
+      types.add(DataTypeFactory.of(TYPE_LONG));
+    }
+  }
+
+  private void buildTransform(TiDAGRequest dagRequest) {
     RowTransformer.Builder rowTrans = RowTransformer.newBuilder();
+    // Update:
+    // Switching to DAG mode will eliminate first blob
+    // TODO:check correctness of ↑
     // 1. if group by is empty, first column should be "single group"
     // which is a string
     // 2. if multiple group by items present, it is wrapped inside
     // a byte array. we make a multiple decoding
     // 3. for no aggregation case, make only projected columns
-    if (tiSelectRequest.getGroupByItems().isEmpty()) {
-      if (!tiSelectRequest.getAggregatePairs().isEmpty()) {
-        rowTrans.addProjection(Skip.SKIP_OP);
-      }
-    } else {
-      List<DataType> types =
-          tiSelectRequest
-              .getGroupByItems()
-              .stream()
-              .map(TiByItem::getExpr)
-              .map(TiExpr::getType)
-              .collect(Collectors.toList());
-
-      rowTrans.addProjection(new MultiKeyDecoder(types));
-    }
 
     // append aggregates if present
-    if (!tiSelectRequest.getAggregatePairs().isEmpty()) {
-      for (int i = 0; i < tiSelectRequest.getAggregatePairs().size(); i++) {
-        if (!tiSelectRequest.isAggregatesSkipped(i)) {
-          Pair<TiExpr, DataType> pair = tiSelectRequest.getAggregatePairs().get(i);
-          rowTrans.addProjection(new Cast(pair.second));
-        } else {
-          rowTrans.addProjection(Skip.SKIP_OP);
+    if (dagRequest.hasAggregate()) {
+      for (Pair<TiExpr, DataType> pair : dagRequest.getAggregatePairs()) {
+        rowTrans.addProjection(new Cast(pair.second));
+      }
+      if (dagRequest.hasGroupBy()) {
+        for (TiByItem byItem : dagRequest.getGroupByItems()) {
+          rowTrans.addProjection(new NoOp(byItem.getExpr().getType()));
         }
       }
     } else {
-      for (TiExpr field : tiSelectRequest.getFields()) {
+      for (TiExpr field : dagRequest.getFields()) {
         rowTrans.addProjection(new NoOp(field.getType()));
       }
     }
@@ -95,16 +93,21 @@ public class SchemaInfer {
   /**
    * TODO: order by extract field types from tiSelectRequest for reading data to row.
    *
-   * @param tiSelectRequest is SelectRequest
+   * @param dagRequest is SelectRequest
    */
-  private void extractFieldTypes(TiSelectRequest tiSelectRequest) {
-    if (!tiSelectRequest.getAggregates().isEmpty()) {
-      // In some cases, aggregates come without group by clause, we need add a dummy
-      // single group for it.
-      types.add(DataTypeFactory.of(TYPE_BLOB));
-      tiSelectRequest.getAggregates().forEach(expr -> types.add(expr.getType()));
+  private void extractFieldTypes(TiDAGRequest dagRequest) {
+
+    if (dagRequest.hasAggregate()) {
+      dagRequest.getAggregates().forEach(expr -> types.add(expr.getType()));
+      // In DAG mode, if there is any group by statement in a request, all the columns specified
+      // in group by expression will be returned, so when we decode a result row, we need to pay
+      // extra attention to decoding.
+      if (dagRequest.hasGroupBy()) {
+        types.addAll(dagRequest.getGroupByDTList());
+      }
     } else {
-      tiSelectRequest.getFields().forEach(expr -> types.add(expr.getType()));
+      // Extract all column type information from TiExpr
+      dagRequest.getFields().forEach(expr -> types.add(expr.getType()));
     }
   }
 

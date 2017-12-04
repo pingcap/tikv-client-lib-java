@@ -17,11 +17,10 @@ package com.pingcap.tikv.expression.scalar;
 
 import com.pingcap.tidb.tipb.ExprType;
 import com.pingcap.tikv.expression.TiExpr;
-import com.pingcap.tikv.expression.TiUnaryFunctionExpression;
 import com.pingcap.tikv.types.DataType;
 import com.pingcap.tikv.types.IntegerType;
 
-public class IsTrue extends TiUnaryFunctionExpression {
+public class IsTrue extends TiScalarFunction {
   public IsTrue(TiExpr arg) {
     super(arg);
   }

@@ -13,28 +13,10 @@
  * limitations under the License.
  */
 
-package com.pingcap.tikv.expression;
+package com.pingcap.tikv.exception;
 
-import com.pingcap.tidb.tipb.Expr;
-import com.pingcap.tikv.meta.TiTableInfo;
-import com.pingcap.tikv.types.DataType;
-
-import java.io.Serializable;
-
-public interface TiExpr extends Serializable {
-  Expr toProto();
-
-  default boolean isSupportedExpr() {
-    try {
-      Expr expr = toProto();
-      return expr != null;
-    } catch (Exception e) {
-      return false;
-    }
+public class DAGRequestException extends RuntimeException {
+  public DAGRequestException(String msg) {
+    super(msg);
   }
-
-  DataType getType();
-
-  // TODO: Make it visitor
-  TiExpr resolve(TiTableInfo table);
 }

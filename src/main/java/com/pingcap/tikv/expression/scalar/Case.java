@@ -17,10 +17,9 @@ package com.pingcap.tikv.expression.scalar;
 
 import com.pingcap.tidb.tipb.ExprType;
 import com.pingcap.tikv.expression.TiExpr;
-import com.pingcap.tikv.expression.TiFunctionExpression;
 import com.pingcap.tikv.types.DataType;
 
-public class Case extends TiFunctionExpression {
+public class Case extends TiScalarFunction {
   public Case(TiExpr... arg) {
     super(arg);
   }
@@ -36,7 +35,8 @@ public class Case extends TiFunctionExpression {
   }
 
   @Override
-  protected void validateArguments(TiExpr... args) throws RuntimeException {}
+  protected void validateArguments(TiExpr... args) throws RuntimeException {
+  }
 
   /**
    * For Case

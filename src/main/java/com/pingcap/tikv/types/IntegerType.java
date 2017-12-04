@@ -17,14 +17,14 @@
 
 package com.pingcap.tikv.types;
 
-import static com.pingcap.tikv.types.Types.*;
-
 import com.pingcap.tikv.codec.CodecDataInput;
 import com.pingcap.tikv.codec.CodecDataOutput;
 import com.pingcap.tikv.codec.InvalidCodecFormatException;
 import com.pingcap.tikv.codec.TableCodec;
 import com.pingcap.tikv.exception.TiClientInternalException;
 import com.pingcap.tikv.meta.TiColumnInfo;
+
+import static com.pingcap.tikv.types.Types.*;
 
 /** Base class for all integer types: Tiny, Short, Medium, Int, Long and LongLong */
 public class IntegerType extends DataType {
@@ -35,7 +35,7 @@ public class IntegerType extends DataType {
     return new IntegerType(tp);
   }
 
-  private IntegerType(int tp) {
+  protected IntegerType(int tp) {
     super(tp);
   }
 

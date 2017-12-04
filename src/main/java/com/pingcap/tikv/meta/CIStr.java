@@ -19,7 +19,7 @@ import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 /** This class is mapping TiDB's CIStr/ For internal use only. */
-class CIStr {
+public class CIStr {
   private final String o; // original
   private final String l;
 
@@ -29,7 +29,7 @@ class CIStr {
     this.l = l;
   }
 
-  static CIStr newCIStr(String str) {
+  public static CIStr newCIStr(String str) {
     return new CIStr(str, str.toLowerCase());
   }
 
