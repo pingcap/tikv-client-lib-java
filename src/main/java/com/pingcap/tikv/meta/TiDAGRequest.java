@@ -571,7 +571,7 @@ public class TiDAGRequest implements Serializable {
       sb.append(", Ranges: ");
       List<String> rangeStrings = getRanges()
           .stream()
-          .map(r -> KeyRangeUtils.toString(r))
+          .map(KeyRangeUtils::toString)
           .collect(Collectors.toList());
       sb.append(Joiner.on(", ").skipNulls().join(rangeStrings));
     }
@@ -582,7 +582,7 @@ public class TiDAGRequest implements Serializable {
     }
 
     if (getWhere().size() != 0) {
-      sb.append(", Aggregates: ");
+      sb.append(", Filter: ");
       sb.append(Joiner.on(", ").skipNulls().join(getWhere()));
     }
 

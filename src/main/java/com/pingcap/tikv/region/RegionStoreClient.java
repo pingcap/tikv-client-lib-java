@@ -177,7 +177,7 @@ public class RegionStoreClient extends AbstractGRPCClient<TikvBlockingStub, Tikv
     Supplier<Coprocessor.Request> reqToSend = () ->
         Coprocessor.Request.newBuilder()
             .setContext(region.getContext())
-            .setTp(REQ_TYPE_DAG)
+            .setTp(REQ_TYPE_DAG.getValue())
             .setData(req.toByteString())
             .addAllRanges(ranges)
             .build();
@@ -193,7 +193,7 @@ public class RegionStoreClient extends AbstractGRPCClient<TikvBlockingStub, Tikv
         Coprocessor.Request.newBuilder()
             .setContext(region.getContext())
             // TODO: If no executors...?
-            .setTp(REQ_TYPE_DAG)
+            .setTp(REQ_TYPE_DAG.getValue())
             .setData(req.toByteString())
             .addAllRanges(ranges)
             .build();
@@ -229,7 +229,7 @@ public class RegionStoreClient extends AbstractGRPCClient<TikvBlockingStub, Tikv
     Supplier<Coprocessor.Request> reqToSend = () ->
         Coprocessor.Request.newBuilder()
             .setContext(region.getContext())
-            .setTp(req.hasIndexInfo() ? REQ_TYPE_INDEX : REQ_TYPE_SELECT)
+            .setTp(req.hasIndexInfo() ? REQ_TYPE_INDEX.getValue() : REQ_TYPE_SELECT.getValue())
             .setData(req.toByteString())
             .addAllRanges(ranges)
             .build();
