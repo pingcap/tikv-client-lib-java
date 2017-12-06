@@ -93,6 +93,7 @@ public class KVErrorHandler<RespT> implements ErrorHandler<RespT> {
       } else if (error.hasKeyNotInRegion()) {
         ByteString invalidKey = error.getKeyNotInRegion().getKey();
         logger.warn(String.format("Key not in region [%s] for key [%s]", ctxRegion, KeyUtils.formatBytes(invalidKey)));
+        throw new StatusRuntimeException(Status.fromCode(Status.Code.UNAVAILABLE).withDescription(error.toString()));
       } else {
         logger.warn(String.format("Unknown error for region [%s]", error));
         // for other errors, we only drop cache here and throw a retryable exception.
