@@ -30,7 +30,8 @@ public class Cast extends NoOp {
   public void set(Object value, Row row, int pos) {
     Object casted;
     if (value == null) {
-      row.set(row.fieldCount(), targetDataType, null);
+      row.set(pos, targetDataType, null);
+      return;
     }
     if (targetDataType instanceof IntegerType) {
       casted = castToLong(value);
