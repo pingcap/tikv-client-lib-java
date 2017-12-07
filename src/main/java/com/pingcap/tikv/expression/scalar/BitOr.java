@@ -32,11 +32,6 @@ public class BitOr extends TiScalarFunction {
   }
 
   @Override
-  public String getName() {
-    return "BitOr";
-  }
-
-  @Override
   public DataType getType() {
     return IntegerType.DEF_BOOLEAN_TYPE;
   }

@@ -31,11 +31,6 @@ public class GreaterThan extends TiScalarFunction {
   }
 
   @Override
-  public String getName() {
-    return ">";
-  }
-
-  @Override
   public DataType getType() {
     return IntegerType.DEF_BOOLEAN_TYPE;
   }

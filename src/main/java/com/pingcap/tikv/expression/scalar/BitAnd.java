@@ -32,11 +32,6 @@ public class BitAnd extends TiScalarFunction {
   }
 
   @Override
-  public String getName() {
-    return "BitAnd";
-  }
-
-  @Override
   public DataType getType() {
     return IntegerType.DEF_BOOLEAN_TYPE;
   }

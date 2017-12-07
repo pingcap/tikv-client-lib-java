@@ -27,9 +27,4 @@ public class Multiply extends TiScalarFunction {
   protected ExprType getExprType() {
     return ExprType.Mul;
   }
-
-  @Override
-  public String getName() {
-    return "Multiply";
-  }
 }

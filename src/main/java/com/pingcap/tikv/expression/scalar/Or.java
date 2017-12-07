@@ -15,12 +15,12 @@
 
 package com.pingcap.tikv.expression.scalar;
 
+import static com.google.common.base.Preconditions.checkArgument;
+
 import com.pingcap.tidb.tipb.ExprType;
 import com.pingcap.tidb.tipb.ScalarFuncSig;
 import com.pingcap.tikv.expression.TiExpr;
 import com.pingcap.tikv.types.IntegerType;
-
-import static com.google.common.base.Preconditions.checkArgument;
 
 public class Or extends TiScalarFunction {
   public Or(TiExpr lhs, TiExpr rhs) {
@@ -30,11 +30,6 @@ public class Or extends TiScalarFunction {
   @Override
   protected ExprType getExprType() {
     return ExprType.Or;
-  }
-
-  @Override
-  public String getName() {
-    return "Or";
   }
 
   @Override

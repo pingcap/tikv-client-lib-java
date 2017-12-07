@@ -15,13 +15,13 @@
 
 package com.pingcap.tikv.expression.scalar;
 
+import static com.google.common.base.Preconditions.checkArgument;
+
 import com.pingcap.tidb.tipb.ExprType;
 import com.pingcap.tidb.tipb.ScalarFuncSig;
 import com.pingcap.tikv.expression.TiExpr;
 import com.pingcap.tikv.types.DataType;
 import com.pingcap.tikv.types.IntegerType;
-
-import static com.google.common.base.Preconditions.checkArgument;
 
 public class LogicalXor extends TiScalarFunction {
   public LogicalXor(TiExpr lhs, TiExpr rhs) {
@@ -31,11 +31,6 @@ public class LogicalXor extends TiScalarFunction {
   @Override
   protected ExprType getExprType() {
     return ExprType.Xor;
-  }
-
-  @Override
-  public String getName() {
-    return "LogicalXor";
   }
 
   @Override

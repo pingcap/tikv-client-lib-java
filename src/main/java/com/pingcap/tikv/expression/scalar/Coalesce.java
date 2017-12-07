@@ -30,11 +30,6 @@ public class Coalesce extends TiScalarFunction {
   }
 
   @Override
-  public String getName() {
-    return "Coalesce";
-  }
-
-  @Override
   protected void validateArguments(TiExpr... args) throws RuntimeException {
   }
 

@@ -19,11 +19,6 @@ public class Count extends TiFunctionExpression {
   }
 
   @Override
-  public String getName() {
-    return "count";
-  }
-
-  @Override
   public DataType getType() {
     return DataTypeFactory.of(Types.TYPE_LONG);
   }

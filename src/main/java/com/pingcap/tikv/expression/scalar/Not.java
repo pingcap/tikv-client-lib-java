@@ -15,13 +15,13 @@
 
 package com.pingcap.tikv.expression.scalar;
 
+import static com.google.common.base.Preconditions.checkArgument;
+
 import com.pingcap.tidb.tipb.ExprType;
 import com.pingcap.tidb.tipb.ScalarFuncSig;
 import com.pingcap.tikv.expression.TiExpr;
 import com.pingcap.tikv.types.DataType;
 import com.pingcap.tikv.types.IntegerType;
-
-import static com.google.common.base.Preconditions.checkArgument;
 
 public class Not extends TiScalarFunction {
   public Not(TiExpr arg) {
@@ -31,11 +31,6 @@ public class Not extends TiScalarFunction {
   @Override
   protected ExprType getExprType() {
     return ExprType.Not;
-  }
-
-  @Override
-  public String getName() {
-    return "Not";
   }
 
   @Override

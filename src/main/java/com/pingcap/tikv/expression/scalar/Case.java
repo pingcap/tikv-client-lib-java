@@ -30,11 +30,6 @@ public class Case extends TiScalarFunction {
   }
 
   @Override
-  public String getName() {
-    return "Case";
-  }
-
-  @Override
   protected void validateArguments(TiExpr... args) throws RuntimeException {
   }
 

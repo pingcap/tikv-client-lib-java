@@ -31,11 +31,6 @@ public class BitXor extends TiScalarFunction {
   }
 
   @Override
-  public String getName() {
-    return "BitXOr";
-  }
-
-  @Override
   public DataType getType() {
     throw new UnsupportedOperationException();
   }

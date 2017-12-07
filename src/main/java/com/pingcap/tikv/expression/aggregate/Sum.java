@@ -22,9 +22,4 @@ public class Sum extends TiUnaryFunctionExpression {
   public DataType getType() {
     return DataTypeFactory.of(Types.TYPE_NEW_DECIMAL);
   }
-
-  @Override
-  public String getName() {
-    return "sum";
-  }
 }

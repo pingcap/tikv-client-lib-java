@@ -27,9 +27,4 @@ public class Minus extends TiScalarFunction {
   protected ExprType getExprType() {
     return ExprType.Minus;
   }
-
-  @Override
-  public String getName() {
-    return "Minus";
-  }
 }

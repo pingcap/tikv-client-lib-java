@@ -15,13 +15,13 @@
 
 package com.pingcap.tikv.expression.scalar;
 
+import static com.google.common.base.Preconditions.checkArgument;
+import static java.util.Objects.requireNonNull;
+
 import com.pingcap.tidb.tipb.ExprType;
 import com.pingcap.tikv.expression.TiExpr;
 import com.pingcap.tikv.types.DataType;
 import com.pingcap.tikv.types.IntegerType;
-
-import static com.google.common.base.Preconditions.checkArgument;
-import static java.util.Objects.requireNonNull;
 
 public class In extends TiScalarFunction {
   public In(TiExpr... args) {
@@ -31,11 +31,6 @@ public class In extends TiScalarFunction {
   @Override
   protected ExprType getExprType() {
     return ExprType.In;
-  }
-
-  @Override
-  public String getName() {
-    return "IN";
   }
 
   @Override

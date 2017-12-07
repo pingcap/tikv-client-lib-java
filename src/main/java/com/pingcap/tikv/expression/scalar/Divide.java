@@ -27,10 +27,4 @@ public class Divide extends TiScalarFunction {
   protected ExprType getExprType() {
     return ExprType.Div;
   }
-
-  @Override
-  public String getName() {
-    return "Divide";
-  }
-
 }

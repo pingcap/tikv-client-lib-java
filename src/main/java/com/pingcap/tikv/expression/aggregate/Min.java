@@ -20,9 +20,4 @@ public class Min extends TiUnaryFunctionExpression {
   public DataType getType() {
     return args.get(0).getType();
   }
-
-  @Override
-  public String getName() {
-    return "min";
-  }
 }

@@ -31,11 +31,6 @@ public class IfNull extends TiScalarFunction {
   }
 
   @Override
-  public String getName() {
-    return "IfNull";
-  }
-
-  @Override
   public DataType getType() {
     return IntegerType.DEF_BOOLEAN_TYPE;
   }

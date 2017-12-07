@@ -19,11 +19,6 @@ public class GroupConcat extends TiUnaryFunctionExpression {
   }
 
   @Override
-  public String getName() {
-    return "group_concat";
-  }
-
-  @Override
   public DataType getType() {
     return DataTypeFactory.of(Types.TYPE_VARCHAR);
   }

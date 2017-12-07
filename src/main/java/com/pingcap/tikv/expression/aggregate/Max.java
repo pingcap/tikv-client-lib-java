@@ -17,11 +17,6 @@ public class Max extends TiUnaryFunctionExpression {
   }
 
   @Override
-  public String getName() {
-    return "max";
-  }
-
-  @Override
   public DataType getType() {
     return args.get(0).getType();
   }

@@ -31,11 +31,6 @@ public class IsTrue extends TiScalarFunction {
   }
 
   @Override
-  public String getName() {
-    return "IsTrue";
-  }
-
-  @Override
   public DataType getType() {
     return IntegerType.DEF_BOOLEAN_TYPE;
   }
