@@ -17,20 +17,19 @@
 
 package com.pingcap.tikv.types;
 
-import com.pingcap.tikv.codec.CodecDataInput;
-import com.pingcap.tikv.codec.CodecDataOutput;
-import com.pingcap.tikv.codec.InvalidCodecFormatException;
 import com.pingcap.tikv.meta.TiColumnInfo;
 
-import java.sql.Timestamp;
-import java.time.LocalDateTime;
 import java.time.ZoneId;
-import java.time.ZonedDateTime;
 
 public class DateTimeType extends TimestampType {
-  private final ZoneId defaultZone = ZoneId.systemDefault();
+  private static final ZoneId DEFAULT_TIMEZONE = ZoneId.systemDefault();
   static DateTimeType of(int tp) {
     return new DateTimeType(tp);
+  }
+
+  @Override
+  protected ZoneId getDefaultTimezone() {
+    return DEFAULT_TIMEZONE;
   }
 
   private DateTimeType(int tp) {
@@ -39,38 +38,6 @@ public class DateTimeType extends TimestampType {
 
   DateTimeType(TiColumnInfo.InternalTypeHolder holder) {
     super(holder);
-  }
-
-  @Override
-  public Object decodeNotNull(int flag, CodecDataInput cdi) {
-    if (flag == UVARINT_FLAG) {
-      LocalDateTime localDateTime = TimestampType.fromPackedLong(IntegerType.readUVarLong(cdi));
-      if (localDateTime == null) {
-        return null;
-      }
-      return Timestamp.from(ZonedDateTime.of(localDateTime, defaultZone).toInstant());
-    } else {
-      throw new InvalidCodecFormatException("Invalid Flag type for DateTimeType: " + flag);
-    }
-  }
-
-  /**
-   * encode a value to cdo per type.
-   *
-   * @param cdo destination of data.
-   * @param encodeType Key or Value.
-   * @param value need to be encoded.
-   */
-  @Override
-  public void encodeNotNull(CodecDataOutput cdo, EncodeType encodeType, Object value) {
-    LocalDateTime localDateTime;
-    if (value instanceof LocalDateTime) {
-      localDateTime = (LocalDateTime) value;
-    } else {
-      throw new UnsupportedOperationException("Can not cast Object to LocalDateTime ");
-    }
-    long val = TimestampType.toPackedLong(localDateTime);
-    IntegerType.writeULongFull(cdo, val, true);
   }
 
 }
