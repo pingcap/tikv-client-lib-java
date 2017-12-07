@@ -74,10 +74,7 @@ public class TiColumnRef implements TiExpr {
     // After switching to DAG request mode, expression value
     // should be the index of table columns we provided in
     // the first executor of a DAG request.
-    //
-    // Here we use the original columnID minus 1 to represent
-    // what we want.
-    IntegerType.writeLong(cdo, columnInfo.getId() - 1);
+    IntegerType.writeLong(cdo, columnInfo.getOffset());
     builder.setVal(cdo.toByteString());
     return builder.build();
   }

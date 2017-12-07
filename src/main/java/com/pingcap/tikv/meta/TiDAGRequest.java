@@ -213,6 +213,7 @@ public class TiDAGRequest implements Serializable {
               Selection.newBuilder().addConditions(whereExpr.toProto())
           )
       );
+      executorBuilder.clear();
     }
 
     if (!getGroupByItems().isEmpty() || !getAggregates().isEmpty()) {
@@ -230,11 +231,10 @@ public class TiDAGRequest implements Serializable {
       TopN.Builder topNBuilder = TopN.newBuilder();
       getOrderByItems().forEach(tiByItem -> topNBuilder.addOrderBy(tiByItem.toProto()));
       executorBuilder.setTp(ExecType.TypeTopN);
+      topNBuilder.setLimit(getLimit());
       dagRequestBuilder.addExecutors(executorBuilder.setTopN(topNBuilder));
       executorBuilder.clear();
-    }
-
-    if (0 != getLimit()) {
+    } else if (getLimit() != 0) {
       Limit.Builder limitBuilder = Limit.newBuilder();
       limitBuilder.setLimit(getLimit());
       executorBuilder.setTp(ExecType.TypeLimit);
@@ -254,9 +254,7 @@ public class TiDAGRequest implements Serializable {
         .setStartTs(startTs)
         .build();
 
-    if (!validateRequest(request)) {
-      throw new DAGRequestException("Invalid DAG request.");
-    }
+    validateRequest(request);
 
     return request;
   }
@@ -266,34 +264,42 @@ public class TiDAGRequest implements Serializable {
   }
 
   /**
+   * Check if a DAG request is valid.
+   *
+   * Note:
    * When constructing a DAG request, a executor with an ExecType of higher priority
    * should always be placed before those lower ones.
    *
    * @param dagRequest Request DAG.
-   * @return if the dagRequest is valid.
    */
-  private boolean validateRequest(DAGRequest dagRequest) {
+  private void validateRequest(DAGRequest dagRequest) {
+    requireNonNull(dagRequest);
     // A DAG request must has at least one executor.
-    if (dagRequest == null || dagRequest.getExecutorsCount() < 1) {
-      return false;
+    if (dagRequest.getExecutorsCount() < 1) {
+      throw new DAGRequestException("Invalid executors count:" + dagRequest.getExecutorsCount());
     }
 
     ExecType formerType = dagRequest.getExecutors(0).getTp();
     if (formerType != ExecType.TypeTableScan &&
         formerType != ExecType.TypeIndexScan) {
-      return false;
+      throw new DAGRequestException("Invalid first executor type:" + formerType +
+          ", must one of TypeTableScan or TypeIndexScan");
     }
 
     for (int i = 1; i < dagRequest.getExecutorsCount(); i++) {
       ExecType currentType = dagRequest.getExecutors(i).getTp();
       if (EXEC_TYPE_PRIORITY_MAP.get(currentType) <
           EXEC_TYPE_PRIORITY_MAP.get(formerType)) {
-        return false;
+        throw new DAGRequestException("Invalid executor priority.");
+      }
+      if (currentType.equals(ExecType.TypeTopN)) {
+        long limit = dagRequest.getExecutors(i).getTopN().getLimit();
+        if (limit == 0) {
+          throw new DAGRequestException("TopN executor should contain non-zero limit number but received:" + limit);
+        }
       }
       formerType = currentType;
     }
-
-    return true;
   }
 
   public TiDAGRequest setTableInfo(TiTableInfo tableInfo) {
@@ -600,8 +606,12 @@ public class TiDAGRequest implements Serializable {
       sb.append(", Order By: ");
       sb.append(Joiner.on(", ").skipNulls().join(getOrderByItems()));
     }
-    return sb.toString();
 
+    if (getLimit() != 0) {
+      sb.append(", Limit: ");
+      sb.append("[").append(limit).append("]");
+    }
+    return sb.toString();
   }
 
 }
