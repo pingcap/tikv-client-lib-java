@@ -18,6 +18,7 @@ package com.pingcap.tikv;
 import com.google.common.net.HostAndPort;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.pingcap.tikv.catalog.Catalog;
+import com.pingcap.tikv.event.CacheInvalidateEvent;
 import com.pingcap.tikv.meta.TiTimestamp;
 import com.pingcap.tikv.region.RegionManager;
 import io.grpc.ManagedChannel;
@@ -28,11 +29,13 @@ import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Function;
 
 
 public class TiSession implements AutoCloseable {
   private static final Map<String, ManagedChannel> connPool = new HashMap<>();
   private final TiConfiguration conf;
+  private Function<CacheInvalidateEvent, Void> cacheInvalidateCallback;
   // below object creation is either heavy or making connection (pd), pending for lazy loading
   private volatile RegionManager regionManager;
   private volatile PDClient client;
@@ -155,6 +158,18 @@ public class TiSession implements AutoCloseable {
 
   public static TiSession create(TiConfiguration conf) {
     return new TiSession(conf);
+  }
+
+  public Function<CacheInvalidateEvent, Void> getCacheInvalidateCallback() {
+    return cacheInvalidateCallback;
+  }
+
+  /**
+   * This is used for setting call back function to invalidate cache information
+   * @param callBackFunc callback function
+   */
+  public void injectCallBackFunc(Function<CacheInvalidateEvent, Void> callBackFunc) {
+    this.cacheInvalidateCallback = callBackFunc;
   }
 
   @Override

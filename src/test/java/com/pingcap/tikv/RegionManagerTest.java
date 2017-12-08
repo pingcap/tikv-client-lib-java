@@ -15,10 +15,6 @@
 
 package com.pingcap.tikv;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.fail;
-
 import com.google.protobuf.ByteString;
 import com.pingcap.tikv.kvproto.Metapb;
 import com.pingcap.tikv.kvproto.Metapb.Store;
@@ -27,10 +23,13 @@ import com.pingcap.tikv.region.RegionManager;
 import com.pingcap.tikv.region.TiRegion;
 import com.pingcap.tikv.util.Pair;
 import com.pingcap.tikv.util.ZeroBackOff;
-import java.io.IOException;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+
+import java.io.IOException;
+
+import static org.junit.Assert.*;
 
 public class RegionManagerTest {
   private PDMockServer server;
@@ -53,7 +52,7 @@ public class RegionManagerTest {
         TiConfiguration.createDefault("127.0.0.1:" + server.port);
     conf.setRetryTimes(3);
     conf.setBackOffClass(ZeroBackOff.class);
-    TiSession session = new TiSession(conf);
+    TiSession session = TiSession.create(conf);
     mgr = session.getRegionManager();
   }
 

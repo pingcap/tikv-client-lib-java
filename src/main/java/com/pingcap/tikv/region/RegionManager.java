@@ -18,8 +18,6 @@
 package com.pingcap.tikv.region;
 
 
-import static com.pingcap.tikv.codec.KeyUtils.formatBytes;
-import static com.pingcap.tikv.util.KeyRangeUtils.makeRange;
 import com.google.common.collect.RangeMap;
 import com.google.common.collect.TreeRangeMap;
 import com.google.protobuf.ByteString;
@@ -32,9 +30,13 @@ import com.pingcap.tikv.kvproto.Metapb.Store;
 import com.pingcap.tikv.kvproto.Metapb.StoreState;
 import com.pingcap.tikv.util.Comparables;
 import com.pingcap.tikv.util.Pair;
+import org.apache.log4j.Logger;
+
 import java.util.HashMap;
 import java.util.Map;
-import org.apache.log4j.Logger;
+
+import static com.pingcap.tikv.codec.KeyUtils.formatBytes;
+import static com.pingcap.tikv.util.KeyRangeUtils.makeRange;
 
 
 public class RegionManager {

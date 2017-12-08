@@ -19,6 +19,7 @@ package com.pingcap.tikv.operation;
 
 import com.google.protobuf.ByteString;
 import com.pingcap.tikv.codec.KeyUtils;
+import com.pingcap.tikv.event.CacheInvalidateEvent;
 import com.pingcap.tikv.exception.GrpcRegionStaleException;
 import com.pingcap.tikv.kvproto.Errorpb;
 import com.pingcap.tikv.region.RegionErrorReceiver;
@@ -26,12 +27,14 @@ import com.pingcap.tikv.region.RegionManager;
 import com.pingcap.tikv.region.TiRegion;
 import io.grpc.Status;
 import io.grpc.StatusRuntimeException;
-import java.util.function.Function;
 import org.apache.log4j.Logger;
+
+import java.util.function.Function;
 
 public class KVErrorHandler<RespT> implements ErrorHandler<RespT> {
   private static final Logger logger = Logger.getLogger(KVErrorHandler.class);
   private Function<RespT, Errorpb.Error> getRegionError;
+  private Function<CacheInvalidateEvent, Void> cacheInvalidateCallBack;
   private RegionManager regionManager;
   private RegionErrorReceiver recv;
   private TiRegion ctxRegion;
@@ -45,6 +48,9 @@ public class KVErrorHandler<RespT> implements ErrorHandler<RespT> {
     this.recv = recv;
     this.regionManager = regionManager;
     this.getRegionError = getRegionError;
+    this.cacheInvalidateCallBack =
+        regionManager != null && regionManager.getSession() != null ?
+        regionManager.getSession().getCacheInvalidateCallback() : null;
   }
 
   public void handle(RespT resp) {
@@ -64,7 +70,11 @@ public class KVErrorHandler<RespT> implements ErrorHandler<RespT> {
             ctxRegion.getLeader().getStoreId()));
         long newStoreId = error.getNotLeader().getLeader().getStoreId();
         regionManager.updateLeader(ctxRegion.getId(), newStoreId);
-
+        notifyCacheInvalidation(
+            ctxRegion.getId(),
+            newStoreId,
+            CacheInvalidateEvent.CacheType.LEADER
+        );
         recv.onNotLeader(this.regionManager.getRegionById(ctxRegion.getId()),
                          this.regionManager.getStoreById(newStoreId));
         throw new StatusRuntimeException(Status.fromCode(Status.Code.UNAVAILABLE).withDescription(error.toString()));
@@ -75,6 +85,11 @@ public class KVErrorHandler<RespT> implements ErrorHandler<RespT> {
 
         regionManager.invalidateRegion(ctxRegion.getId());
         regionManager.invalidateStore(ctxRegion.getLeader().getStoreId());
+        notifyCacheInvalidation(
+            ctxRegion.getId(),
+            ctxRegion.getLeader().getStoreId(),
+            CacheInvalidateEvent.CacheType.REGION_STORE
+        );
         recv.onStoreNotMatch();
         throw new StatusRuntimeException(Status.fromCode(Status.Code.UNAVAILABLE).withDescription(error.toString()));
       } else if (error.hasStaleEpoch()) {
@@ -99,8 +114,27 @@ public class KVErrorHandler<RespT> implements ErrorHandler<RespT> {
         // for other errors, we only drop cache here and throw a retryable exception.
         regionManager.invalidateRegion(ctxRegion.getId());
         regionManager.invalidateStore(ctxRegion.getLeader().getStoreId());
+        notifyCacheInvalidation(
+            ctxRegion.getId(),
+            ctxRegion.getLeader().getStoreId(),
+            CacheInvalidateEvent.CacheType.REGION_STORE
+        );
         throw new StatusRuntimeException(Status.fromCode(Status.Code.UNAVAILABLE).withDescription(error.toString()));
       }
+    }
+  }
+
+  /**
+   * Used for notifying Spark driver to invalidate cache from Spark workers.
+   */
+  private void notifyCacheInvalidation(long regionId, long storeId, CacheInvalidateEvent.CacheType type) {
+    if (cacheInvalidateCallBack != null) {
+      cacheInvalidateCallBack.apply(new CacheInvalidateEvent(
+          regionId, storeId,
+          true, true,
+          type));
+    } else {
+      logger.error("Failed to send notification back to driver since CacheInvalidateCallBack is null in executor node.");
     }
   }
 }
