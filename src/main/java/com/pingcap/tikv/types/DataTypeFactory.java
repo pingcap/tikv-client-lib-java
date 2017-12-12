@@ -41,7 +41,7 @@ public class DataTypeFactory {
           .put(TYPE_FLOAT, RealType.of(TYPE_FLOAT))
           .put(TYPE_DOUBLE, RealType.of(TYPE_DOUBLE))
           .put(TYPE_DURATION, TimestampType.of(TYPE_DURATION))
-          .put(TYPE_DATETIME, TimestampType.of(TYPE_DATETIME))
+          .put(TYPE_DATETIME, DateTimeType.of(TYPE_DATETIME))
           .put(TYPE_TIMESTAMP, TimestampType.of(TYPE_TIMESTAMP))
           .put(TYPE_NEW_DATE, DateType.of(TYPE_NEW_DATE))
           .put(TYPE_DATE, DateType.of(TYPE_DATE))
