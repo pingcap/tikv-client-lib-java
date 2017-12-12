@@ -46,6 +46,11 @@ public abstract class TiScalarFunction extends TiFunctionExpression {
     );
   }
 
+  @Override
+  public String getName() {
+    return getSignature().name();
+  }
+
   private DataType getArgType() {
     if (args.isEmpty()) {
       throw new TiExpressionException(
