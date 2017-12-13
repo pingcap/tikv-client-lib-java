@@ -20,6 +20,7 @@ import java.io.Serializable;
 public class CacheInvalidateEvent implements Serializable {
   public enum CacheType {
     REGION_STORE,
+    REQ_FAILED,
     LEADER
   }
 

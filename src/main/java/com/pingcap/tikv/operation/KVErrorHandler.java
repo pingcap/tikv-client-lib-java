@@ -58,6 +58,11 @@ public class KVErrorHandler<RespT> implements ErrorHandler<RespT> {
     if (resp == null) {
       logger.warn(String.format("Request Failed with unknown reason for region region [%s]", ctxRegion));
       regionManager.onRequestFail(ctxRegion.getId(), ctxRegion.getLeader().getStoreId());
+      notifyCacheInvalidation(
+          ctxRegion.getId(),
+          ctxRegion.getLeader().getStoreId(),
+          CacheInvalidateEvent.CacheType.REQ_FAILED
+      );
       return;
     }
 

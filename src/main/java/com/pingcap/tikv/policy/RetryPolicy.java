@@ -21,8 +21,9 @@ import com.pingcap.tikv.exception.GrpcRegionStaleException;
 import com.pingcap.tikv.operation.ErrorHandler;
 import com.pingcap.tikv.util.BackOff;
 import io.grpc.Status;
-import java.util.concurrent.Callable;
 import org.apache.log4j.Logger;
+
+import java.util.concurrent.Callable;
 
 public abstract class RetryPolicy<RespT> {
   private static final Logger logger = Logger.getLogger(RetryPolicy.class);
