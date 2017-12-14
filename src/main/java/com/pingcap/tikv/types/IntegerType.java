@@ -17,19 +17,24 @@
 
 package com.pingcap.tikv.types;
 
+import static com.pingcap.tikv.types.Types.TYPE_INT24;
+import static com.pingcap.tikv.types.Types.TYPE_LONG;
+import static com.pingcap.tikv.types.Types.TYPE_LONG_LONG;
+import static com.pingcap.tikv.types.Types.TYPE_SHORT;
+
 import com.pingcap.tikv.codec.CodecDataInput;
 import com.pingcap.tikv.codec.CodecDataOutput;
 import com.pingcap.tikv.codec.InvalidCodecFormatException;
 import com.pingcap.tikv.codec.TableCodec;
 import com.pingcap.tikv.exception.TiClientInternalException;
+import com.pingcap.tikv.exception.TiExpressionException;
 import com.pingcap.tikv.meta.TiColumnInfo;
-
-import static com.pingcap.tikv.types.Types.*;
 
 /** Base class for all integer types: Tiny, Short, Medium, Int, Long and LongLong */
 public class IntegerType extends DataType {
   public static final IntegerType DEF_LONG_TYPE = new IntegerType(Types.TYPE_LONG);
   public static final IntegerType DEF_LONG_LONG_TYPE = new IntegerType(Types.TYPE_LONG_LONG);
+  public static final IntegerType DEF_BOOLEAN_TYPE = new IntegerType(Types.TYPE_SHORT);
 
   static IntegerType of(int tp) {
     return new IntegerType(tp);
@@ -72,7 +77,7 @@ public class IntegerType extends DataType {
     if (value instanceof Number) {
       val = ((Number) value).longValue();
     } else {
-      throw new UnsupportedOperationException("Cannot cast Un-number value to long");
+      throw new TiExpressionException("Cannot cast non-number value to long");
     }
     boolean comparable = false;
     if (encodeType == EncodeType.KEY) {
@@ -279,6 +284,4 @@ public class IntegerType extends DataType {
     }
     throw new InvalidCodecFormatException("readUVarLong encountered unfinished data");
   }
-
-  public static final IntegerType DEF_BOOLEAN_TYPE = new IntegerType(Types.TYPE_SHORT);
 }

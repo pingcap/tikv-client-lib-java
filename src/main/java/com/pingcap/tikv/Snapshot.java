@@ -15,6 +15,11 @@
 
 package com.pingcap.tikv;
 
+import static com.pingcap.tikv.operation.iterator.CoprocessIterator.getHandleIterator;
+import static com.pingcap.tikv.operation.iterator.CoprocessIterator.getRowIterator;
+import static com.pingcap.tikv.util.KeyRangeUtils.makeRange;
+import static com.pingcap.tikv.value.Key.toKey;
+
 import com.google.common.collect.Range;
 import com.google.protobuf.ByteString;
 import com.pingcap.tikv.exception.TiClientInternalException;
@@ -27,18 +32,13 @@ import com.pingcap.tikv.operation.iterator.ScanIterator;
 import com.pingcap.tikv.region.RegionStoreClient;
 import com.pingcap.tikv.region.TiRegion;
 import com.pingcap.tikv.row.Row;
-import com.pingcap.tikv.util.Comparables;
 import com.pingcap.tikv.util.Pair;
 import com.pingcap.tikv.util.RangeSplitter;
 import com.pingcap.tikv.util.RangeSplitter.RegionTask;
-
+import com.pingcap.tikv.value.Key;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
-
-import static com.pingcap.tikv.operation.iterator.CoprocessIterator.getHandleIterator;
-import static com.pingcap.tikv.operation.iterator.CoprocessIterator.getRowIterator;
-import static com.pingcap.tikv.util.KeyRangeUtils.makeRange;
 
 public class Snapshot {
   private final TiTimestamp timestamp;
@@ -128,15 +128,14 @@ public class Snapshot {
 
   // TODO: Need faster implementation, say concurrent version
   // Assume keys sorted
-  @SuppressWarnings("unchecked")
   public List<KvPair> batchGet(List<ByteString> keys) {
     TiRegion curRegion = null;
-    Range curKeyRange = null;
+    Range<Key> curKeyRange = null;
     Pair<TiRegion, Store> lastPair;
     List<ByteString> keyBuffer = new ArrayList<>();
     List<KvPair> result = new ArrayList<>(keys.size());
     for (ByteString key : keys) {
-      if (curRegion == null || !curKeyRange.contains(Comparables.wrap(key))) {
+      if (curRegion == null || !curKeyRange.contains(toKey(key))) {
         Pair<TiRegion, Store> pair = session.getRegionManager().getRegionStorePairByKey(key);
         lastPair = pair;
         curRegion = pair.first;

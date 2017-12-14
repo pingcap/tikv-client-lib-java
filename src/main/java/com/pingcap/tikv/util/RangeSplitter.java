@@ -16,6 +16,7 @@
 package com.pingcap.tikv.util;
 
 import static com.pingcap.tikv.util.KeyRangeUtils.formatByteString;
+import static com.pingcap.tikv.value.Key.toKey;
 import static java.util.Objects.requireNonNull;
 
 import com.google.common.collect.ImmutableList;
@@ -26,7 +27,6 @@ import com.pingcap.tikv.codec.TableCodec.DecodeResult.Status;
 import com.pingcap.tikv.exception.TiClientInternalException;
 import com.pingcap.tikv.kvproto.Coprocessor.KeyRange;
 import com.pingcap.tikv.kvproto.Metapb;
-import com.pingcap.tikv.kvproto.Metapb.Store;
 import com.pingcap.tikv.region.RegionManager;
 import com.pingcap.tikv.region.TiRegion;
 import gnu.trove.list.array.TLongArrayList;
@@ -95,27 +95,7 @@ public class RangeSplitter {
     this.regionManager = regionManager;
   }
 
-  protected final RegionManager regionManager;
-
-  // both arguments represent right side of end points
-  // so that empty is +INF
-  private static int rightCompareTo(ByteString lhs, ByteString rhs) {
-    requireNonNull(lhs, "lhs is null");
-    requireNonNull(rhs, "rhs is null");
-
-    // both infinite
-    if (lhs.isEmpty() && rhs.isEmpty()) {
-      return 0;
-    }
-    if (lhs.isEmpty()) {
-      return 1;
-    }
-    if (rhs.isEmpty()) {
-      return -1;
-    }
-
-    return Comparables.wrap(lhs).compareTo(Comparables.wrap(rhs));
-  }
+  private final RegionManager regionManager;
 
   public List<RegionTask> splitHandlesByRegion(long tableId, TLongArrayList handles) {
     // Max value for current index handle range
@@ -174,8 +154,6 @@ public class RangeSplitter {
       TLongArrayList handles,
       Pair<TiRegion, Metapb.Store> regionStorePair,
       ImmutableList.Builder<RegionTask> regionTasks) {
-    TiRegion region = regionStorePair.first;
-    Store store = regionStorePair.second;
     List<KeyRange> newKeyRanges = new ArrayList<>(endPos - startPos + 1);
     long startHandle = handles.get(startPos);
     long endHandle = startHandle;
@@ -231,13 +209,16 @@ public class RangeSplitter {
       Pair<TiRegion, Metapb.Store> regionStorePair =
           regionManager.getRegionStorePairByKey(range.getStart());
 
-      requireNonNull(regionStorePair, "fail to get region/store pair by key" + range.getStart());
+      if (regionStorePair == null) {
+        throw new NullPointerException("fail to get region/store pair by key " + formatByteString(range.getStart()));
+      }
       TiRegion region = regionStorePair.first;
       idToRegion.putIfAbsent(region.getId(), regionStorePair);
 
       // both key range is close-opened
-      // initial range inside pd is guaranteed to be -INF to +INF
-      if (rightCompareTo(range.getEnd(), region.getEndKey()) > 0) {
+      // initial range inside PD is guaranteed to be -INF to +INF
+      // Both keys are at right hand side and then always not -INF
+      if (toKey(range.getEnd()).compareTo(toKey(region.getEndKey())) > 0) {
         // current region does not cover current end key
         KeyRange cutRange =
             KeyRange.newBuilder().setStart(range.getStart()).setEnd(region.getEndKey()).build();

@@ -16,6 +16,7 @@ import com.pingcap.tikv.kvproto.Metapb.Peer;
 import com.pingcap.tikv.region.RegionManager;
 import com.pingcap.tikv.region.TiRegion;
 import com.pingcap.tikv.types.IntegerType;
+import com.pingcap.tikv.value.Key;
 import gnu.trove.list.array.TLongArrayList;
 import java.util.List;
 import java.util.Map;
@@ -37,7 +38,8 @@ public class RangeSplitterTest {
     @Override
     public Pair<TiRegion, Metapb.Store> getRegionStorePairByKey(ByteString key) {
       for (Map.Entry<KeyRange, TiRegion> entry : mockRegionMap.entrySet()) {
-        if (KeyRangeUtils.toRange(entry.getKey()).contains(Comparables.wrap(key))) {
+        KeyRange range = entry.getKey();
+        if (KeyRangeUtils.makeRange(range.getStart(), range.getEnd()).contains(Key.toKey(key))) {
           TiRegion region = entry.getValue();
           return Pair.create(region, Metapb.Store.newBuilder().setId(region.getId()).build());
         }
@@ -93,14 +95,6 @@ public class RangeSplitterTest {
 
   private static KeyRange keyRangeByHandle(long tableId, Long s, Long e) {
     return keyRangeByHandle(tableId, s, Status.EQUAL, e, Status.EQUAL);
-  }
-
-  private static KeyRange keyRangeByHandle(long tableId, Long s, ByteString regionEndKey) {
-    return KeyRange
-        .newBuilder()
-        .setStart(handleToByteString(tableId, s))
-        .setEnd(regionEndKey)
-        .build();
   }
 
   private static TiRegion region(long id, KeyRange range) {

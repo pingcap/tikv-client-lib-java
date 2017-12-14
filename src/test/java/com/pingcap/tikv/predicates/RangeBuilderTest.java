@@ -15,24 +15,28 @@
 
 package com.pingcap.tikv.predicates;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
+
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Range;
 import com.pingcap.tikv.expression.TiColumnRef;
 import com.pingcap.tikv.expression.TiConstant;
 import com.pingcap.tikv.expression.TiExpr;
-import com.pingcap.tikv.expression.scalar.*;
+import com.pingcap.tikv.expression.scalar.Equal;
+import com.pingcap.tikv.expression.scalar.GreaterEqual;
+import com.pingcap.tikv.expression.scalar.GreaterThan;
+import com.pingcap.tikv.expression.scalar.In;
+import com.pingcap.tikv.expression.scalar.NotEqual;
 import com.pingcap.tikv.meta.MetaUtils;
 import com.pingcap.tikv.meta.TiTableInfo;
 import com.pingcap.tikv.types.DataType;
 import com.pingcap.tikv.types.DataTypeFactory;
 import com.pingcap.tikv.types.Types;
-import org.junit.Test;
-
+import com.pingcap.tikv.value.TypedLiteral;
 import java.util.List;
-
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
+import org.junit.Test;
 
 public class RangeBuilderTest {
   private static TiTableInfo createTable() {
@@ -128,7 +132,7 @@ public class RangeBuilderTest {
             );
     DataType type = DataTypeFactory.of(Types.TYPE_LONG);
     RangeBuilder builder = new RangeBuilder();
-    List<Range> ranges = RangeBuilder.exprToRanges(conds, type);
+    List<Range<TypedLiteral>> ranges = RangeBuilder.exprToRanges(conds, type);
     assertEquals(2, ranges.size());
     assertEquals(Range.closedOpen(0L, 50L), ranges.get(0));
     assertEquals(Range.open(50L, 100L), ranges.get(1));

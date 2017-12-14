@@ -15,6 +15,9 @@
 
 package com.pingcap.tikv.operation.iterator;
 
+import static com.pingcap.tikv.value.Key.toKey;
+import static java.util.Objects.requireNonNull;
+
 import com.google.common.collect.Range;
 import com.google.protobuf.ByteString;
 import com.pingcap.tikv.TiSession;
@@ -22,25 +25,23 @@ import com.pingcap.tikv.codec.KeyUtils;
 import com.pingcap.tikv.exception.TiClientInternalException;
 import com.pingcap.tikv.kvproto.Coprocessor.KeyRange;
 import com.pingcap.tikv.kvproto.Kvrpcpb;
-import com.pingcap.tikv.kvproto.Kvrpcpb.IsolationLevel;
 import com.pingcap.tikv.kvproto.Metapb;
 import com.pingcap.tikv.region.RegionManager;
 import com.pingcap.tikv.region.RegionStoreClient;
 import com.pingcap.tikv.region.TiRegion;
-import com.pingcap.tikv.util.Comparables;
 import com.pingcap.tikv.util.KeyRangeUtils;
 import com.pingcap.tikv.util.Pair;
+import com.pingcap.tikv.value.Key;
 import java.util.Iterator;
 import java.util.List;
 import java.util.NoSuchElementException;
 
 public class ScanIterator implements Iterator<Kvrpcpb.KvPair> {
-  private final Range scanRange;
+  private final Range<Key> scanRange;
   private final int batchSize;
   protected final TiSession session;
   private final RegionManager regionCache;
   protected final long version;
-  private final Kvrpcpb.IsolationLevel isolationLevel = IsolationLevel.RC;
 
   private List<Kvrpcpb.KvPair> currentCache;
   protected ByteString startKey;
@@ -54,9 +55,10 @@ public class ScanIterator implements Iterator<Kvrpcpb.KvPair> {
       TiSession session,
       RegionManager rm,
       long version) {
-    this.startKey = startKey;
+    requireNonNull(range, "range is null");
+    this.startKey = requireNonNull(startKey, "start key is null");
     this.batchSize = batchSize;
-    this.scanRange = KeyRangeUtils.toRange(range);
+    this.scanRange = KeyRangeUtils.makeRange(range.getStart(), range.getEnd());
     this.session = session;
     this.regionCache = rm;
     this.version = version;
@@ -117,11 +119,6 @@ public class ScanIterator implements Iterator<Kvrpcpb.KvPair> {
     return true;
   }
 
-  @SuppressWarnings("unchecked")
-  private boolean contains(ByteString key) {
-    return scanRange.contains(Comparables.wrap(key));
-  }
-
   private Kvrpcpb.KvPair getCurrent() {
     if (cacheDrain() && endOfRegion) {
       throw new NoSuchElementException();
@@ -135,6 +132,11 @@ public class ScanIterator implements Iterator<Kvrpcpb.KvPair> {
       return kv;
     }
     return null;
+  }
+
+
+  private boolean contains(ByteString key) {
+    return scanRange.contains(toKey(key));
   }
 
   @Override

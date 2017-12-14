@@ -18,15 +18,25 @@ package com.pingcap.tikv.predicates;
 import static com.google.common.base.Preconditions.checkArgument;
 import static java.util.Objects.requireNonNull;
 
-import com.google.common.collect.*;
+import com.google.common.collect.ImmutableList;
+import com.google.common.collect.Range;
+import com.google.common.collect.RangeSet;
+import com.google.common.collect.TreeRangeSet;
 import com.pingcap.tikv.exception.TiClientInternalException;
 import com.pingcap.tikv.expression.TiConstant;
 import com.pingcap.tikv.expression.TiExpr;
 import com.pingcap.tikv.expression.TiFunctionExpression;
-import com.pingcap.tikv.expression.scalar.*;
+import com.pingcap.tikv.expression.scalar.Equal;
+import com.pingcap.tikv.expression.scalar.GreaterEqual;
+import com.pingcap.tikv.expression.scalar.GreaterThan;
+import com.pingcap.tikv.expression.scalar.In;
+import com.pingcap.tikv.expression.scalar.LessEqual;
+import com.pingcap.tikv.expression.scalar.LessThan;
+import com.pingcap.tikv.expression.scalar.NotEqual;
+import com.pingcap.tikv.expression.scalar.Or;
 import com.pingcap.tikv.predicates.AccessConditionNormalizer.NormalizedCondition;
 import com.pingcap.tikv.types.DataType;
-import com.pingcap.tikv.util.Comparables;
+import com.pingcap.tikv.value.TypedLiteral;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -48,7 +58,7 @@ public class RangeBuilder {
       DataType rangeType) {
     List<IndexRange> irs = exprsToPoints(accessPoints, accessPointsTypes);
     if (accessConditions != null && accessConditions.size() != 0) {
-      List<Range> ranges = exprToRanges(accessConditions, rangeType);
+      List<Range<TypedLiteral>> ranges = exprToRanges(accessConditions, rangeType);
       return appendRanges(irs, ranges, rangeType);
     } else {
       return irs;
@@ -111,32 +121,31 @@ public class RangeBuilder {
    * @param type index column type
    * @return access ranges
    */
-  @SuppressWarnings("unchecked")
-  static List<Range> exprToRanges(List<TiExpr> accessConditions, DataType type) {
+  static List<Range<TypedLiteral>> exprToRanges(List<TiExpr> accessConditions, DataType type) {
     if (accessConditions == null || accessConditions.size() == 0) {
       return ImmutableList.of();
     }
-    RangeSet ranges = TreeRangeSet.create();
+    RangeSet<TypedLiteral> ranges = TreeRangeSet.create();
     ranges.add(Range.all());
     for (TiExpr ac : accessConditions) {
       NormalizedCondition cond = AccessConditionNormalizer.normalize(ac);
       TiConstant constVal = cond.constantVals.get(0);
-      Comparable<?> comparableVal = Comparables.wrap(constVal.getValue());
+      TypedLiteral literal = TypedLiteral.create(constVal.getValue(), type);
       TiExpr expr = cond.condition;
 
       if (expr instanceof GreaterThan) {
-        ranges = ranges.subRangeSet(Range.greaterThan(comparableVal));
+        ranges = ranges.subRangeSet(Range.greaterThan(literal));
       } else if (expr instanceof GreaterEqual) {
-        ranges = ranges.subRangeSet(Range.atLeast(comparableVal));
+        ranges = ranges.subRangeSet(Range.atLeast(literal));
       } else if (expr instanceof LessThan) {
-        ranges = ranges.subRangeSet(Range.lessThan(comparableVal));
+        ranges = ranges.subRangeSet(Range.lessThan(literal));
       } else if (expr instanceof LessEqual) {
-        ranges = ranges.subRangeSet(Range.atMost(comparableVal));
+        ranges = ranges.subRangeSet(Range.atMost(literal));
       } else if (expr instanceof Equal) {
-        ranges = ranges.subRangeSet(Range.singleton(comparableVal));
+        ranges = ranges.subRangeSet(Range.singleton(literal));
       } else if (expr instanceof NotEqual) {
-        RangeSet left = ranges.subRangeSet(Range.lessThan(comparableVal));
-        RangeSet right = ranges.subRangeSet(Range.greaterThan(comparableVal));
+        RangeSet<TypedLiteral> left = ranges.subRangeSet(Range.lessThan(literal));
+        RangeSet<TypedLiteral> right = ranges.subRangeSet(Range.greaterThan(literal));
         ranges = TreeRangeSet.create(left);
         ranges.addAll(right);
       } else {
@@ -148,7 +157,7 @@ public class RangeBuilder {
   }
 
   static List<IndexRange> appendRanges(
-      List<IndexRange> indexRanges, List<Range> ranges, DataType rangeType) {
+      List<IndexRange> indexRanges, List<Range<TypedLiteral>> ranges, DataType rangeType) {
     requireNonNull(ranges);
     List<IndexRange> resultRanges = new ArrayList<>();
     if (indexRanges == null || indexRanges.size() == 0) {

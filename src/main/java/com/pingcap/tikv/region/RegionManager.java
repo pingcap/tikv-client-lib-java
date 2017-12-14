@@ -18,6 +18,10 @@
 package com.pingcap.tikv.region;
 
 
+import static com.pingcap.tikv.codec.KeyUtils.formatBytes;
+import static com.pingcap.tikv.util.KeyRangeUtils.makeRange;
+import static com.pingcap.tikv.value.Key.toKey;
+
 import com.google.common.collect.RangeMap;
 import com.google.common.collect.TreeRangeMap;
 import com.google.protobuf.ByteString;
@@ -28,15 +32,11 @@ import com.pingcap.tikv.exception.TiClientInternalException;
 import com.pingcap.tikv.kvproto.Metapb.Peer;
 import com.pingcap.tikv.kvproto.Metapb.Store;
 import com.pingcap.tikv.kvproto.Metapb.StoreState;
-import com.pingcap.tikv.util.Comparables;
 import com.pingcap.tikv.util.Pair;
-import org.apache.log4j.Logger;
-
+import com.pingcap.tikv.value.Key;
 import java.util.HashMap;
 import java.util.Map;
-
-import static com.pingcap.tikv.codec.KeyUtils.formatBytes;
-import static com.pingcap.tikv.util.KeyRangeUtils.makeRange;
+import org.apache.log4j.Logger;
 
 
 public class RegionManager {
@@ -54,7 +54,7 @@ public class RegionManager {
   public static class RegionCache {
     private final Map<Long, TiRegion>             regionCache;
     private final Map<Long, Store>                storeCache;
-    private final RangeMap<Comparable, Long>      keyToRegionIdCache;
+    private final RangeMap<Key, Long> keyToRegionIdCache;
     private final ReadOnlyPDClient pdClient;
 
     public RegionCache(ReadOnlyPDClient pdClient) {
@@ -67,7 +67,7 @@ public class RegionManager {
 
     public synchronized TiRegion getRegionByKey(ByteString key) {
       Long regionId;
-      regionId = keyToRegionIdCache.get(Comparables.wrap(key));
+      regionId = keyToRegionIdCache.get(toKey(key));
       if (logger.isDebugEnabled()) {
         logger.debug(String.format("getRegionByKey key[%s] -> ID[%s]", formatBytes(key), regionId));
       }
@@ -88,7 +88,6 @@ public class RegionManager {
       return region;
     }
 
-    @SuppressWarnings("unchecked")
     private synchronized boolean putRegion(TiRegion region) {
       if (logger.isDebugEnabled()) {
         logger.debug("putRegion: " + region);
@@ -112,7 +111,6 @@ public class RegionManager {
       return region;
     }
 
-    @SuppressWarnings("unchecked")
     /**
      * Removes region associated with regionId from regionCache.
      */

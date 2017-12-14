@@ -138,6 +138,10 @@ public abstract class DataType implements Serializable {
     cdo.writeByte(MAX_FLAG);
   }
 
+  public static void encodeNull(CodecDataOutput cdo) {
+    cdo.writeByte(NULL_FLAG);
+  }
+
   public static void encodeIndexMinValue(CodecDataOutput cdo) {
     cdo.writeByte(BYTES_FLAG);
   }
@@ -189,7 +193,7 @@ public abstract class DataType implements Serializable {
    */
   public void encode(CodecDataOutput cdo, EncodeType encodeType, Object value) {
     if (value == null) {
-      cdo.writeByte(NULL_FLAG);
+      encodeNull(cdo);
     } else {
       encodeNotNull(cdo, encodeType, value);
     }

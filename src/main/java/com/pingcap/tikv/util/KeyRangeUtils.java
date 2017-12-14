@@ -15,6 +15,8 @@
 
 package com.pingcap.tikv.util;
 
+import static com.pingcap.tikv.value.Key.toKey;
+
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Range;
 import com.google.protobuf.ByteString;
@@ -30,22 +32,10 @@ import com.pingcap.tikv.meta.TiIndexInfo;
 import com.pingcap.tikv.meta.TiTableInfo;
 import com.pingcap.tikv.types.DataType;
 
+import com.pingcap.tikv.value.Key;
 import java.util.List;
 
 public class KeyRangeUtils {
-  public static Range toRange(Coprocessor.KeyRange range) {
-    if (range == null || (range.getStart().isEmpty() && range.getEnd().isEmpty())) {
-      return Range.all();
-    }
-    if (range.getStart().isEmpty()) {
-      return Range.lessThan(Comparables.wrap(range.getEnd()));
-    }
-    if (range.getEnd().isEmpty()) {
-      return Range.atLeast(Comparables.wrap(range.getStart()));
-    }
-    return Range.closedOpen(Comparables.wrap(range.getStart()), Comparables.wrap(range.getEnd()));
-  }
-
   public static List<Coprocessor.KeyRange> split(Coprocessor.KeyRange range, int splitFactor) {
     if (splitFactor > 32 || splitFactor <= 0 || (splitFactor & (splitFactor - 1)) != 0) {
       throw new TiClientInternalException(
@@ -132,16 +122,8 @@ public class KeyRangeUtils {
     return types.build();
   }
 
-  public static Range makeRange(ByteString startKey, ByteString endKey) {
-    if (startKey.isEmpty() && endKey.isEmpty()) {
-      return Range.all();
-    }
-    if (startKey.isEmpty()) {
-      return Range.lessThan(Comparables.wrap(endKey));
-    } else if (endKey.isEmpty()) {
-      return Range.atLeast(Comparables.wrap(startKey));
-    }
-    return Range.closedOpen(Comparables.wrap(startKey), Comparables.wrap(endKey));
+  public static Range<Key> makeRange(ByteString startKey, ByteString endKey) {
+    return Range.closedOpen(toKey(startKey, true), toKey(endKey));
   }
 
   static Coprocessor.KeyRange makeCoprocRange(ByteString startKey, ByteString endKey) {
