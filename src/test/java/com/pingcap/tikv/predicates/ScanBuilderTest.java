@@ -57,6 +57,8 @@ public class ScanBuilderTest {
             0,
             "",
             "",
+            "",
+            "",
             ImmutableList.of());
 
     DataType typePrefix = DataTypeFactory.of(holder);

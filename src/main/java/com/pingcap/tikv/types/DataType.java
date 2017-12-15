@@ -196,6 +196,12 @@ public abstract class DataType implements Serializable {
   }
 
   public abstract void encodeNotNull(CodecDataOutput cdo, EncodeType encodeType, Object value);
+  public abstract Object getOriginDefaultValueNonNull(String value);
+
+  public Object getOriginDefaultValue(String value) {
+    if(value == null) return null;
+    return getOriginDefaultValueNonNull(value);
+  }
 
   public int getCollationCode() {
     return collation;

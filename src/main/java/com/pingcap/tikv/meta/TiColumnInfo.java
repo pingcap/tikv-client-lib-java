@@ -19,8 +19,11 @@ import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.google.common.annotations.VisibleForTesting;
+import com.google.protobuf.ByteString;
 import com.pingcap.tidb.tipb.ColumnInfo;
+import com.pingcap.tikv.codec.CodecDataOutput;
 import com.pingcap.tikv.types.DataType;
+import com.pingcap.tikv.types.DataType.EncodeType;
 import com.pingcap.tikv.types.DataTypeFactory;
 import java.io.Serializable;
 import java.util.List;
@@ -34,6 +37,8 @@ public class TiColumnInfo implements Serializable {
   private final SchemaState schemaState;
   private final String comment;
   private final boolean isPrimaryKey;
+  private final String defaultValue;
+  private final String originDefaultValue;
 
   @VisibleForTesting
   private static final int PK_MASK = 0x2;
@@ -45,6 +50,8 @@ public class TiColumnInfo implements Serializable {
       @JsonProperty("offset") int offset,
       @JsonProperty("type") InternalTypeHolder type,
       @JsonProperty("state") int schemaState,
+      @JsonProperty("origin_default") String originalDefaultValue,
+      @JsonProperty("default") String defaultValue,
       @JsonProperty("comment") String comment) {
     this.id = id;
     this.name = name.getL();
@@ -52,6 +59,8 @@ public class TiColumnInfo implements Serializable {
     this.type = DataTypeFactory.of(type);
     this.schemaState = SchemaState.fromValue(schemaState);
     this.comment = comment;
+    this.defaultValue = defaultValue;
+    this.originDefaultValue = originalDefaultValue;
     // I don't think pk flag should be set on type
     // Refactor against original tidb code
     this.isPrimaryKey = (type.getFlag() & PK_MASK) > 0;
@@ -66,6 +75,8 @@ public class TiColumnInfo implements Serializable {
     this.schemaState = SchemaState.StatePublic;
     this.comment = "";
     this.isPrimaryKey = isPrimaryKey;
+    this.originDefaultValue = "1";
+    this.defaultValue = "";
   }
 
   public long getId() {
@@ -100,6 +111,16 @@ public class TiColumnInfo implements Serializable {
     return isPrimaryKey;
   }
 
+  public String getDefaultValue() {
+    return defaultValue;
+  }
+
+  public ByteString getOriginDefaultValue() {
+    CodecDataOutput cdo = new CodecDataOutput();
+    type.encode(cdo, EncodeType.VALUE, type.getOriginDefaultValue(originDefaultValue));
+    return cdo.toByteString();
+  }
+
   @JsonIgnoreProperties(ignoreUnknown = true)
   public static class InternalTypeHolder {
     private final int tp;
@@ -108,7 +129,17 @@ public class TiColumnInfo implements Serializable {
     private final int decimal;
     private final String charset;
     private final String collate;
+    private final String defaultValue;
+    private final String originDefaultValue;
     private final List<String> elems;
+
+    public String getDefaultValue() {
+      return defaultValue;
+    }
+
+    public String getOriginDefaultValue() {
+      return originDefaultValue;
+    }
 
     interface Builder<E extends DataType> {
       E build(InternalTypeHolder holder);
@@ -121,6 +152,8 @@ public class TiColumnInfo implements Serializable {
         @JsonProperty("Flen") long flen,
         @JsonProperty("Decimal") int decimal,
         @JsonProperty("Charset") String charset,
+        @JsonProperty("origin_default") String originalDefaultValue,
+        @JsonProperty("default") String defaultValue,
         @JsonProperty("Collate") String collate,
         @JsonProperty("Elems") List<String> elems) {
       this.tp = tp;
@@ -129,6 +162,8 @@ public class TiColumnInfo implements Serializable {
       this.decimal = decimal;
       this.charset = charset;
       this.collate = collate;
+      this.defaultValue = defaultValue;
+      this.originDefaultValue = originalDefaultValue;
       this.elems = elems;
     }
 
@@ -140,6 +175,9 @@ public class TiColumnInfo implements Serializable {
       this.charset = "";
       this.collate = Collation.translate(c.getCollation());
       this.elems = c.getElemsList();
+      this.defaultValue = c.getDefaultVal().toStringUtf8();
+      // TODO: we may need write a functon about get origin default value according to the string.
+      this.originDefaultValue = "";
     }
 
     public int getTp() {
@@ -187,6 +225,7 @@ public class TiColumnInfo implements Serializable {
         .setColumnLen((int) type.getLength())
         .setDecimal(type.getDecimal())
         .setFlag(type.getFlag())
+        .setDefaultVal(getOriginDefaultValue())
         .setPkHandle(table.isPkHandle() && isPrimaryKey())
         .addAllElems(type.getElems());
   }

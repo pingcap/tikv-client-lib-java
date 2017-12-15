@@ -70,6 +70,16 @@ public class DecimalType extends DataType {
   }
 
   /**
+   * get origin value from string.
+   * @param value a decimal value represents in string.
+   * @return a Double Value
+   */
+  @Override
+  public Object getOriginDefaultValueNonNull(String value) {
+    return Double.parseDouble(value);
+  }
+
+  /**
    * read a decimal value from CodecDataInput
    *
    * @param cdi cdi is source data.

@@ -74,6 +74,16 @@ public class BytesType extends DataType {
     }
   }
 
+  /**
+   * get origin default value
+   * @param value a bytes string value
+   * @return a {@link String} Object
+   */
+  @Override
+  public Object getOriginDefaultValueNonNull(String value) {
+    return value;
+  }
+
   private static final int GRP_SIZE = 8;
   private static final byte[] PADS = new byte[GRP_SIZE];
   private static final int MARKER = 0xFF;
