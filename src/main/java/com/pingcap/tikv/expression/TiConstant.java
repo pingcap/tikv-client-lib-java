@@ -17,6 +17,8 @@ package com.pingcap.tikv.expression;
 
 import com.pingcap.tidb.tipb.Expr;
 import com.pingcap.tidb.tipb.ExprType;
+import com.pingcap.tikv.codec.Codec.IntegerCodec;
+import com.pingcap.tikv.codec.Codec.RealCodec;
 import com.pingcap.tikv.codec.CodecDataOutput;
 import com.pingcap.tikv.exception.TiExpressionException;
 import com.pingcap.tikv.meta.TiTableInfo;
@@ -64,7 +66,7 @@ public class TiConstant implements TiExpr {
       builder.setTp(ExprType.Null);
     } else if (isIntegerType()) {
       builder.setTp(ExprType.Int64);
-      IntegerType.writeLong(cdo, ((Number) value).longValue());
+      IntegerCodec.writeLong(cdo, ((Number) value).longValue());
     } else if (value instanceof String) {
       builder.setTp(ExprType.String);
       // Instead of using BytesType codec, coprocessor reads
@@ -72,10 +74,10 @@ public class TiConstant implements TiExpr {
       cdo.write(((String) value).getBytes());
     } else if (value instanceof Float) {
       builder.setTp(ExprType.Float32);
-      RealType.writeFloat(cdo, (Float) value);
+      RealCodec.writeFloat(cdo, (Float) value);
     } else if (value instanceof Double) {
       builder.setTp(ExprType.Float64);
-      RealType.writeDouble(cdo, (Double) value);
+      RealCodec.writeDouble(cdo, (Double) value);
     } else if (value instanceof BigDecimal) {
       builder.setTp(ExprType.MysqlDecimal);
       DecimalType.writeDecimal(cdo, (BigDecimal) value);

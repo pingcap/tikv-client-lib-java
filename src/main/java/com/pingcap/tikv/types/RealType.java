@@ -17,13 +17,14 @@
 
 package com.pingcap.tikv.types;
 
+import com.pingcap.tikv.codec.Codec.IntegerCodec;
+import com.pingcap.tikv.codec.Codec.RealCodec;
 import com.pingcap.tikv.codec.CodecDataInput;
 import com.pingcap.tikv.codec.CodecDataOutput;
 import com.pingcap.tikv.codec.InvalidCodecFormatException;
 import com.pingcap.tikv.meta.TiColumnInfo;
 
 public class RealType extends DataType {
-  private static final long signMask = 0x8000000000000000L;
 
   static RealType of(int tp) {
     return new RealType(tp);
@@ -34,12 +35,12 @@ public class RealType extends DataType {
   }
 
   @Override
-  public Object decodeNotNull(int flag, CodecDataInput cdi) {
+  protected Object decodeNotNull(int flag, CodecDataInput cdi) {
     // check flag first and then read.
     if (flag != FLOATING_FLAG) {
       throw new InvalidCodecFormatException("Invalid Flag type for float type: " + flag);
     }
-    return readDouble(cdi);
+    return RealCodec.readDouble(cdi);
   }
 
   RealType(TiColumnInfo.InternalTypeHolder holder) {
@@ -48,13 +49,12 @@ public class RealType extends DataType {
 
   /**
    * encode a value to cdo.
-   *
-   * @param cdo destination of data.
+   *  @param cdo destination of data.
    * @param encodeType Key or Value.
    * @param value need to be encoded.
    */
   @Override
-  public void encodeNotNull(CodecDataOutput cdo, EncodeType encodeType, Object value) {
+  protected void encodeNotNull(CodecDataOutput cdo, EncodeType encodeType, Object value) {
     double val;
     if (value instanceof Double) {
       val = (Double) value;
@@ -62,52 +62,7 @@ public class RealType extends DataType {
       throw new UnsupportedOperationException("Can not cast Un-number to Float");
     }
 
-    IntegerType.writeULong(cdo, encodeDoubleToCmpLong(val));
+    IntegerCodec.writeULong(cdo, RealCodec.encodeDoubleToCmpLong(val));
   }
 
-  /**
-   * Decode as float
-   *
-   * @param cdi source of data
-   * @return decoded unsigned long value
-   */
-  public static double readDouble(CodecDataInput cdi) {
-    long u = IntegerType.readULong(cdi);
-    if (u < 0) {
-      u &= Long.MAX_VALUE;
-    } else {
-      u = ~u;
-    }
-    return Double.longBitsToDouble(u);
-  }
-
-  private static long encodeDoubleToCmpLong(double val) {
-    long u = Double.doubleToRawLongBits(val);
-    if (val >= 0) {
-      u |= signMask;
-    } else {
-      u = ~u;
-    }
-    return u;
-  }
-
-  /**
-   * Encoding a double value to byte buffer
-   *
-   * @param cdo For outputting data in bytes array
-   * @param val The data to encode
-   */
-  public static void writeDouble(CodecDataOutput cdo, double val) {
-    IntegerType.writeULong(cdo, encodeDoubleToCmpLong(val));
-  }
-
-  /**
-   * Encoding a float value to byte buffer
-   *
-   * @param cdo For outputting data in bytes array
-   * @param val The data to encode
-   */
-  public static void writeFloat(CodecDataOutput cdo, float val) {
-    writeDouble(cdo, val);
-  }
 }

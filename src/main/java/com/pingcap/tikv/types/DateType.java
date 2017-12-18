@@ -40,7 +40,7 @@ public class DateType extends DataType {
   }
 
   @Override
-  public Object decodeNotNull(int flag, CodecDataInput cdi) {
+  protected Object decodeNotNull(int flag, CodecDataInput cdi) {
     long val = IntegerType.decodeNotNullPrimitive(flag, cdi);
     LocalDateTime localDateTime = fromPackedLong(val);
     if (localDateTime == null) {
@@ -53,7 +53,7 @@ public class DateType extends DataType {
   }
 
   @Override
-  public void encodeNotNull(CodecDataOutput cdo, EncodeType encodeType, Object value) {
+  protected void encodeNotNull(CodecDataOutput cdo, EncodeType encodeType, Object value) {
     Date in;
     try {
       if (value instanceof Date) {

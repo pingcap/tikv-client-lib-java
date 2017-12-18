@@ -5,6 +5,7 @@ import static org.junit.Assert.assertEquals;
 
 import com.google.common.collect.ImmutableList;
 import com.google.protobuf.ByteString;
+import com.pingcap.tikv.codec.Codec.IntegerCodec;
 import com.pingcap.tikv.codec.CodecDataOutput;
 import com.pingcap.tikv.codec.TableCodec;
 import com.pingcap.tikv.codec.TableCodec.DecodeResult.Status;
@@ -15,7 +16,6 @@ import com.pingcap.tikv.kvproto.Metapb;
 import com.pingcap.tikv.kvproto.Metapb.Peer;
 import com.pingcap.tikv.region.RegionManager;
 import com.pingcap.tikv.region.TiRegion;
-import com.pingcap.tikv.types.IntegerType;
 import com.pingcap.tikv.value.Key;
 import gnu.trove.list.array.TLongArrayList;
 import java.util.List;
@@ -53,13 +53,13 @@ public class RangeSplitterTest {
     ByteString eKey = ByteString.EMPTY;
     if (s != null) {
       CodecDataOutput cdo = new CodecDataOutput();
-      IntegerType.writeLongFull(cdo, s, true);
+      IntegerCodec.writeLongFull(cdo, s, true);
       sKey = cdo.toByteString();
     }
 
     if (e != null) {
       CodecDataOutput cdo = new CodecDataOutput();
-      IntegerType.writeLongFull(cdo, e, true);
+      IntegerCodec.writeLongFull(cdo, e, true);
       eKey = cdo.toByteString();
     }
 

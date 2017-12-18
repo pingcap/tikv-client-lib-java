@@ -17,6 +17,7 @@
 
 package com.pingcap.tikv.types;
 
+import com.pingcap.tikv.codec.Codec.IntegerCodec;
 import com.pingcap.tikv.codec.CodecDataInput;
 import com.pingcap.tikv.codec.CodecDataOutput;
 import com.pingcap.tikv.codec.InvalidCodecFormatException;
@@ -51,17 +52,17 @@ public class TimestampType extends DataType {
   }
 
   @Override
-  public Object decodeNotNull(int flag, CodecDataInput cdi) {
+  protected Object decodeNotNull(int flag, CodecDataInput cdi) {
     if (flag == UVARINT_FLAG) {
       // read packedUInt
-      LocalDateTime localDateTime = fromPackedLong(IntegerType.readUVarLong(cdi));
+      LocalDateTime localDateTime = fromPackedLong(IntegerCodec.readUVarLong(cdi));
       if (localDateTime == null) {
         return null;
       }
       return Timestamp.from(ZonedDateTime.of(localDateTime, getDefaultTimezone()).toInstant());
     } else if (flag == UINT_FLAG) {
       // read UInt
-      LocalDateTime localDateTime = fromPackedLong(IntegerType.readULong(cdi));
+      LocalDateTime localDateTime = fromPackedLong(IntegerCodec.readULong(cdi));
       if (localDateTime == null) {
         return null;
       }
@@ -73,13 +74,12 @@ public class TimestampType extends DataType {
 
   /**
    * encode a value to cdo per type.
-   *
-   * @param cdo destination of data.
+   *  @param cdo destination of data.
    * @param encodeType Key or Value.
    * @param value need to be encoded.
    */
   @Override
-  public void encodeNotNull(CodecDataOutput cdo, EncodeType encodeType, Object value) {
+  protected void encodeNotNull(CodecDataOutput cdo, EncodeType encodeType, Object value) {
     LocalDateTime localDateTime;
     if (value instanceof LocalDateTime) {
       localDateTime = (LocalDateTime) value;
@@ -87,7 +87,7 @@ public class TimestampType extends DataType {
       throw new UnsupportedOperationException("Can not cast Object to LocalDateTime ");
     }
     long val = toPackedLong(localDateTime);
-    IntegerType.writeULongFull(cdo, val, true);
+    IntegerCodec.writeULongFull(cdo, val, true);
   }
 
   /**
@@ -96,7 +96,7 @@ public class TimestampType extends DataType {
    * @param time localDateTime that need to be encoded.
    * @return a packed long.
    */
-  public static long toPackedLong(LocalDateTime time) {
+  protected static long toPackedLong(LocalDateTime time) {
     return toPackedLong(time.getYear(),
         time.getMonthValue(),
         time.getDayOfMonth(),
@@ -111,7 +111,7 @@ public class TimestampType extends DataType {
    *
    * @return a packed long.
    */
-  public static long toPackedLong(int year, int month, int day, int hour, int minute, int second, int micro) {
+  protected static long toPackedLong(int year, int month, int day, int hour, int minute, int second, int micro) {
     long ymd = (year * 13 + month) << 5 | day;
     long hms = hour << 12 | minute << 6 | second;
     return ((ymd << 17 | hms) << 24) | micro;
@@ -123,7 +123,7 @@ public class TimestampType extends DataType {
    * @param date Date object that need to be encoded.
    * @return a packed long.
    */
-  public static long toPackedLong(Date date) {
+  protected static long toPackedLong(Date date) {
     return toPackedLong(
         date.getYear() + 1900,
         date.getMonth() + 1,
@@ -137,7 +137,7 @@ public class TimestampType extends DataType {
    * @param packed a long value
    * @return a decoded LocalDateTime.
    */
-  public static LocalDateTime fromPackedLong(long packed) {
+  protected static LocalDateTime fromPackedLong(long packed) {
     // TODO: As for JDBC behavior, it can be configured to "round" or "toNull"
     // for now we didn't pass in session so we do a toNull behavior
     if (packed == 0) {

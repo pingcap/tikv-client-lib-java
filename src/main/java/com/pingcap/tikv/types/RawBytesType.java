@@ -17,6 +17,7 @@
 
 package com.pingcap.tikv.types;
 
+import com.pingcap.tikv.codec.Codec.BytesCodec;
 import com.pingcap.tikv.codec.CodecDataInput;
 import com.pingcap.tikv.codec.CodecDataOutput;
 import com.pingcap.tikv.codec.InvalidCodecFormatException;
@@ -41,11 +42,11 @@ public class RawBytesType extends BytesType {
   }
 
   @Override
-  public Object decodeNotNull(int flag, CodecDataInput cdi) {
+  protected Object decodeNotNull(int flag, CodecDataInput cdi) {
     if (flag == COMPACT_BYTES_FLAG) {
-      return readCompactBytes(cdi);
+      return BytesCodec.readCompactBytes(cdi);
     } else if (flag == BYTES_FLAG) {
-      return readBytes(cdi);
+      return BytesCodec.readBytes(cdi);
     } else {
       throw new InvalidCodecFormatException("Invalid Flag type for : " + flag);
     }
@@ -53,13 +54,12 @@ public class RawBytesType extends BytesType {
 
   /**
    * encode value to cdo per type. If key, then it is memory comparable. If value, no guarantee.
-   *
-   * @param cdo destination of data.
+   *  @param cdo destination of data.
    * @param encodeType Key or Value.
    * @param value need to be encoded.
    */
   @Override
-  public void encodeNotNull(CodecDataOutput cdo, EncodeType encodeType, Object value) {
+  protected void encodeNotNull(CodecDataOutput cdo, EncodeType encodeType, Object value) {
     byte[] bytes;
     if (value instanceof byte[]) {
       bytes = (byte[]) value;
@@ -67,9 +67,9 @@ public class RawBytesType extends BytesType {
       throw new UnsupportedOperationException("can not cast non bytes type to bytes array");
     }
     if (encodeType == EncodeType.KEY) {
-      writeBytes(cdo, bytes);
+      BytesCodec.writeBytes(cdo, bytes);
     } else {
-      writeCompactBytes(cdo, bytes);
+      BytesCodec.writeCompactBytes(cdo, bytes);
     }
   }
 }

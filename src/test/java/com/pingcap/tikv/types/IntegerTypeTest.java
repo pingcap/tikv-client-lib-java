@@ -19,6 +19,7 @@ package com.pingcap.tikv.types;
 
 import static org.junit.Assert.*;
 
+import com.pingcap.tikv.codec.Codec.IntegerCodec;
 import com.pingcap.tikv.codec.CodecDataInput;
 import com.pingcap.tikv.codec.CodecDataOutput;
 import org.junit.Test;
@@ -27,8 +28,8 @@ public class IntegerTypeTest {
   @Test
   public void readNWriteLongTest() throws Exception {
     CodecDataOutput cdo = new CodecDataOutput();
-    IntegerType.writeLongFull(cdo, 9999L, true);
-    IntegerType.writeLongFull(cdo, -2333L, false);
+    IntegerCodec.writeLongFull(cdo, 9999L, true);
+    IntegerCodec.writeLongFull(cdo, -2333L, false);
     assertArrayEquals(
         new byte[] {
           (byte) 0x3,
@@ -46,15 +47,15 @@ public class IntegerTypeTest {
         },
         cdo.toBytes());
     CodecDataInput cdi = new CodecDataInput(cdo.toBytes());
-    long value = IntegerType.readLongFully(cdi);
+    long value = IntegerCodec.readLongFully(cdi);
     assertEquals(9999L, value);
-    value = IntegerType.readLongFully(cdi);
+    value = IntegerCodec.readLongFully(cdi);
     assertEquals(-2333L, value);
 
     byte[] wrongData = new byte[] {(byte) 0x8, (byte) 0xb9};
     cdi = new CodecDataInput(wrongData);
     try {
-      IntegerType.readLongFully(cdi);
+      IntegerCodec.readLongFully(cdi);
       fail();
     } catch (Exception e) {
       assertTrue(true);
@@ -64,8 +65,8 @@ public class IntegerTypeTest {
   @Test
   public void readNWriteUnsignedLongTest() throws Exception {
     CodecDataOutput cdo = new CodecDataOutput();
-    IntegerType.writeULongFull(cdo, 0xffffffffffffffffL, true);
-    IntegerType.writeULongFull(cdo, Long.MIN_VALUE, false);
+    IntegerCodec.writeULongFull(cdo, 0xffffffffffffffffL, true);
+    IntegerCodec.writeULongFull(cdo, Long.MIN_VALUE, false);
     assertArrayEquals(
         new byte[] {
           (byte) 0x4,
@@ -91,10 +92,10 @@ public class IntegerTypeTest {
         },
         cdo.toBytes());
     CodecDataInput cdi = new CodecDataInput(cdo.toBytes());
-    long value = IntegerType.readULongFully(cdi);
+    long value = IntegerCodec.readULongFully(cdi);
 
     assertEquals(0xffffffffffffffffL, value);
-    value = IntegerType.readULongFully(cdi);
+    value = IntegerCodec.readULongFully(cdi);
     assertEquals(Long.MIN_VALUE, value);
 
     byte[] wrongData =
@@ -105,7 +106,7 @@ public class IntegerTypeTest {
         };
     cdi = new CodecDataInput(wrongData);
     try {
-      IntegerType.readULongFully(cdi);
+      IntegerCodec.readULongFully(cdi);
       fail();
     } catch (Exception e) {
       assertTrue(true);

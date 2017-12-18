@@ -17,13 +17,13 @@ package com.pingcap.tikv.expression;
 
 import com.pingcap.tidb.tipb.Expr;
 import com.pingcap.tidb.tipb.ExprType;
+import com.pingcap.tikv.codec.Codec.IntegerCodec;
 import com.pingcap.tikv.codec.CodecDataOutput;
 import com.pingcap.tikv.exception.TiClientInternalException;
 import com.pingcap.tikv.exception.TiExpressionException;
 import com.pingcap.tikv.meta.TiColumnInfo;
 import com.pingcap.tikv.meta.TiTableInfo;
 import com.pingcap.tikv.types.DataType;
-import com.pingcap.tikv.types.IntegerType;
 
 public class TiColumnRef implements TiExpr {
   public static TiColumnInfo getColumnWithName(String name, TiTableInfo table) {
@@ -74,7 +74,7 @@ public class TiColumnRef implements TiExpr {
     // After switching to DAG request mode, expression value
     // should be the index of table columns we provided in
     // the first executor of a DAG request.
-    IntegerType.writeLong(cdo, columnInfo.getOffset());
+    IntegerCodec.writeLong(cdo, columnInfo.getOffset());
     builder.setVal(cdo.toByteString());
     return builder.build();
   }

@@ -44,7 +44,7 @@ public class DecimalType extends DataType {
    * @param cdi source of data.
    */
   @Override
-  public Object decodeNotNull(int flag, CodecDataInput cdi) {
+  protected Object decodeNotNull(int flag, CodecDataInput cdi) {
     if (flag != DECIMAL_FLAG) {
       throw new InvalidCodecFormatException("Invalid Flag type for decimal type: " + flag);
     }
@@ -53,13 +53,12 @@ public class DecimalType extends DataType {
 
   /**
    * Encode a Decimal to Byte String.
-   *
-   * @param cdo destination of data.
+   *  @param cdo destination of data.
    * @param encodeType Key or Value.
    * @param value need to be encoded.
    */
   @Override
-  public void encodeNotNull(CodecDataOutput cdo, EncodeType encodeType, Object value) {
+  protected void encodeNotNull(CodecDataOutput cdo, EncodeType encodeType, Object value) {
     double val;
     if (value instanceof Number) {
       val = ((Number) value).doubleValue();

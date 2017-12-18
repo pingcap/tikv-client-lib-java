@@ -110,7 +110,7 @@ public abstract class DataType implements Serializable {
     row.set(pos, this, value);
   }
 
-  public abstract Object decodeNotNull(int flag, CodecDataInput cdi);
+  protected abstract Object decodeNotNull(int flag, CodecDataInput cdi);
 
   /**
    * decode value from row which is nothing.
@@ -199,7 +199,7 @@ public abstract class DataType implements Serializable {
     }
   }
 
-  public abstract void encodeNotNull(CodecDataOutput cdo, EncodeType encodeType, Object value);
+  protected abstract void encodeNotNull(CodecDataOutput cdo, EncodeType encodeType, Object value);
 
   public int getCollationCode() {
     return collation;

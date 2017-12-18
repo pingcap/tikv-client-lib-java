@@ -30,6 +30,10 @@ public class TypedLiteral extends Key {
     this.type = type;
   }
 
+  public DataType getType() {
+    return type;
+  }
+
   public static TypedLiteral create(Object val, DataType type) {
     requireNonNull(type, "type is null");
     CodecDataOutput cdo = new CodecDataOutput();

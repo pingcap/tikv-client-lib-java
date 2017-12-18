@@ -20,6 +20,8 @@ package com.pingcap.tikv.types;
 import static org.junit.Assert.*;
 
 import com.google.common.primitives.UnsignedLong;
+import com.pingcap.tikv.codec.Codec.IntegerCodec;
+import com.pingcap.tikv.codec.Codec.RealCodec;
 import com.pingcap.tikv.codec.CodecDataInput;
 import com.pingcap.tikv.codec.CodecDataOutput;
 import org.junit.Test;
@@ -28,18 +30,18 @@ public class RealTypeTest {
   @Test
   public void writeFloatTest() throws Exception {
     CodecDataOutput cdo = new CodecDataOutput();
-    RealType.writeDouble(cdo, 0.00);
-    double u = RealType.readDouble(new CodecDataInput(cdo.toBytes()));
+    RealCodec.writeDouble(cdo, 0.00);
+    double u = RealCodec.readDouble(new CodecDataInput(cdo.toBytes()));
     assertEquals(0.00, u, 0);
 
     cdo.reset();
-    RealType.writeDouble(cdo, Double.MAX_VALUE);
-    u = RealType.readDouble(new CodecDataInput(cdo.toBytes()));
+    RealCodec.writeDouble(cdo, Double.MAX_VALUE);
+    u = RealCodec.readDouble(new CodecDataInput(cdo.toBytes()));
     assertEquals(Double.MAX_VALUE, u, 0);
 
     cdo.reset();
-    RealType.writeDouble(cdo, Double.MIN_VALUE);
-    u = RealType.readDouble(new CodecDataInput(cdo.toBytes()));
+    RealCodec.writeDouble(cdo, Double.MIN_VALUE);
+    u = RealCodec.readDouble(new CodecDataInput(cdo.toBytes()));
     assertEquals(Double.MIN_VALUE, u, 0);
   }
 
@@ -57,7 +59,7 @@ public class RealTypeTest {
           0
         };
     CodecDataInput cdi = new CodecDataInput(data);
-    double u = RealType.readDouble(cdi);
+    double u = RealCodec.readDouble(cdi);
     assertEquals(1.1, u, 0.0001);
 
     data =
@@ -72,7 +74,7 @@ public class RealTypeTest {
           (byte) (154 & 0xFF)
         };
     cdi = new CodecDataInput(data);
-    u = RealType.readDouble(cdi);
+    u = RealCodec.readDouble(cdi);
     assertEquals(2.2, u, 0.0001);
 
     data =
@@ -88,25 +90,25 @@ public class RealTypeTest {
         };
 
     cdi = new CodecDataInput(data);
-    u = RealType.readDouble(cdi);
+    u = RealCodec.readDouble(cdi);
     assertEquals(-99.199, u, 0.0001);
   }
 
   @Test
   public void negativeLongTest() throws Exception {
     CodecDataOutput cdo = new CodecDataOutput();
-    IntegerType.writeULong(cdo, UnsignedLong.valueOf("13831004815617530266").longValue());
-    double u = RealType.readDouble(new CodecDataInput(cdo.toBytes()));
+    IntegerCodec.writeULong(cdo, UnsignedLong.valueOf("13831004815617530266").longValue());
+    double u = RealCodec.readDouble(new CodecDataInput(cdo.toBytes()));
     assertEquals(1.1, u, 0.001);
 
     cdo.reset();
-    IntegerType.writeULong(cdo, UnsignedLong.valueOf("13835508415244900762").longValue());
-    u = RealType.readDouble(new CodecDataInput(cdo.toBytes()));
+    IntegerCodec.writeULong(cdo, UnsignedLong.valueOf("13835508415244900762").longValue());
+    u = RealCodec.readDouble(new CodecDataInput(cdo.toBytes()));
     assertEquals(2.2, u, 0.001);
 
     cdo.reset();
-    IntegerType.writeULong(cdo, UnsignedLong.valueOf("13837985394932580352").longValue());
-    u = RealType.readDouble(new CodecDataInput(cdo.toBytes()));
+    IntegerCodec.writeULong(cdo, UnsignedLong.valueOf("13837985394932580352").longValue());
+    u = RealCodec.readDouble(new CodecDataInput(cdo.toBytes()));
     assertEquals(3.3, u, 0.001);
   }
 }

@@ -16,9 +16,9 @@
 package com.pingcap.tikv.codec;
 
 import com.google.protobuf.ByteString;
+import com.pingcap.tikv.codec.Codec.IntegerCodec;
 import com.pingcap.tikv.codec.TableCodec.DecodeResult.Status;
 import com.pingcap.tikv.types.DataType;
-import com.pingcap.tikv.types.IntegerType;
 import com.pingcap.tikv.util.FastByteComparisons;
 import com.pingcap.tikv.util.Pair;
 import java.text.SimpleDateFormat;
@@ -52,7 +52,7 @@ public class TableCodec {
       CodecDataOutput cdo, long tableId, long indexId, byte[]... dataGroup) {
     Objects.requireNonNull(cdo, "cdo cannot be null");
     appendTableIndexPrefix(cdo, tableId);
-    IntegerType.writeLong(cdo, indexId);
+    IntegerCodec.writeLong(cdo, indexId);
     for (byte[] data : dataGroup) {
       if (data != null) {
         cdo.write(data);
@@ -64,9 +64,9 @@ public class TableCodec {
     Objects.requireNonNull(indexKey, "indexKey cannot be null");
     CodecDataInput cdi = new CodecDataInput(indexKey);
     cdi.skipBytes(TBL_PREFIX.length);
-    IntegerType.readLong(cdi);
+    IntegerCodec.readLong(cdi);
     cdi.skipBytes(IDX_PREFIX_SEP.length);
-    IntegerType.readLong(cdi);
+    IntegerCodec.readLong(cdi);
 
     StringBuilder sb = new StringBuilder();
     for (int i = 0; i < types.size(); i++) {
@@ -110,7 +110,7 @@ public class TableCodec {
   private static void appendTableRecordPrefix(CodecDataOutput cdo, long tableId) {
     Objects.requireNonNull(cdo, "cdo cannot be null");
     cdo.write(TBL_PREFIX);
-    IntegerType.writeLong(cdo, tableId);
+    IntegerCodec.writeLong(cdo, tableId);
     cdo.write(REC_PREFIX_SEP);
   }
 
@@ -119,7 +119,7 @@ public class TableCodec {
   private static void appendTableIndexPrefix(CodecDataOutput cdo, long tableId) {
     Objects.requireNonNull(cdo, "cdo cannot be null");
     cdo.write(TBL_PREFIX);
-    IntegerType.writeLong(cdo, tableId);
+    IntegerCodec.writeLong(cdo, tableId);
     cdo.write(IDX_PREFIX_SEP);
   }
 
@@ -139,10 +139,10 @@ public class TableCodec {
     Objects.requireNonNull(rowKey, "rowKey cannot be null");
     CodecDataInput cdi = new CodecDataInput(rowKey);
     cdi.skipBytes(TBL_PREFIX.length);
-    IntegerType.readLong(cdi);
+    IntegerCodec.readLong(cdi);
     cdi.skipBytes(REC_PREFIX_SEP.length);
 
-    return IntegerType.readLong(cdi);
+    return IntegerCodec.readLong(cdi);
   }
 
   public static class DecodeResult {
@@ -190,7 +190,7 @@ public class TableCodec {
     } else if (cdi.available() > 8) {
       outResult.status = Status.GREATER;
     }
-    outResult.handle = IntegerType.readPartialLong(cdi);
+    outResult.handle = IntegerCodec.readPartialLong(cdi);
   }
 
   public static long decodeRowKey(ByteString rowKey) {
@@ -200,13 +200,13 @@ public class TableCodec {
   public static void writeRowKeyWithHandle(CodecDataOutput cdo, long tableId, long handle) {
     Objects.requireNonNull(cdo, "cdo cannot be null");
     appendTableRecordPrefix(cdo, tableId);
-    IntegerType.writeLong(cdo, handle);
+    IntegerCodec.writeLong(cdo, handle);
   }
 
   public static void writeRecordKey(CodecDataOutput cdo, byte[] recordPrefix, long handle) {
     Objects.requireNonNull(cdo, "cdo cannot be null");
     cdo.write(recordPrefix);
-    IntegerType.writeLong(cdo, handle);
+    IntegerCodec.writeLong(cdo, handle);
   }
 
   public static Pair<Long, Long> readRecordKey(CodecDataInput cdi) {
@@ -214,13 +214,13 @@ public class TableCodec {
     if (!consumeAndMatching(cdi, TBL_PREFIX)) {
       throw new CodecException("Invalid Table Prefix");
     }
-    long tableId = IntegerType.readLong(cdi);
+    long tableId = IntegerCodec.readLong(cdi);
 
     if (!consumeAndMatching(cdi, REC_PREFIX_SEP)) {
       throw new CodecException("Invalid Record Prefix");
     }
 
-    long handle = IntegerType.readLong(cdi);
+    long handle = IntegerCodec.readLong(cdi);
     return Pair.create(tableId, handle);
   }
 
