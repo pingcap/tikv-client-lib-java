@@ -18,7 +18,7 @@ package com.pingcap.tikv;
 import static com.pingcap.tikv.operation.iterator.CoprocessIterator.getHandleIterator;
 import static com.pingcap.tikv.operation.iterator.CoprocessIterator.getRowIterator;
 import static com.pingcap.tikv.util.KeyRangeUtils.makeRange;
-import static com.pingcap.tikv.value.Key.toKey;
+import static com.pingcap.tikv.key.Key.toKey;
 
 import com.google.common.collect.Range;
 import com.google.protobuf.ByteString;
@@ -35,7 +35,7 @@ import com.pingcap.tikv.row.Row;
 import com.pingcap.tikv.util.Pair;
 import com.pingcap.tikv.util.RangeSplitter;
 import com.pingcap.tikv.util.RangeSplitter.RegionTask;
-import com.pingcap.tikv.value.Key;
+import com.pingcap.tikv.key.Key;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;

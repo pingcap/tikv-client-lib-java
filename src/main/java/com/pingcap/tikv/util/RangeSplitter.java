@@ -16,8 +16,7 @@
 package com.pingcap.tikv.util;
 
 import static com.pingcap.tikv.util.KeyRangeUtils.formatByteString;
-import static com.pingcap.tikv.value.Key.toKey;
-import static java.util.Objects.requireNonNull;
+import static com.pingcap.tikv.key.Key.toKey;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.net.HostAndPort;
@@ -29,6 +28,7 @@ import com.pingcap.tikv.kvproto.Coprocessor.KeyRange;
 import com.pingcap.tikv.kvproto.Metapb;
 import com.pingcap.tikv.region.RegionManager;
 import com.pingcap.tikv.region.TiRegion;
+import com.pingcap.tikv.key.RowKey;
 import gnu.trove.list.array.TLongArrayList;
 import java.io.Serializable;
 import java.util.ArrayList;
@@ -106,10 +106,10 @@ public class RangeSplitter {
     TableCodec.DecodeResult decodeResult = new TableCodec.DecodeResult();
     while (startPos < handles.size()) {
       long curHandle = handles.get(startPos);
-      byte[] key = TableCodec.encodeRowKeyWithHandleBytes(tableId, curHandle);
-      Pair<TiRegion, Metapb.Store> regionStorePair = regionManager.getRegionStorePairByKey(ByteString.copyFrom(key));
+      RowKey key = RowKey.create(tableId, curHandle);
+      Pair<TiRegion, Metapb.Store> regionStorePair = regionManager.getRegionStorePairByKey(ByteString.copyFrom(key.getBytes()));
       byte[] endKey = regionStorePair.first.getEndKey().toByteArray();
-      TableCodec.tryDecodeRowKey(tableId, endKey, decodeResult);
+      RowKey.tryDecodeRowKey(tableId, endKey, decodeResult);
       if (decodeResult.status == Status.MIN) {
         throw new TiClientInternalException("EndKey is less than current rowKey");
       } else if (decodeResult.status == Status.MAX || decodeResult.status == Status.UNKNOWN_INF) {

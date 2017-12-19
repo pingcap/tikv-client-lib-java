@@ -13,9 +13,10 @@
  * limitations under the License.
  */
 
-package com.pingcap.tikv.value;
+package com.pingcap.tikv.key;
 
 
+import static com.pingcap.tikv.codec.KeyUtils.formatBytes;
 import static java.util.Objects.requireNonNull;
 
 import com.google.protobuf.ByteString;
@@ -25,8 +26,14 @@ import com.pingcap.tikv.util.FastByteComparisons;
 import java.util.Arrays;
 
 public class Key implements Comparable<Key> {
+  protected static final byte[] TBL_PREFIX = new byte[] {'t'};
+
   protected final byte[] value;
   protected final int infFlag;
+
+  public final static Key NULL = createNull();
+  public final static Key MIN = createTypelessMin();
+  public final static Key MAX = createTypelessMax();
 
   private Key(byte[] value, boolean negative) {
     this.value = requireNonNull(value, "value is null");
@@ -53,22 +60,59 @@ public class Key implements Comparable<Key> {
     return new Key(bytes);
   }
 
-  public static Key createNull() {
+  private static Key createNull() {
     CodecDataOutput cdo = new CodecDataOutput();
     DataType.encodeNull(cdo);
-    return new Key(cdo.toBytes());
+    return new Key(cdo.toBytes()) {
+      @Override
+      public String toString() {
+        return "Null";
+      }
+    };
   }
 
-  public static Key createTypelessMin() {
+  private static Key createTypelessMin() {
     CodecDataOutput cdo = new CodecDataOutput();
     DataType.encodeIndexMinValue(cdo);
-    return new Key(cdo.toBytes());
+    return new Key(cdo.toBytes()) {
+      @Override
+      public String toString() {
+        return "MIN";
+      }
+    };
   }
 
-  public static Key createTypelessMax() {
+  private static Key createTypelessMax() {
     CodecDataOutput cdo = new CodecDataOutput();
     DataType.encodeIndexMaxValue(cdo);
-    return new Key(cdo.toBytes());
+    return new Key(cdo.toBytes()) {
+      @Override
+      public String toString() {
+        return "MAX";
+      }
+    };
+  }
+
+  /**
+   * The next key for bytes domain It first plus one at LSB and if LSB overflows, a zero byte is
+   * appended at the end Original bytes will be reused if possible
+   *
+   * @return encoded results
+   */
+  public Key next() {
+    int i;
+    byte[] newVal = Arrays.copyOf(value, value.length);
+    for (i = newVal.length - 1; i >= 0; i--) {
+      newVal[i] ++;
+      if (newVal[i] != 0) {
+        break;
+      }
+    }
+    if (i == -1) {
+      return toKey(Arrays.copyOf(newVal, value.length + 1));
+    } else {
+      return toKey(newVal);
+    }
   }
 
   @Override
@@ -107,5 +151,16 @@ public class Key implements Comparable<Key> {
 
   public int getInfFlag() {
     return infFlag;
+  }
+
+  @Override
+  public String toString() {
+    if (infFlag < 0) {
+      return "-INF";
+    } else if (infFlag > 0) {
+      return "+INF";
+    } else {
+      return formatBytes(value);
+    }
   }
 }

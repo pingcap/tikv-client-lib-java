@@ -17,6 +17,7 @@ package com.pingcap.tikv.expression;
 
 import com.pingcap.tidb.tipb.Expr;
 import com.pingcap.tidb.tipb.ExprType;
+import com.pingcap.tikv.codec.Codec.DecimalCodec;
 import com.pingcap.tikv.codec.Codec.IntegerCodec;
 import com.pingcap.tikv.codec.Codec.RealCodec;
 import com.pingcap.tikv.codec.CodecDataOutput;
@@ -80,7 +81,7 @@ public class TiConstant implements TiExpr {
       RealCodec.writeDouble(cdo, (Double) value);
     } else if (value instanceof BigDecimal) {
       builder.setTp(ExprType.MysqlDecimal);
-      DecimalType.writeDecimal(cdo, (BigDecimal) value);
+      DecimalCodec.writeDecimal(cdo, (BigDecimal) value);
     } else {
       throw new TiExpressionException("Constant type not supported.");
     }

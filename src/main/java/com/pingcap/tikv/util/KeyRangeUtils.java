@@ -15,7 +15,7 @@
 
 package com.pingcap.tikv.util;
 
-import static com.pingcap.tikv.value.Key.toKey;
+import static com.pingcap.tikv.key.Key.toKey;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Range;
@@ -32,7 +32,7 @@ import com.pingcap.tikv.meta.TiIndexInfo;
 import com.pingcap.tikv.meta.TiTableInfo;
 import com.pingcap.tikv.types.DataType;
 
-import com.pingcap.tikv.value.Key;
+import com.pingcap.tikv.key.Key;
 import java.util.List;
 
 public class KeyRangeUtils {
@@ -126,13 +126,7 @@ public class KeyRangeUtils {
     return Range.closedOpen(toKey(startKey, true), toKey(endKey));
   }
 
-  static Coprocessor.KeyRange makeCoprocRange(ByteString startKey, ByteString endKey) {
-    return KeyRange.newBuilder().setStart(startKey).setEnd(endKey).build();
-  }
-
-  static Coprocessor.KeyRange makeCoprocRangeWithHandle(long tableId, long startHandle, long endHandle) {
-    ByteString startKey = TableCodec.encodeRowKeyWithHandle(tableId, startHandle);
-    ByteString endKey = TableCodec.encodeRowKeyWithHandle(tableId, endHandle);
+  public static Coprocessor.KeyRange makeCoprocRange(ByteString startKey, ByteString endKey) {
     return KeyRange.newBuilder().setStart(startKey).setEnd(endKey).build();
   }
 

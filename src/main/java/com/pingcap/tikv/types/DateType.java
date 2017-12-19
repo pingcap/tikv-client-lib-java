@@ -17,8 +17,8 @@
 
 package com.pingcap.tikv.types;
 
-import static com.pingcap.tikv.types.TimestampType.fromPackedLong;
-import static com.pingcap.tikv.types.TimestampType.toPackedLong;
+import static com.pingcap.tikv.codec.Codec.DateTimeCodec.fromPackedLong;
+import static com.pingcap.tikv.codec.Codec.DateTimeCodec.toPackedLong;
 
 import com.pingcap.tikv.codec.CodecDataInput;
 import com.pingcap.tikv.codec.CodecDataOutput;

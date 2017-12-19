@@ -20,11 +20,6 @@ import com.google.protobuf.ByteString;
 import java.util.Arrays;
 
 public class KeyUtils {
-  private static final ByteString ZERO_BYTE = ByteString.copyFrom(new byte[] {0});
-
-  public static ByteString getNextKeyInByteOrder(ByteString key) {
-    return key.concat(ZERO_BYTE);
-  }
 
   public static byte[] getNextKeyInByteOrder(byte[] key) {
     return Arrays.copyOf(key, key.length + 1);

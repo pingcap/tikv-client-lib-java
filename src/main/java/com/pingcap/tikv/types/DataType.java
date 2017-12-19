@@ -15,6 +15,7 @@
 
 package com.pingcap.tikv.types;
 
+import static com.pingcap.tikv.codec.Codec.isNullFlag;
 import static com.pingcap.tikv.types.Types.AutoIncrementFlag;
 import static com.pingcap.tikv.types.Types.MultipleKeyFlag;
 import static com.pingcap.tikv.types.Types.NoDefaultValueFlag;
@@ -27,7 +28,7 @@ import static com.pingcap.tikv.types.Types.UnsignedFlag;
 import static com.pingcap.tikv.types.Types.ZerofillFlag;
 
 import com.google.common.collect.ImmutableList;
-import com.google.protobuf.ByteString;
+import com.pingcap.tikv.codec.Codec;
 import com.pingcap.tikv.codec.CodecDataInput;
 import com.pingcap.tikv.codec.CodecDataOutput;
 import com.pingcap.tikv.meta.Collation;
@@ -45,19 +46,6 @@ public abstract class DataType implements Serializable {
 
   public static final int UNSPECIFIED_LEN = -1;
 
-  // encoding/decoding flag
-  private static final int NULL_FLAG = 0;
-  public static final int BYTES_FLAG = 1;
-  public static final int COMPACT_BYTES_FLAG = 2;
-  public static final int INT_FLAG = 3;
-  public static final int UINT_FLAG = 4;
-  public static final int FLOATING_FLAG = 5;
-  public static final int DECIMAL_FLAG = 6;
-  public static final int DURATION_FLAG = 7;
-  public static final int VARINT_FLAG = 8;
-  public static final int UVARINT_FLAG = 9;
-  public static final int JSON_FLAG = 10;
-  public static final int MAX_FLAG = 250;
   // MySQL type
   protected int tp;
   // Not Encode/Decode flag, this is used to strict mysql type
@@ -77,13 +65,6 @@ public abstract class DataType implements Serializable {
     this.elems = holder.getElems() == null ? ImmutableList.of() : holder.getElems();
   }
 
-  protected DataType() {
-    this.flag = 0;
-    this.elems = ImmutableList.of();
-    this.length = UNSPECIFIED_LEN;
-    this.collation = Collation.DEF_COLLATION_CODE;
-  }
-
   protected DataType(int tp) {
     this.tp = tp;
     this.flag = 0;
@@ -91,19 +72,6 @@ public abstract class DataType implements Serializable {
     this.length = UNSPECIFIED_LEN;
     this.decimal = UNSPECIFIED_LEN;
     this.collation = Collation.DEF_COLLATION_CODE;
-  }
-
-  protected DataType(int flag, int length, String collation, List<String> elems, int tp) {
-    this.tp = tp;
-    this.flag = flag;
-    this.length = length;
-    this.collation = Collation.translate(collation);
-    this.elems = elems == null ? ImmutableList.of() : elems;
-    this.tp = tp;
-  }
-
-  protected boolean isNullFlag(int flag) {
-    return flag == NULL_FLAG;
   }
 
   protected void decodeValueNoNullToRow(Row row, int pos, Object value) {
@@ -135,35 +103,23 @@ public abstract class DataType implements Serializable {
   }
 
   public static void encodeIndexMaxValue(CodecDataOutput cdo) {
-    cdo.writeByte(MAX_FLAG);
+    cdo.writeByte(Codec.MAX_FLAG);
   }
 
   public static void encodeNull(CodecDataOutput cdo) {
-    cdo.writeByte(NULL_FLAG);
+    cdo.writeByte(Codec.NULL_FLAG);
   }
 
   public static void encodeIndexMinValue(CodecDataOutput cdo) {
-    cdo.writeByte(BYTES_FLAG);
+    cdo.writeByte(Codec.BYTES_FLAG);
   }
 
   public static int indexMinValueFlag() {
-    return BYTES_FLAG;
+    return Codec.BYTES_FLAG;
   }
 
   public static int indexMaxValueFlag() {
-    return MAX_FLAG;
-  }
-
-  public static ByteString encodeIndexMaxValue() {
-    CodecDataOutput cdo = new CodecDataOutput();
-    encodeIndexMaxValue(cdo);
-    return cdo.toByteString();
-  }
-
-  public static ByteString encodeIndexMinValue() {
-    CodecDataOutput cdo = new CodecDataOutput();
-    encodeIndexMinValue(cdo);
-    return cdo.toByteString();
+    return Codec.MAX_FLAG;
   }
 
   /**
@@ -229,7 +185,7 @@ public abstract class DataType implements Serializable {
     return tp;
   }
 
-  public static boolean hasNullFlag(int flag) {
+  public static boolean hasNotNullFlag(int flag) {
     return (flag & NotNullFlag) > 0;
   }
 

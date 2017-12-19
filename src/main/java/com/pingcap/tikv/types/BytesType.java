@@ -17,6 +17,7 @@
 
 package com.pingcap.tikv.types;
 
+import com.pingcap.tikv.codec.Codec;
 import com.pingcap.tikv.codec.Codec.BytesCodec;
 import com.pingcap.tikv.codec.CodecDataInput;
 import com.pingcap.tikv.codec.CodecDataOutput;
@@ -39,9 +40,9 @@ public class BytesType extends DataType {
 
   @Override
   protected Object decodeNotNull(int flag, CodecDataInput cdi) {
-    if (flag == COMPACT_BYTES_FLAG) {
+    if (flag == Codec.COMPACT_BYTES_FLAG) {
       return new String(BytesCodec.readCompactBytes(cdi));
-    } else if (flag == BYTES_FLAG) {
+    } else if (flag == Codec.BYTES_FLAG) {
       return new String(BytesCodec.readBytes(cdi));
     } else {
       throw new InvalidCodecFormatException("Invalid Flag type for : " + flag);
@@ -63,10 +64,10 @@ public class BytesType extends DataType {
       throw new UnsupportedOperationException("can not cast non-String type to String");
     }
     if (encodeType == EncodeType.KEY) {
-      cdo.write(BYTES_FLAG);
+      cdo.write(Codec.BYTES_FLAG);
       BytesCodec.writeBytes(cdo, bytes);
     } else {
-      cdo.write(COMPACT_BYTES_FLAG);
+      cdo.write(Codec.COMPACT_BYTES_FLAG);
       BytesCodec.writeCompactBytes(cdo, bytes);
     }
   }

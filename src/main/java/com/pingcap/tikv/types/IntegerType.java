@@ -22,6 +22,7 @@ import static com.pingcap.tikv.types.Types.TYPE_LONG;
 import static com.pingcap.tikv.types.Types.TYPE_LONG_LONG;
 import static com.pingcap.tikv.types.Types.TYPE_SHORT;
 
+import com.pingcap.tikv.codec.Codec;
 import com.pingcap.tikv.codec.Codec.IntegerCodec;
 import com.pingcap.tikv.codec.CodecDataInput;
 import com.pingcap.tikv.codec.CodecDataOutput;
@@ -50,13 +51,13 @@ public class IntegerType extends DataType {
 
   public static long decodeNotNullPrimitive(int flag, CodecDataInput cdi) {
     switch (flag) {
-      case UVARINT_FLAG:
+      case Codec.UVARINT_FLAG:
         return IntegerCodec.readUVarLong(cdi);
-      case UINT_FLAG:
+      case Codec.UINT_FLAG:
         return IntegerCodec.readULong(cdi);
-      case VARINT_FLAG:
+      case Codec.VARINT_FLAG:
         return IntegerCodec.readVarLong(cdi);
-      case INT_FLAG:
+      case Codec.INT_FLAG:
         return IntegerCodec.readLong(cdi);
       default:
         throw new TiClientInternalException("Invalid IntegerType flag: " + flag);

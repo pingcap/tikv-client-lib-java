@@ -16,7 +16,7 @@ import com.pingcap.tikv.kvproto.Metapb;
 import com.pingcap.tikv.kvproto.Metapb.Peer;
 import com.pingcap.tikv.region.RegionManager;
 import com.pingcap.tikv.region.TiRegion;
-import com.pingcap.tikv.value.Key;
+import com.pingcap.tikv.key.Key;
 import gnu.trove.list.array.TLongArrayList;
 import java.util.List;
 import java.util.Map;

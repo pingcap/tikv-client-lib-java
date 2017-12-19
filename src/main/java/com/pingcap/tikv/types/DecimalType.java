@@ -17,13 +17,12 @@
 
 package com.pingcap.tikv.types;
 
+import com.pingcap.tikv.codec.Codec;
+import com.pingcap.tikv.codec.Codec.DecimalCodec;
 import com.pingcap.tikv.codec.CodecDataInput;
 import com.pingcap.tikv.codec.CodecDataOutput;
 import com.pingcap.tikv.codec.InvalidCodecFormatException;
-import com.pingcap.tikv.codec.MyDecimal;
 import com.pingcap.tikv.meta.TiColumnInfo;
-import gnu.trove.list.array.TIntArrayList;
-import java.math.BigDecimal;
 
 public class DecimalType extends DataType {
   static DecimalType of(int tp) {
@@ -45,10 +44,10 @@ public class DecimalType extends DataType {
    */
   @Override
   protected Object decodeNotNull(int flag, CodecDataInput cdi) {
-    if (flag != DECIMAL_FLAG) {
+    if (flag != Codec.DECIMAL_FLAG) {
       throw new InvalidCodecFormatException("Invalid Flag type for decimal type: " + flag);
     }
-    return readDecimalFully(cdi);
+    return DecimalCodec.readDecimalFully(cdi);
   }
 
   /**
@@ -65,85 +64,7 @@ public class DecimalType extends DataType {
     } else {
       throw new UnsupportedOperationException("can not cast non Number type to Double");
     }
-    writeDouble(cdo, val);
+    DecimalCodec.writeDouble(cdo, val);
   }
 
-  /**
-   * read a decimal value from CodecDataInput
-   *
-   * @param cdi cdi is source data.
-   */
-  public static BigDecimal readDecimalFully(CodecDataInput cdi) {
-    if (cdi.available() < 3) {
-      throw new IllegalArgumentException("insufficient bytes to read value");
-    }
-
-    // 64 should be larger enough for avoiding unnecessary growth.
-    TIntArrayList data = new TIntArrayList(64);
-    int precision = cdi.readUnsignedByte();
-    int frac = cdi.readUnsignedByte();
-    int length = precision + frac;
-    int curPos = cdi.size() - cdi.available();
-    for (int i = 0; i < length; i++) {
-      if (cdi.eof()) {
-        break;
-      }
-      data.add(cdi.readUnsignedByte());
-    }
-
-    MyDecimal dec = new MyDecimal();
-    int binSize = dec.fromBin(precision, frac, data.toArray());
-    cdi.mark(curPos + binSize);
-    cdi.reset();
-    return dec.toDecimal();
-  }
-
-  /**
-   * write a decimal value from CodecDataInput
-   *
-   * @param cdo cdo is destination data.
-   * @param dec is decimal value that will be written into cdo.
-   */
-  static void writeDecimalFully(CodecDataOutput cdo, MyDecimal dec) {
-    int[] data = dec.toBin(dec.precision(), dec.frac());
-    cdo.writeByte(dec.precision());
-    cdo.writeByte(dec.frac());
-    for (int aData : data) {
-      cdo.writeByte(aData & 0xFF);
-    }
-  }
-
-  /**
-   * Decode as float
-   *
-   * @param cdi source of data
-   * @return decoded unsigned long value
-   */
-  public static double readDouble(CodecDataInput cdi) {
-    return readDecimalFully(cdi).doubleValue();
-  }
-
-  /**
-   * Encoding a double value to byte buffer
-   *
-   * @param cdo For outputting data in bytes array
-   * @param val The data to encode
-   */
-  public static void writeDecimal(CodecDataOutput cdo, BigDecimal val) {
-    MyDecimal dec = new MyDecimal();
-    dec.fromString(val.toPlainString());
-    writeDecimalFully(cdo, dec);
-  }
-
-  /**
-   * Encoding a double value to byte buffer
-   *
-   * @param cdo For outputting data in bytes array
-   * @param val The data to encode
-   */
-  public static void writeDouble(CodecDataOutput cdo, double val) {
-    MyDecimal dec = new MyDecimal();
-    dec.fromDecimal(val);
-    writeDecimalFully(cdo, dec);
-  }
 }

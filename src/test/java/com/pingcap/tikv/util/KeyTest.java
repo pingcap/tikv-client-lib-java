@@ -15,14 +15,14 @@
 
 package com.pingcap.tikv.util;
 
-import static com.pingcap.tikv.value.Key.toKey;
+import static com.pingcap.tikv.key.Key.toKey;
 import static org.junit.Assert.assertTrue;
 
 import com.google.protobuf.ByteString;
 import com.pingcap.tikv.types.DataType;
 import com.pingcap.tikv.types.IntegerType;
-import com.pingcap.tikv.value.Key;
-import com.pingcap.tikv.value.TypedLiteral;
+import com.pingcap.tikv.key.Key;
+import com.pingcap.tikv.key.TypedKey;
 import java.util.function.Function;
 import org.junit.Test;
 
@@ -57,8 +57,8 @@ public class KeyTest {
   }
 
   private void testLiteral(Object lhs, Object rhs, DataType type, Function<Integer, Boolean> tester) {
-    Key lhsComp = TypedLiteral.create(lhs, type);
-    Key rhsComp = TypedLiteral.create(rhs, type);
+    Key lhsComp = TypedKey.create(lhs, type);
+    Key rhsComp = TypedKey.create(rhs, type);
 
     assertTrue(tester.apply(lhsComp.compareTo(rhsComp)));
   }

@@ -17,6 +17,7 @@
 
 package com.pingcap.tikv.types;
 
+import com.pingcap.tikv.codec.Codec;
 import com.pingcap.tikv.codec.Codec.IntegerCodec;
 import com.pingcap.tikv.codec.Codec.RealCodec;
 import com.pingcap.tikv.codec.CodecDataInput;
@@ -37,7 +38,7 @@ public class RealType extends DataType {
   @Override
   protected Object decodeNotNull(int flag, CodecDataInput cdi) {
     // check flag first and then read.
-    if (flag != FLOATING_FLAG) {
+    if (flag != Codec.FLOATING_FLAG) {
       throw new InvalidCodecFormatException("Invalid Flag type for float type: " + flag);
     }
     return RealCodec.readDouble(cdi);

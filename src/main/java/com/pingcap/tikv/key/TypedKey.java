@@ -13,20 +13,21 @@
  * limitations under the License.
  */
 
-package com.pingcap.tikv.value;
+package com.pingcap.tikv.key;
 
 
 import static java.util.Objects.requireNonNull;
 
+import com.pingcap.tikv.codec.CodecDataInput;
 import com.pingcap.tikv.codec.CodecDataOutput;
 import com.pingcap.tikv.types.DataType;
 import com.pingcap.tikv.types.DataType.EncodeType;
 
-public class TypedLiteral extends Key {
+public class TypedKey extends Key {
   private final DataType type;
 
-  private TypedLiteral(byte[] value, DataType type) {
-    super(value);
+  private TypedKey(Object val, DataType type) {
+    super(encode(val, type));
     this.type = type;
   }
 
@@ -34,10 +35,21 @@ public class TypedLiteral extends Key {
     return type;
   }
 
-  public static TypedLiteral create(Object val, DataType type) {
+  public static TypedKey create(Object val, DataType type) {
     requireNonNull(type, "type is null");
+    return new TypedKey(val, type);
+  }
+
+  private static byte[] encode(Object val, DataType type) {
     CodecDataOutput cdo = new CodecDataOutput();
     type.encode(cdo, EncodeType.KEY, val);
-    return new TypedLiteral(cdo.toBytes(), type);
+    return cdo.toBytes();
+  }
+
+  @Override
+  public String toString() {
+    CodecDataInput cdi = new CodecDataInput(value);
+    Object val = type.decode(cdi);
+    return String.format("%s", val);
   }
 }

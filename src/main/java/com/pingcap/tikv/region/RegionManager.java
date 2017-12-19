@@ -20,7 +20,7 @@ package com.pingcap.tikv.region;
 
 import static com.pingcap.tikv.codec.KeyUtils.formatBytes;
 import static com.pingcap.tikv.util.KeyRangeUtils.makeRange;
-import static com.pingcap.tikv.value.Key.toKey;
+import static com.pingcap.tikv.key.Key.toKey;
 
 import com.google.common.collect.RangeMap;
 import com.google.common.collect.TreeRangeMap;
@@ -33,7 +33,7 @@ import com.pingcap.tikv.kvproto.Metapb.Peer;
 import com.pingcap.tikv.kvproto.Metapb.Store;
 import com.pingcap.tikv.kvproto.Metapb.StoreState;
 import com.pingcap.tikv.util.Pair;
-import com.pingcap.tikv.value.Key;
+import com.pingcap.tikv.key.Key;
 import java.util.HashMap;
 import java.util.Map;
 import org.apache.log4j.Logger;

@@ -15,7 +15,7 @@
 
 package com.pingcap.tikv;
 
-import static com.pingcap.tikv.value.Key.toKey;
+import static com.pingcap.tikv.key.Key.toKey;
 
 import com.google.common.collect.ImmutableList;
 import com.google.protobuf.ByteString;
@@ -29,7 +29,7 @@ import com.pingcap.tikv.kvproto.Kvrpcpb;
 import com.pingcap.tikv.kvproto.Kvrpcpb.Context;
 import com.pingcap.tikv.kvproto.TikvGrpc;
 import com.pingcap.tikv.region.TiRegion;
-import com.pingcap.tikv.value.Key;
+import com.pingcap.tikv.key.Key;
 import io.grpc.Server;
 import io.grpc.ServerBuilder;
 import io.grpc.Status;

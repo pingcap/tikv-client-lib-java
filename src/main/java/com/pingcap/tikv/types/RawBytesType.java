@@ -17,6 +17,7 @@
 
 package com.pingcap.tikv.types;
 
+import com.pingcap.tikv.codec.Codec;
 import com.pingcap.tikv.codec.Codec.BytesCodec;
 import com.pingcap.tikv.codec.CodecDataInput;
 import com.pingcap.tikv.codec.CodecDataOutput;
@@ -43,9 +44,9 @@ public class RawBytesType extends BytesType {
 
   @Override
   protected Object decodeNotNull(int flag, CodecDataInput cdi) {
-    if (flag == COMPACT_BYTES_FLAG) {
+    if (flag == Codec.COMPACT_BYTES_FLAG) {
       return BytesCodec.readCompactBytes(cdi);
-    } else if (flag == BYTES_FLAG) {
+    } else if (flag == Codec.BYTES_FLAG) {
       return BytesCodec.readBytes(cdi);
     } else {
       throw new InvalidCodecFormatException("Invalid Flag type for : " + flag);

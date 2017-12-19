@@ -18,11 +18,40 @@ package com.pingcap.tikv.codec;
 
 import static com.google.common.base.Preconditions.checkArgument;
 
-import com.pingcap.tikv.types.DataType;
+import gnu.trove.list.array.TIntArrayList;
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.Arrays;
+import java.util.Date;
 
 public class Codec {
+
+  public static final int NULL_FLAG = 0;
+  public static final int BYTES_FLAG = 1;
+  public static final int COMPACT_BYTES_FLAG = 2;
+  public static final int INT_FLAG = 3;
+  public static final int UINT_FLAG = 4;
+  public static final int FLOATING_FLAG = 5;
+  public static final int DECIMAL_FLAG = 6;
+  public static final int DURATION_FLAG = 7;
+  public static final int VARINT_FLAG = 8;
+  public static final int UVARINT_FLAG = 9;
+  public static final int JSON_FLAG = 10;
+  public static final int MAX_FLAG = 250;
+
+  public static boolean isNullFlag(int flag) {
+    return flag == NULL_FLAG;
+  }
+
+
+
+
   public static class IntegerCodec {
+    private static final long SIGN_MASK = ~Long.MAX_VALUE;
+
+    private static long flipSignBit(long v) {
+      return v ^ SIGN_MASK;
+    }
 
     /**
      * Encoding a long value to byte buffer with type flag at the beginning
@@ -34,10 +63,10 @@ public class Codec {
      */
     public static void writeLongFull(CodecDataOutput cdo, long lVal, boolean comparable) {
       if (comparable) {
-        cdo.writeByte(DataType.INT_FLAG);
+        cdo.writeByte(INT_FLAG);
         writeLong(cdo, lVal);
       } else {
-        cdo.writeByte(DataType.VARINT_FLAG);
+        cdo.writeByte(VARINT_FLAG);
         writeVarLong(cdo, lVal);
       }
     }
@@ -52,10 +81,10 @@ public class Codec {
      */
     public static void writeULongFull(CodecDataOutput cdo, long lVal, boolean comparable) {
       if (comparable) {
-        cdo.writeByte(DataType.UINT_FLAG);
+        cdo.writeByte(UINT_FLAG);
         writeULong(cdo, lVal);
       } else {
-        cdo.writeByte(DataType.UVARINT_FLAG);
+        cdo.writeByte(UVARINT_FLAG);
         writeUVarLong(cdo, lVal);
       }
     }
@@ -68,7 +97,7 @@ public class Codec {
      * @param lVal The data to encode
      */
     public static void writeLong(CodecDataOutput cdo, long lVal) {
-      cdo.writeLong(TableCodec.flipSignBit(lVal));
+      cdo.writeLong(flipSignBit(lVal));
     }
 
     /**
@@ -120,9 +149,9 @@ public class Codec {
       int flag = cdi.readByte();
 
       switch (flag) {
-        case DataType.INT_FLAG:
+        case INT_FLAG:
           return readLong(cdi);
-        case DataType.VARINT_FLAG:
+        case VARINT_FLAG:
           return readVarLong(cdi);
         default:
           throw new InvalidCodecFormatException("Invalid Flag type for signed long type: " + flag);
@@ -139,9 +168,9 @@ public class Codec {
     public static long readULongFully(CodecDataInput cdi) {
       byte flag = cdi.readByte();
       switch (flag) {
-        case DataType.UINT_FLAG:
+        case UINT_FLAG:
           return readULong(cdi);
-        case DataType.UVARINT_FLAG:
+        case UVARINT_FLAG:
           return readUVarLong(cdi);
         default:
           throw new InvalidCodecFormatException("Invalid Flag type for unsigned long type: " + flag);
@@ -155,11 +184,11 @@ public class Codec {
      * @return decoded signed long value
      */
     public static long readLong(CodecDataInput cdi) {
-      return TableCodec.flipSignBit(cdi.readLong());
+      return flipSignBit(cdi.readLong());
     }
 
     public static long readPartialLong(CodecDataInput cdi) {
-      return TableCodec.flipSignBit(cdi.readPartialLong());
+      return flipSignBit(cdi.readPartialLong());
     }
 
     /**
@@ -256,22 +285,6 @@ public class Codec {
       cdo.writeBytes(Arrays.toString(data));
     }
 
-    // WriteBytesDesc first encodes bytes using EncodeBytes, then bitwise reverses
-    // encoded value to guarantee the encoded value is in descending order for comparison.
-    public static void writeBytesDesc(CodecDataOutput cdo, byte[] data) {
-      writeBytes(cdo, data);
-      byte[] encodedData = cdo.toBytes();
-      cdo.reset();
-      writeBytes(cdo, reverseBytes(encodedData));
-    }
-
-    private static byte[] reverseBytes(byte[] data) {
-      for (int i = 0; i < data.length; i++) {
-        data[i] ^= data[i];
-      }
-      return data;
-    }
-
     // readBytes decodes bytes which is encoded by EncodeBytes before,
     // returns the leftover bytes and decoded value if no error.
     public static byte[] readBytes(CodecDataInput cdi) {
@@ -289,10 +302,6 @@ public class Codec {
         data[i] = cdi.readByte();
       }
       return data;
-    }
-
-    public static byte[] readBytesDesc(CodecDataInput cdi) {
-      return readBytes(cdi, true);
     }
 
     private static byte[] readBytes(CodecDataInput cdi, boolean reverse) {
@@ -387,6 +396,159 @@ public class Codec {
      */
     public static void writeFloat(CodecDataOutput cdo, float val) {
       writeDouble(cdo, val);
+    }
+  }
+
+  public static class DecimalCodec {
+
+    /**
+     * read a decimal value from CodecDataInput
+     *
+     * @param cdi cdi is source data.
+     */
+    public static BigDecimal readDecimalFully(CodecDataInput cdi) {
+      if (cdi.available() < 3) {
+        throw new IllegalArgumentException("insufficient bytes to read value");
+      }
+
+      // 64 should be larger enough for avoiding unnecessary growth.
+      TIntArrayList data = new TIntArrayList(64);
+      int precision = cdi.readUnsignedByte();
+      int frac = cdi.readUnsignedByte();
+      int length = precision + frac;
+      int curPos = cdi.size() - cdi.available();
+      for (int i = 0; i < length; i++) {
+        if (cdi.eof()) {
+          break;
+        }
+        data.add(cdi.readUnsignedByte());
+      }
+
+      MyDecimal dec = new MyDecimal();
+      int binSize = dec.fromBin(precision, frac, data.toArray());
+      cdi.mark(curPos + binSize);
+      cdi.reset();
+      return dec.toDecimal();
+    }
+
+    /**
+     * write a decimal value from CodecDataInput
+     *
+     * @param cdo cdo is destination data.
+     * @param dec is decimal value that will be written into cdo.
+     */
+    static void writeDecimalFully(CodecDataOutput cdo, MyDecimal dec) {
+      int[] data = dec.toBin(dec.precision(), dec.frac());
+      cdo.writeByte(dec.precision());
+      cdo.writeByte(dec.frac());
+      for (int aData : data) {
+        cdo.writeByte(aData & 0xFF);
+      }
+    }
+
+    /**
+     * Decode as float
+     *
+     * @param cdi source of data
+     * @return decoded unsigned long value
+     */
+    public static double readDouble(CodecDataInput cdi) {
+      return readDecimalFully(cdi).doubleValue();
+    }
+
+    /**
+     * Encoding a double value to byte buffer
+     *
+     * @param cdo For outputting data in bytes array
+     * @param val The data to encode
+     */
+    public static void writeDecimal(CodecDataOutput cdo, BigDecimal val) {
+      MyDecimal dec = new MyDecimal();
+      dec.fromString(val.toPlainString());
+      writeDecimalFully(cdo, dec);
+    }
+
+    /**
+     * Encoding a double value to byte buffer
+     *
+     * @param cdo For outputting data in bytes array
+     * @param val The data to encode
+     */
+    public static void writeDouble(CodecDataOutput cdo, double val) {
+      MyDecimal dec = new MyDecimal();
+      dec.fromDecimal(val);
+      writeDecimalFully(cdo, dec);
+    }
+  }
+
+  public static class DateTimeCodec {
+
+    /**
+     * Encode a LocalDateTime to a packed long.
+     *
+     * @param time localDateTime that need to be encoded.
+     * @return a packed long.
+     */
+    public static long toPackedLong(LocalDateTime time) {
+      return toPackedLong(time.getYear(),
+          time.getMonthValue(),
+          time.getDayOfMonth(),
+          time.getHour(),
+          time.getMinute(),
+          time.getSecond(),
+          time.getNano() / 1000);
+    }
+
+    /**
+     * Encode a date/time parts to a packed long.
+     *
+     * @return a packed long.
+     */
+    private static long toPackedLong(int year, int month, int day, int hour, int minute, int second, int micro) {
+      long ymd = (year * 13 + month) << 5 | day;
+      long hms = hour << 12 | minute << 6 | second;
+      return ((ymd << 17 | hms) << 24) | micro;
+    }
+
+    /**
+     * Encode a Date to a packed long with all time fields zero.
+     *
+     * @param date Date object that need to be encoded.
+     * @return a packed long.
+     */
+    public static long toPackedLong(Date date) {
+      return toPackedLong(
+          date.getYear() + 1900,
+          date.getMonth() + 1,
+          date.getDate(),
+          0, 0, 0, 0);
+    }
+
+    /**
+     * Decode a packed long to LocalDateTime.
+     *
+     * @param packed a long value
+     * @return a decoded LocalDateTime.
+     */
+    public static LocalDateTime fromPackedLong(long packed) {
+      // TODO: As for JDBC behavior, it can be configured to "round" or "toNull"
+      // for now we didn't pass in session so we do a toNull behavior
+      if (packed == 0) {
+        return null;
+      }
+      long ymdhms = packed >> 24;
+      long ymd = ymdhms >> 17;
+      int day = (int) (ymd & ((1 << 5) - 1));
+      long ym = ymd >> 5;
+      int month = (int) (ym % 13);
+      int year = (int) (ym / 13);
+
+      int hms = (int) (ymdhms & ((1 << 17) - 1));
+      int second = hms & ((1 << 6) - 1);
+      int minute = (hms >> 6) & ((1 << 6) - 1);
+      int hour = hms >> 12;
+      int microsec = (int) (packed % (1 << 24));
+      return LocalDateTime.of(year, month, day, hour, minute, second, microsec * 1000);
     }
   }
 }

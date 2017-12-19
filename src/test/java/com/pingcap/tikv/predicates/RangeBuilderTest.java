@@ -34,7 +34,7 @@ import com.pingcap.tikv.meta.TiTableInfo;
 import com.pingcap.tikv.types.DataType;
 import com.pingcap.tikv.types.DataTypeFactory;
 import com.pingcap.tikv.types.Types;
-import com.pingcap.tikv.value.TypedLiteral;
+import com.pingcap.tikv.key.TypedKey;
 import java.util.List;
 import org.junit.Test;
 
@@ -132,7 +132,7 @@ public class RangeBuilderTest {
             );
     DataType type = DataTypeFactory.of(Types.TYPE_LONG);
     RangeBuilder builder = new RangeBuilder();
-    List<Range<TypedLiteral>> ranges = RangeBuilder.exprToRanges(conds, type);
+    List<Range<TypedKey>> ranges = RangeBuilder.exprToRanges(conds, type);
     assertEquals(2, ranges.size());
     assertEquals(Range.closedOpen(0L, 50L), ranges.get(0));
     assertEquals(Range.open(50L, 100L), ranges.get(1));

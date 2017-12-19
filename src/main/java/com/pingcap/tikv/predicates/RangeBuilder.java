@@ -36,7 +36,7 @@ import com.pingcap.tikv.expression.scalar.NotEqual;
 import com.pingcap.tikv.expression.scalar.Or;
 import com.pingcap.tikv.predicates.AccessConditionNormalizer.NormalizedCondition;
 import com.pingcap.tikv.types.DataType;
-import com.pingcap.tikv.value.TypedLiteral;
+import com.pingcap.tikv.key.TypedKey;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -58,7 +58,7 @@ public class RangeBuilder {
       DataType rangeType) {
     List<IndexRange> irs = exprsToPoints(accessPoints, accessPointsTypes);
     if (accessConditions != null && accessConditions.size() != 0) {
-      List<Range<TypedLiteral>> ranges = exprToRanges(accessConditions, rangeType);
+      List<Range<TypedKey>> ranges = exprToRanges(accessConditions, rangeType);
       return appendRanges(irs, ranges, rangeType);
     } else {
       return irs;
@@ -121,16 +121,16 @@ public class RangeBuilder {
    * @param type index column type
    * @return access ranges
    */
-  static List<Range<TypedLiteral>> exprToRanges(List<TiExpr> accessConditions, DataType type) {
+  static List<Range<TypedKey>> exprToRanges(List<TiExpr> accessConditions, DataType type) {
     if (accessConditions == null || accessConditions.size() == 0) {
       return ImmutableList.of();
     }
-    RangeSet<TypedLiteral> ranges = TreeRangeSet.create();
+    RangeSet<TypedKey> ranges = TreeRangeSet.create();
     ranges.add(Range.all());
     for (TiExpr ac : accessConditions) {
       NormalizedCondition cond = AccessConditionNormalizer.normalize(ac);
       TiConstant constVal = cond.constantVals.get(0);
-      TypedLiteral literal = TypedLiteral.create(constVal.getValue(), type);
+      TypedKey literal = TypedKey.create(constVal.getValue(), type);
       TiExpr expr = cond.condition;
 
       if (expr instanceof GreaterThan) {
@@ -144,8 +144,8 @@ public class RangeBuilder {
       } else if (expr instanceof Equal) {
         ranges = ranges.subRangeSet(Range.singleton(literal));
       } else if (expr instanceof NotEqual) {
-        RangeSet<TypedLiteral> left = ranges.subRangeSet(Range.lessThan(literal));
-        RangeSet<TypedLiteral> right = ranges.subRangeSet(Range.greaterThan(literal));
+        RangeSet<TypedKey> left = ranges.subRangeSet(Range.lessThan(literal));
+        RangeSet<TypedKey> right = ranges.subRangeSet(Range.greaterThan(literal));
         ranges = TreeRangeSet.create(left);
         ranges.addAll(right);
       } else {
@@ -157,7 +157,7 @@ public class RangeBuilder {
   }
 
   static List<IndexRange> appendRanges(
-      List<IndexRange> indexRanges, List<Range<TypedLiteral>> ranges, DataType rangeType) {
+      List<IndexRange> indexRanges, List<Range<TypedKey>> ranges, DataType rangeType) {
     requireNonNull(ranges);
     List<IndexRange> resultRanges = new ArrayList<>();
     if (indexRanges == null || indexRanges.size() == 0) {
