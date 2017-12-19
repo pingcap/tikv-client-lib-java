@@ -1,25 +1,19 @@
 package com.pingcap.tikv;
 
 
-import com.google.common.collect.ImmutableList;
 import com.pingcap.tikv.catalog.Catalog;
 import com.pingcap.tikv.expression.TiColumnRef;
-import com.pingcap.tikv.expression.aggregate.Count;
 import com.pingcap.tikv.meta.TiDAGRequest;
 import com.pingcap.tikv.meta.TiDAGRequest.PushDownType;
 import com.pingcap.tikv.meta.TiDBInfo;
-import com.pingcap.tikv.meta.TiSelectRequest;
 import com.pingcap.tikv.meta.TiTableInfo;
 import com.pingcap.tikv.operation.SchemaInfer;
 import com.pingcap.tikv.predicates.ScanBuilder;
 import com.pingcap.tikv.row.Row;
-import com.pingcap.tikv.util.RangeSplitter;
-import com.pingcap.tikv.util.RangeSplitter.RegionTask;
-import java.io.File;
+
 import java.util.ArrayList;
 import java.util.Iterator;
-import java.util.List;
-import java.util.Scanner;
+
 import org.apache.log4j.Logger;
 
 public class Main {

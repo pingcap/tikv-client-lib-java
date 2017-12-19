@@ -18,7 +18,7 @@ package com.pingcap.tikv;
 import com.google.common.collect.ImmutableList;
 import com.google.protobuf.ByteString;
 import com.pingcap.tidb.tipb.Chunk;
-import com.pingcap.tidb.tipb.SelectRequest;
+import com.pingcap.tidb.tipb.DAGRequest;
 import com.pingcap.tidb.tipb.SelectResponse;
 import com.pingcap.tikv.kvproto.Coprocessor;
 import com.pingcap.tikv.kvproto.Errorpb;
@@ -304,7 +304,7 @@ public class KVMockServer extends TikvGrpc.TikvImplBase {
     try {
       verifyContext(requestWrap.getContext());
 
-      SelectRequest request = SelectRequest.parseFrom(requestWrap.getData());
+      DAGRequest request = DAGRequest.parseFrom(requestWrap.getData());
       if (request.getStartTs() == 0) {
         throw new Exception();
       }

@@ -20,7 +20,6 @@ package com.pingcap.tikv.region;
 import com.google.protobuf.ByteString;
 import com.google.protobuf.InvalidProtocolBufferException;
 import com.pingcap.tidb.tipb.DAGRequest;
-import com.pingcap.tidb.tipb.SelectRequest;
 import com.pingcap.tidb.tipb.SelectResponse;
 import com.pingcap.tikv.AbstractGRPCClient;
 import com.pingcap.tikv.TiSession;
@@ -47,7 +46,7 @@ import java.util.function.Supplier;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
-import static com.pingcap.tikv.types.RequestTypes.*;
+import static com.pingcap.tikv.types.RequestTypes.REQ_TYPE_DAG;
 
 // RegionStore itself is not thread-safe
 public class RegionStoreClient extends AbstractGRPCClient<TikvBlockingStub, TikvStub> implements RegionErrorReceiver {
@@ -212,33 +211,6 @@ public class RegionStoreClient extends AbstractGRPCClient<TikvBlockingStub, Tikv
         handler);
 
     return coprocessorHelper(responseIterator);
-  }
-
-  /**
-   * Execute a SelectRequest and retrieve the response from TiKV server.
-   *
-   * @param req    SelectRequest to process
-   * @param ranges Key range list
-   * @return Execution result computed by coprocessor
-   * <p>
-   * This method is deprecated due to switching to DAG push down mode, but we still keep this method
-   * for backward compatibility.
-   */
-  @Deprecated
-  public SelectResponse coprocess(SelectRequest req, List<KeyRange> ranges) {
-    Supplier<Coprocessor.Request> reqToSend = () ->
-        Coprocessor.Request.newBuilder()
-            .setContext(region.getContext())
-            .setTp(req.hasIndexInfo() ? REQ_TYPE_INDEX.getValue() : REQ_TYPE_SELECT.getValue())
-            .setData(req.toByteString())
-            .addAllRanges(ranges)
-            .build();
-
-    KVErrorHandler<Coprocessor.Response> handler =
-        new KVErrorHandler<>(
-            regionManager, this, region, resp -> resp.hasRegionError() ? resp.getRegionError() : null);
-    Coprocessor.Response resp = callWithRetry(TikvGrpc.METHOD_COPROCESSOR, reqToSend, handler);
-    return coprocessorHelper(resp);
   }
 
   private Iterator<SelectResponse> coprocessorHelper(StreamingResponse response) {
