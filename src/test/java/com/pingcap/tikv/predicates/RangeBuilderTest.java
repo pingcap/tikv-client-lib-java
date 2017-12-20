@@ -15,13 +15,33 @@
 
 package com.pingcap.tikv.predicates;
 
+import static junit.framework.TestCase.assertTrue;
+import static org.junit.Assert.assertEquals;
+
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.Lists;
+import com.google.common.collect.Range;
+import com.pingcap.tikv.expression.TiColumnRef;
+import com.pingcap.tikv.expression.TiConstant;
+import com.pingcap.tikv.expression.TiExpr;
+import com.pingcap.tikv.expression.scalar.Equal;
+import com.pingcap.tikv.expression.scalar.GreaterEqual;
+import com.pingcap.tikv.expression.scalar.GreaterThan;
+import com.pingcap.tikv.expression.scalar.In;
+import com.pingcap.tikv.expression.scalar.NotEqual;
+import com.pingcap.tikv.key.CompoundKey;
 import com.pingcap.tikv.key.Key;
+import com.pingcap.tikv.key.TypedKey;
 import com.pingcap.tikv.meta.MetaUtils;
 import com.pingcap.tikv.meta.TiTableInfo;
+import com.pingcap.tikv.types.BytesType;
+import com.pingcap.tikv.types.DataType;
 import com.pingcap.tikv.types.DataTypeFactory;
+import com.pingcap.tikv.types.IntegerType;
 import com.pingcap.tikv.types.Types;
 import java.util.List;
+import java.util.stream.Collectors;
+import org.junit.Test;
 
 public class RangeBuilderTest {
   private static TiTableInfo createTable() {
@@ -35,45 +55,45 @@ public class RangeBuilderTest {
         .build();
   }
 
-  private static boolean testPointIndexRanges(
-      List<RangeBuilder.IndexRange> ranges, List<List<Object>> values) {
-    if (ranges.size() != values.size()) return false;
+  private static boolean testPointIndexRanges(List<Key> keys, List<List<Object>> values) {
+    if (keys.size() != values.size()) return false;
 
-    for (RangeBuilder.IndexRange ir : ranges) {
-      boolean found = false;
-      Key aps = ir.getAccessKey();
-      for (int i = 0; i < values.size(); i++) {
-        List<Object> curVals = values.get(i);
-        if (curVals.equals(aps)) {
-          values.remove(i);
-          found = true;
-          break;
-        }
+    for (Key key : keys) {
+      CompoundKey compKey = (CompoundKey)key;
+      List<Key> pointKeys = compKey.getKeys();
+      List<Object> pointObject = pointKeys
+          .stream()
+          .map(k -> ((TypedKey)k).getValue()).collect(Collectors.toList());
+      int pos = values.indexOf(pointObject);
+      if (pos == -1) {
+        return false;
       }
-      if (!found) return false;
+      values.remove(pos);
     }
 
     return values.isEmpty();
   }
 
-  /*
+
   @Test
-  public void exprsToPoints() throws Exception {
+  public void expressionToPointsTest() throws Exception {
     TiTableInfo table = createTable();
     List<TiExpr> conds =
         ImmutableList.of(
             new Equal(TiColumnRef.create("c1", table), TiConstant.create(0)),
-            new Equal(TiConstant.create("v1"), TiColumnRef.create("c2", table)));
-    List<DataType> types =
-        ImmutableList.of(
-            DataTypeFactory.of(Types.TYPE_LONG), DataTypeFactory.of(Types.TYPE_STRING));
+            new Equal(TiConstant.create("v1"), TiColumnRef.create("c2", table))
+        );
+    List<DataType> types = ImmutableList.of(DataTypeFactory.of(Types.TYPE_LONG),
+                                            DataTypeFactory.of(Types.TYPE_STRING));
     RangeBuilder builder = new RangeBuilder();
     List<Key> keys = builder.expressionToPoints(conds, types);
-    assertEquals(1, indexRanges.size());
-    List<Object> acpts = indexRanges.get(0).getAccessPoints();
-    assertEquals(2, acpts.size());
-    assertEquals(0, acpts.get(0));
-    assertEquals("v1", acpts.get(1));
+    assertEquals(1, keys.size());
+    CompoundKey compoundKey = (CompoundKey)keys.get(0);
+    assertEquals(2, compoundKey.getKeys().size());
+    TypedKey intKey = (TypedKey) compoundKey.getKeys().get(0);
+    assertEquals(0L, intKey.getValue());
+    TypedKey strKey = (TypedKey) compoundKey.getKeys().get(1);
+    assertEquals("v1", strKey.getValue());
 
     // In Expr
     conds =
@@ -86,24 +106,23 @@ public class RangeBuilderTest {
             new Equal(TiConstant.create("v1"), TiColumnRef.create("c2", table)),
             new In(
                 TiColumnRef.create("c3", table), TiConstant.create("2"), TiConstant.create("4")));
-    types =
-        ImmutableList.of(
+    types = ImmutableList.of(
             DataTypeFactory.of(Types.TYPE_LONG),
             DataTypeFactory.of(Types.TYPE_STRING),
             DataTypeFactory.of(Types.TYPE_STRING));
 
-    indexRanges = builder.expressionToPoints(conds, types);
-    assertEquals(6, indexRanges.size());
+    keys = builder.expressionToPoints(conds, types);
+    assertEquals(6, keys.size());
     assertTrue(
         testPointIndexRanges(
-            indexRanges,
+            keys,
             Lists.newArrayList(
-                ImmutableList.of(0, "v1", "2"),
-                ImmutableList.of(0, "v1", "4"),
-                ImmutableList.of(1, "v1", "2"),
-                ImmutableList.of(1, "v1", "4"),
-                ImmutableList.of(3, "v1", "2"),
-                ImmutableList.of(3, "v1", "4"))));
+                ImmutableList.of(0L, "v1", "2"),
+                ImmutableList.of(0L, "v1", "4"),
+                ImmutableList.of(1L, "v1", "2"),
+                ImmutableList.of(1L, "v1", "4"),
+                ImmutableList.of(3L, "v1", "2"),
+                ImmutableList.of(3L, "v1", "4"))));
   }
 
 
@@ -121,8 +140,10 @@ public class RangeBuilderTest {
     RangeBuilder builder = new RangeBuilder();
     List<Range<TypedKey>> ranges = RangeBuilder.expressionToRanges(conds, type);
     assertEquals(2, ranges.size());
-    assertEquals(Range.closedOpen(0L, 50L), ranges.get(0));
-    assertEquals(Range.open(50L, 100L), ranges.get(1));
+    assertEquals(Range.closedOpen(TypedKey.create(0L, IntegerType.DEF_LONG_TYPE),
+                                  TypedKey.create(50L, IntegerType.DEF_LONG_TYPE)), ranges.get(0));
+    assertEquals(Range.open(TypedKey.create(50L, IntegerType.DEF_LONG_TYPE),
+                            TypedKey.create(100L, IntegerType.DEF_LONG_TYPE)), ranges.get(1));
 
     // Test points and string range
     List<TiExpr> ac =
@@ -132,29 +153,27 @@ public class RangeBuilderTest {
     List<DataType> types =
         ImmutableList.of(
             DataTypeFactory.of(Types.TYPE_LONG), DataTypeFactory.of(Types.TYPE_STRING));
-    List<RangeBuilder.IndexRange> indexRanges = builder.expressionToPoints(ac, types);
+    List<Key> keys = builder.expressionToPoints(ac, types);
     assertTrue(
         testPointIndexRanges(
-            indexRanges,
+            keys,
             Lists.newArrayList(ImmutableList.of(0L, "v1"), ImmutableList.of(1L, "v1"))));
 
     conds =
         ImmutableList.of(
-            new GreaterEqual(TiColumnRef.create("c3", table), TiConstant.create("a")), // c1 >= 0
+            new GreaterEqual(TiColumnRef.create("c3", table), TiConstant.create("a")), // c3 >= a
             new GreaterThan(
-                TiConstant.create("z"), TiColumnRef.create("c3", table)), // 100 > c1 -> c1 < 100
-            new NotEqual(TiColumnRef.create("c3", table), TiConstant.create("g")) // c1 != 50
+                TiConstant.create("z"), TiColumnRef.create("c3", table)), // z > c3 -> c3 < z
+            new NotEqual(TiColumnRef.create("c3", table), TiConstant.create("g")) // c3 != g
             );
     type = DataTypeFactory.of(Types.TYPE_STRING);
     ranges = RangeBuilder.expressionToRanges(conds, type);
 
-    indexRanges = RangeBuilder.appendRanges(indexRanges, ranges, type);
-    assertEquals(4, indexRanges.size());
+    assertEquals(2, ranges.size());
 
-    assertEquals(Range.closedOpen("a", "g"), indexRanges.get(0).getRange());
-    assertEquals(Range.closedOpen("a", "g"), indexRanges.get(2).getRange());
-    assertEquals(Range.open("g", "z"), indexRanges.get(1).getRange());
-    assertEquals(Range.open("g", "z"), indexRanges.get(3).getRange());
+    assertEquals(Range.closedOpen(TypedKey.create("a", BytesType.STRING_TYPE),
+                                  TypedKey.create("g", BytesType.STRING_TYPE)), ranges.get(0));
+    assertEquals(Range.open(TypedKey.create("g", BytesType.STRING_TYPE),
+                            TypedKey.create("z", BytesType.STRING_TYPE)), ranges.get(1));
   }
-  */
 }

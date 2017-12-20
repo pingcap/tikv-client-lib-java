@@ -117,11 +117,11 @@ public class RangeSplitterTest {
     List<RangeSplitter.RegionTask> tasks =
         s.splitRangeByRegion(
             ImmutableList.of(
-                keyRange(null, 40L), keyRange(41L, 42L), keyRange(45L, 50L), keyRange(70L, 1000L)));
+                keyRange(0L, 40L), keyRange(41L, 42L), keyRange(45L, 50L), keyRange(70L, 1000L)));
 
     assertEquals(tasks.get(0).getRegion().getId(), 0);
     assertEquals(tasks.get(0).getRanges().size(), 1);
-    assertEquals(tasks.get(0).getRanges().get(0), keyRange(null, 30L));
+    assertEquals(tasks.get(0).getRanges().get(0), keyRange(0L, 30L));
 
     assertEquals(tasks.get(1).getRegion().getId(), 1);
     assertEquals(tasks.get(1).getRanges().get(0), keyRange(30L, 40L));

@@ -34,7 +34,7 @@ import com.pingcap.tikv.expression.scalar.LessEqual;
 import com.pingcap.tikv.expression.scalar.LessThan;
 import com.pingcap.tikv.expression.scalar.NotEqual;
 import com.pingcap.tikv.expression.scalar.Or;
-import com.pingcap.tikv.key.CompondKey;
+import com.pingcap.tikv.key.CompoundKey;
 import com.pingcap.tikv.key.Key;
 import com.pingcap.tikv.key.TypedKey;
 import com.pingcap.tikv.predicates.AccessConditionNormalizer.NormalizedCondition;
@@ -95,7 +95,7 @@ public class RangeBuilder {
         List<Key> points = expressionToKeys(expr, type);
         resultKeys = joinKeys(resultKeys, points);
       } catch (Exception e) {
-        throw new TiClientInternalException("Error converting access points" + expr);
+        throw new TiClientInternalException(String.format("Error converting access points %s", expr), e);
       }
     }
     return resultKeys;
@@ -113,7 +113,7 @@ public class RangeBuilder {
     ImmutableList.Builder<Key> builder = ImmutableList.builder();
     for (Key lKey : lhsKeys) {
       for (Key rKey : rhsKeys) {
-        builder.add(CompondKey.concat(lKey, rKey));
+        builder.add(CompoundKey.concat(lKey, rKey));
       }
     }
     return builder.build();
@@ -132,7 +132,7 @@ public class RangeBuilder {
       TiFunctionExpression func = (TiFunctionExpression) expr;
       NormalizedCondition cond = AccessConditionNormalizer.normalize(func);
       ImmutableList.Builder<Key> result = ImmutableList.builder();
-      cond.constantVals.forEach(constVal -> result.add(TypedKey.create(constVal, type)));
+      cond.constantVals.forEach(constVal -> result.add(TypedKey.create(constVal.getValue(), type)));
       return result.build();
     } catch (Exception e) {
       throw new TiClientInternalException("Failed to convert expr to points: " + expr, e);

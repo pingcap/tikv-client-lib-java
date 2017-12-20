@@ -25,6 +25,7 @@ import com.pingcap.tikv.codec.InvalidCodecFormatException;
 import com.pingcap.tikv.meta.TiColumnInfo;
 
 public class BytesType extends DataType {
+  public static final BytesType STRING_TYPE = new BytesType(Types.TYPE_STRING);
 
   static BytesType of(int tp) {
     return new BytesType(tp);

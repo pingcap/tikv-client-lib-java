@@ -21,16 +21,16 @@ import com.pingcap.tikv.codec.CodecDataOutput;
 import java.util.ArrayList;
 import java.util.List;
 
-public class CompondKey extends Key {
+public class CompoundKey extends Key {
 
   private final List<Key> keys;
 
-  protected CompondKey(List<Key> keys, byte[] value) {
+  protected CompoundKey(List<Key> keys, byte[] value) {
     super(value);
     this.keys = keys;
   }
 
-  public static CompondKey concat(Key lKey, Key rKey) {
+  public static CompoundKey concat(Key lKey, Key rKey) {
     Builder builder = newBuilder();
     builder.append(lKey)
            .append(rKey);
@@ -49,11 +49,18 @@ public class CompondKey extends Key {
     private final List<Key> keys = new ArrayList<>();
 
     public Builder append(Key key) {
-      keys.add(key);
+      if (key instanceof CompoundKey) {
+        CompoundKey compKey = (CompoundKey)key;
+        for (Key child : compKey.getKeys()) {
+          append(child);
+        }
+      } else {
+        keys.add(key);
+      }
       return this;
     }
 
-    public CompondKey build() {
+    public CompoundKey build() {
       int totalLen = 0;
       for (Key key : keys) {
         totalLen += key.getBytes().length;
@@ -62,7 +69,7 @@ public class CompondKey extends Key {
       for (Key key : keys) {
         cdo.write(key.getBytes());
       }
-      return new CompondKey(keys, cdo.toBytes());
+      return new CompoundKey(keys, cdo.toBytes());
     }
   }
 
