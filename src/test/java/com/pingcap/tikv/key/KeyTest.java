@@ -15,7 +15,7 @@
 
 package com.pingcap.tikv.key;
 
-import static com.pingcap.tikv.key.Key.toKey;
+import static com.pingcap.tikv.key.Key.toRawKey;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
@@ -47,8 +47,8 @@ public class KeyTest {
     ByteString lhsBS = ByteString.copyFrom(lhs);
     ByteString rhsBS = ByteString.copyFrom(rhs);
 
-    Key lhsComp = Key.toRawKey(lhsBS);
-    Key rhsComp = Key.toRawKey(rhsBS);
+    Key lhsComp = toRawKey(lhsBS);
+    Key rhsComp = toRawKey(rhsBS);
 
     assertTrue(tester.apply(lhsComp.compareTo(rhsComp)));
 
@@ -67,20 +67,20 @@ public class KeyTest {
 
   @Test
   public void nextTest() throws Exception {
-    Key k1 = Key.toRawKey(new byte[]{1,2,3});
-    assertEquals(Key.toRawKey(new byte[]{1,2,4}), k1.next());
+    Key k1 = toRawKey(new byte[]{1,2,3});
+    assertEquals(toRawKey(new byte[]{1,2,4}), k1.next());
 
-    k1 = Key.toRawKey(new byte[]{UnsignedBytes.MAX_VALUE, UnsignedBytes.MAX_VALUE});
-    assertEquals(Key.toRawKey(new byte[]{UnsignedBytes.MAX_VALUE, UnsignedBytes.MAX_VALUE, 0}), k1.next());
+    k1 = toRawKey(new byte[]{UnsignedBytes.MAX_VALUE, UnsignedBytes.MAX_VALUE});
+    assertEquals(toRawKey(new byte[]{UnsignedBytes.MAX_VALUE, UnsignedBytes.MAX_VALUE, 0}), k1.next());
   }
 
   @Test
   public void compareToTest() throws Exception {
-    Key kNegInf = Key.toRawKey(new byte[0], true);
+    Key kNegInf = toRawKey(new byte[0], true);
     Key kMin = Key.MIN;
-    Key k = Key.toRawKey(new byte[]{1});
+    Key k = toRawKey(new byte[]{1});
     Key kMax = Key.MAX;
-    Key kInf = Key.toRawKey(new byte[0], false);
+    Key kInf = toRawKey(new byte[0], false);
     Key[] keys = new Key[] {kInf, kMax, k, kMin, kNegInf};
     Arrays.sort(keys);
     assertArrayEquals(new Key[] {kNegInf, kMin, k, kMax, kInf}, keys);

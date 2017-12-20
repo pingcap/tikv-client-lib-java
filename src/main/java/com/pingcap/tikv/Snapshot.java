@@ -18,7 +18,6 @@ package com.pingcap.tikv;
 import static com.pingcap.tikv.operation.iterator.CoprocessIterator.getHandleIterator;
 import static com.pingcap.tikv.operation.iterator.CoprocessIterator.getRowIterator;
 import static com.pingcap.tikv.util.KeyRangeUtils.makeRange;
-import static com.pingcap.tikv.key.Key.toKey;
 
 import com.google.common.collect.Range;
 import com.google.protobuf.ByteString;

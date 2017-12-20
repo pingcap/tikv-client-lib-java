@@ -15,7 +15,8 @@
 
 package com.pingcap.tikv.util;
 
-import static com.pingcap.tikv.key.Key.toKey;
+
+import static com.pingcap.tikv.key.Key.toRawKey;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Range;
@@ -98,7 +99,7 @@ public class KeyRangeUtils {
   }
 
   public static Range<Key> makeRange(ByteString startKey, ByteString endKey) {
-    return Range.closedOpen(Key.toRawKey(startKey, true), Key.toRawKey(endKey));
+    return Range.closedOpen(toRawKey(startKey, true), toRawKey(endKey));
   }
 
   public static Coprocessor.KeyRange makeCoprocRange(ByteString startKey, ByteString endKey) {

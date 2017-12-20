@@ -15,7 +15,6 @@
 
 package com.pingcap.tikv.operation.iterator;
 
-import static com.pingcap.tikv.key.Key.toKey;
 import static java.util.Objects.requireNonNull;
 
 import com.google.common.collect.Range;

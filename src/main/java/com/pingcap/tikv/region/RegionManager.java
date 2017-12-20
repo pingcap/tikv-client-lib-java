@@ -20,7 +20,6 @@ package com.pingcap.tikv.region;
 
 import static com.pingcap.tikv.codec.KeyUtils.formatBytes;
 import static com.pingcap.tikv.util.KeyRangeUtils.makeRange;
-import static com.pingcap.tikv.key.Key.toKey;
 
 import com.google.common.collect.RangeMap;
 import com.google.common.collect.TreeRangeMap;

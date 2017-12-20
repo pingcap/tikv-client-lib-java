@@ -15,7 +15,7 @@
 
 package com.pingcap.tikv.util;
 
-import static com.pingcap.tikv.key.Key.toKey;
+import static com.pingcap.tikv.key.Key.toRawKey;
 import static com.pingcap.tikv.util.KeyRangeUtils.formatByteString;
 import static com.pingcap.tikv.util.KeyRangeUtils.makeCoprocRange;
 
@@ -23,7 +23,6 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.net.HostAndPort;
 import com.google.protobuf.ByteString;
 import com.pingcap.tikv.exception.TiClientInternalException;
-import com.pingcap.tikv.key.Key;
 import com.pingcap.tikv.key.RowKey;
 import com.pingcap.tikv.key.RowKey.DecodeResult;
 import com.pingcap.tikv.key.RowKey.DecodeResult.Status;
@@ -223,7 +222,7 @@ public class RangeSplitter {
       // both key range is close-opened
       // initial range inside PD is guaranteed to be -INF to +INF
       // Both keys are at right hand side and then always not -INF
-      if (Key.toRawKey(range.getEnd()).compareTo(Key.toRawKey(region.getEndKey())) > 0) {
+      if (toRawKey(range.getEnd()).compareTo(toRawKey(region.getEndKey())) > 0) {
         // current region does not cover current end key
         KeyRange cutRange =
             KeyRange.newBuilder().setStart(range.getStart()).setEnd(region.getEndKey()).build();

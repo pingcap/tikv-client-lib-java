@@ -15,7 +15,8 @@
 
 package com.pingcap.tikv;
 
-import static com.pingcap.tikv.key.Key.toKey;
+
+import static com.pingcap.tikv.key.Key.toRawKey;
 
 import com.google.common.collect.ImmutableList;
 import com.google.protobuf.ByteString;
@@ -69,11 +70,11 @@ public class KVMockServer extends TikvGrpc.TikvImplBase {
   }
 
   public void put(ByteString key, ByteString value) {
-    dataMap.put(Key.toRawKey(key), value);
+    dataMap.put(toRawKey(key), value);
   }
 
   public void remove(ByteString key) {
-    dataMap.remove(Key.toRawKey(key));
+    dataMap.remove(toRawKey(key));
   }
 
   public void put(String key, String value) {
@@ -114,7 +115,7 @@ public class KVMockServer extends TikvGrpc.TikvImplBase {
         setErrorInfo(errorCode, errBuilder);
         builder.setRegionError(errBuilder.build());
       } else {
-        builder.setValue(dataMap.get(Key.toRawKey(key)));
+        builder.setValue(dataMap.get(toRawKey(key)));
       }
       responseObserver.onNext(builder.build());
       responseObserver.onCompleted();
@@ -212,7 +213,7 @@ public class KVMockServer extends TikvGrpc.TikvImplBase {
         }
         builder.setError(errBuilder);
       } else {
-        ByteString value = dataMap.get(Key.toRawKey(key));
+        ByteString value = dataMap.get(toRawKey(key));
         builder.setValue(value);
       }
       responseObserver.onNext(builder.build());
@@ -243,7 +244,7 @@ public class KVMockServer extends TikvGrpc.TikvImplBase {
         builder.setRegionError(errBuilder.build());
       } else {
         ByteString startKey = request.getStartKey();
-        SortedMap<Key, ByteString> kvs = dataMap.tailMap(Key.toRawKey(startKey));
+        SortedMap<Key, ByteString> kvs = dataMap.tailMap(toRawKey(startKey));
         builder.addAllPairs(
             kvs.entrySet()
                 .stream()
@@ -286,7 +287,7 @@ public class KVMockServer extends TikvGrpc.TikvImplBase {
           builder.setRegionError(errBuilder.build());
           break;
         } else {
-          ByteString value = dataMap.get(Key.toRawKey(key));
+          ByteString value = dataMap.get(toRawKey(key));
           resultList.add(Kvrpcpb.KvPair.newBuilder().setKey(key).setValue(value).build());
         }
       }
@@ -327,12 +328,12 @@ public class KVMockServer extends TikvGrpc.TikvImplBase {
           break;
         } else {
           ByteString startKey = keyRange.getStart();
-          SortedMap<Key, ByteString> kvs = dataMap.tailMap(Key.toRawKey(startKey));
+          SortedMap<Key, ByteString> kvs = dataMap.tailMap(toRawKey(startKey));
           builder.addAllChunks(
               kvs.entrySet()
                   .stream()
                   .filter(Objects::nonNull)
-                  .filter(kv -> kv.getKey().compareTo(Key.toRawKey(keyRange.getEnd())) <= 0)
+                  .filter(kv -> kv.getKey().compareTo(toRawKey(keyRange.getEnd())) <= 0)
                   .map(
                       kv ->
                           Chunk.newBuilder()
