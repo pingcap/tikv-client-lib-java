@@ -48,7 +48,7 @@ public class IndexMatcherTest {
     TiTableInfo table = createTable();
     TiIndexInfo index = table.getIndices().get(0);
     TiIndexColumn col = index.getIndexColumns().get(0);
-    IndexMatcher matcher = new IndexMatcher(col, true);
+    IndexMatcher matcher = IndexMatcher.equalOnlyMatcher(col);
 
     // index col = c1, long
     TiExpr cond = new Equal(TiColumnRef.create("c1", table), TiConstant.create(1));
@@ -94,7 +94,7 @@ public class IndexMatcherTest {
     TiTableInfo table = createTable();
     TiIndexInfo index = table.getIndices().get(0);
     TiIndexColumn col = index.getIndexColumns().get(0);
-    IndexMatcher matcher = new IndexMatcher(col, false);
+    IndexMatcher matcher = IndexMatcher.matcher(col);
 
     // index col = c1, long
     TiExpr cond = new LessEqual(TiColumnRef.create("c1", table), TiConstant.create(1));

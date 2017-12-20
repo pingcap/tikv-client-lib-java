@@ -24,11 +24,11 @@ import com.pingcap.tikv.codec.CodecDataInput;
 import com.pingcap.tikv.codec.CodecDataOutput;
 import com.pingcap.tikv.codec.InvalidCodecFormatException;
 import com.pingcap.tikv.meta.TiColumnInfo;
-
 import java.sql.Timestamp;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
 
 public class TimestampType extends DataType {
   private static final ZoneId UTC_TIMEZONE = ZoneId.of("UTC");
@@ -89,6 +89,18 @@ public class TimestampType extends DataType {
     }
     long val = DateTimeCodec.toPackedLong(localDateTime);
     IntegerCodec.writeULongFull(cdo, val, true);
+  }
+
+  /**
+   * get origin value from string
+   * @param value a timestamp value in string in format "yyyy-MM-dd HH:mm:ss"
+   * @return a {@link LocalDateTime} Object
+   * TODO: need decode time with time zone info.
+   */
+  @Override
+  public Object getOriginDefaultValueNonNull(String value) {
+    DateTimeFormatter dateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+    return LocalDateTime.parse(value, dateTimeFormatter);
   }
 
 }

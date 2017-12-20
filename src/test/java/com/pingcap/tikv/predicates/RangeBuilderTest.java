@@ -15,28 +15,13 @@
 
 package com.pingcap.tikv.predicates;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
-
 import com.google.common.collect.ImmutableList;
-import com.google.common.collect.Lists;
-import com.google.common.collect.Range;
-import com.pingcap.tikv.expression.TiColumnRef;
-import com.pingcap.tikv.expression.TiConstant;
-import com.pingcap.tikv.expression.TiExpr;
-import com.pingcap.tikv.expression.scalar.Equal;
-import com.pingcap.tikv.expression.scalar.GreaterEqual;
-import com.pingcap.tikv.expression.scalar.GreaterThan;
-import com.pingcap.tikv.expression.scalar.In;
-import com.pingcap.tikv.expression.scalar.NotEqual;
+import com.pingcap.tikv.key.Key;
 import com.pingcap.tikv.meta.MetaUtils;
 import com.pingcap.tikv.meta.TiTableInfo;
-import com.pingcap.tikv.types.DataType;
 import com.pingcap.tikv.types.DataTypeFactory;
 import com.pingcap.tikv.types.Types;
-import com.pingcap.tikv.key.TypedKey;
 import java.util.List;
-import org.junit.Test;
 
 public class RangeBuilderTest {
   private static TiTableInfo createTable() {
@@ -56,7 +41,7 @@ public class RangeBuilderTest {
 
     for (RangeBuilder.IndexRange ir : ranges) {
       boolean found = false;
-      List<Object> aps = ir.getAccessPoints();
+      Key aps = ir.getAccessKey();
       for (int i = 0; i < values.size(); i++) {
         List<Object> curVals = values.get(i);
         if (curVals.equals(aps)) {
@@ -71,6 +56,7 @@ public class RangeBuilderTest {
     return values.isEmpty();
   }
 
+  /*
   @Test
   public void exprsToPoints() throws Exception {
     TiTableInfo table = createTable();
@@ -82,7 +68,7 @@ public class RangeBuilderTest {
         ImmutableList.of(
             DataTypeFactory.of(Types.TYPE_LONG), DataTypeFactory.of(Types.TYPE_STRING));
     RangeBuilder builder = new RangeBuilder();
-    List<RangeBuilder.IndexRange> indexRanges = builder.exprsToPoints(conds, types);
+    List<Key> keys = builder.expressionToPoints(conds, types);
     assertEquals(1, indexRanges.size());
     List<Object> acpts = indexRanges.get(0).getAccessPoints();
     assertEquals(2, acpts.size());
@@ -106,7 +92,7 @@ public class RangeBuilderTest {
             DataTypeFactory.of(Types.TYPE_STRING),
             DataTypeFactory.of(Types.TYPE_STRING));
 
-    indexRanges = builder.exprsToPoints(conds, types);
+    indexRanges = builder.expressionToPoints(conds, types);
     assertEquals(6, indexRanges.size());
     assertTrue(
         testPointIndexRanges(
@@ -120,6 +106,7 @@ public class RangeBuilderTest {
                 ImmutableList.of(3, "v1", "4"))));
   }
 
+
   @Test
   public void exprToRanges() throws Exception {
     TiTableInfo table = createTable();
@@ -132,7 +119,7 @@ public class RangeBuilderTest {
             );
     DataType type = DataTypeFactory.of(Types.TYPE_LONG);
     RangeBuilder builder = new RangeBuilder();
-    List<Range<TypedKey>> ranges = RangeBuilder.exprToRanges(conds, type);
+    List<Range<TypedKey>> ranges = RangeBuilder.expressionToRanges(conds, type);
     assertEquals(2, ranges.size());
     assertEquals(Range.closedOpen(0L, 50L), ranges.get(0));
     assertEquals(Range.open(50L, 100L), ranges.get(1));
@@ -145,7 +132,7 @@ public class RangeBuilderTest {
     List<DataType> types =
         ImmutableList.of(
             DataTypeFactory.of(Types.TYPE_LONG), DataTypeFactory.of(Types.TYPE_STRING));
-    List<RangeBuilder.IndexRange> indexRanges = builder.exprsToPoints(ac, types);
+    List<RangeBuilder.IndexRange> indexRanges = builder.expressionToPoints(ac, types);
     assertTrue(
         testPointIndexRanges(
             indexRanges,
@@ -159,7 +146,7 @@ public class RangeBuilderTest {
             new NotEqual(TiColumnRef.create("c3", table), TiConstant.create("g")) // c1 != 50
             );
     type = DataTypeFactory.of(Types.TYPE_STRING);
-    ranges = RangeBuilder.exprToRanges(conds, type);
+    ranges = RangeBuilder.expressionToRanges(conds, type);
 
     indexRanges = RangeBuilder.appendRanges(indexRanges, ranges, type);
     assertEquals(4, indexRanges.size());
@@ -169,4 +156,5 @@ public class RangeBuilderTest {
     assertEquals(Range.open("g", "z"), indexRanges.get(1).getRange());
     assertEquals(Range.open("g", "z"), indexRanges.get(3).getRange());
   }
+  */
 }

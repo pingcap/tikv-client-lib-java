@@ -67,4 +67,13 @@ public class DecimalType extends DataType {
     DecimalCodec.writeDouble(cdo, val);
   }
 
+  /**
+   * get origin value from string.
+   * @param value a decimal value represents in string.
+   * @return a Double Value
+   */
+  @Override
+  public Object getOriginDefaultValueNonNull(String value) {
+    return Double.parseDouble(value);
+  }
 }

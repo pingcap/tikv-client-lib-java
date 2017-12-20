@@ -26,6 +26,10 @@ import com.google.common.collect.Iterables;
 import com.google.common.collect.Range;
 import com.pingcap.tikv.exception.TiClientInternalException;
 import com.pingcap.tikv.expression.TiExpr;
+import com.pingcap.tikv.key.IndexKey;
+import com.pingcap.tikv.key.Key;
+import com.pingcap.tikv.key.RowKey;
+import com.pingcap.tikv.key.TypedKey;
 import com.pingcap.tikv.kvproto.Coprocessor.KeyRange;
 import com.pingcap.tikv.meta.TiColumnInfo;
 import com.pingcap.tikv.meta.TiIndexColumn;
@@ -33,12 +37,6 @@ import com.pingcap.tikv.meta.TiIndexInfo;
 import com.pingcap.tikv.meta.TiTableInfo;
 import com.pingcap.tikv.predicates.RangeBuilder.IndexRange;
 import com.pingcap.tikv.types.DataType;
-import com.pingcap.tikv.types.IntegerType;
-import com.pingcap.tikv.key.CompondKey;
-import com.pingcap.tikv.key.IndexKey;
-import com.pingcap.tikv.key.Key;
-import com.pingcap.tikv.key.RowKey;
-import com.pingcap.tikv.key.TypedKey;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -115,7 +113,7 @@ public class ScanBuilder {
 
     RangeBuilder builder = new RangeBuilder();
     List<IndexRange> irs =
-        builder.exprsToIndexRanges(
+        builder.expressionToIndexRanges(
             result.accessPoints, result.accessPointsTypes,
             result.accessConditions, result.rangeType);
 
@@ -137,53 +135,37 @@ public class ScanBuilder {
     for (IndexRange ir : indexRanges) {
       Key startKey;
       Key endKey;
-      if (ir.hasAccessPoints()) {
+      if (ir.hasAccessKeys()) {
         checkArgument(!ir.hasRange(), "Table scan must have one and only one access condition / point");
 
-        Object v = ir.getAccessPoints().get(0);
-        checkArgument(v instanceof Long, "Table scan key range must be long value");
-        DataType type = ir.getTypes().get(0);
-        checkArgument(type instanceof IntegerType, "Table scan key range must be long value");
-        startKey = RowKey.create(table.getId(), (long)v);
+        Key key = ir.getAccessKey();
+        checkArgument(key instanceof TypedKey, "Table scan key range must be typed key");
+        TypedKey typedKey = (TypedKey)key;
+        startKey = RowKey.create(table.getId(), typedKey);
         endKey = startKey.next();
       } else if (ir.hasRange()) {
-        checkArgument(
-            !ir.hasAccessPoints(),
-            "Table scan must have one and only one access condition / point");
-        Range r = ir.getRange();
-        DataType type = ir.getRangeType();
-        checkArgument(type instanceof IntegerType, "Table scan key range must be long value");
+        checkArgument(!ir.hasAccessKeys(), "Table scan must have one and only one access condition / point");
+        Range<TypedKey> r = ir.getRange();
 
         if (!r.hasLowerBound()) {
           // -INF
           startKey = RowKey.createMin(table.getId());
         } else {
           // Comparision with null should be filtered since it yields unknown always
-          Object lb = r.lowerEndpoint();
-          checkArgument(lb instanceof Long, "Table scan key range must be long value");
-          long lVal = (long) lb;
+          startKey = RowKey.create(table.getId(), r.lowerEndpoint());
           if (r.lowerBoundType().equals(BoundType.OPEN)) {
-            // TODO: Need push back?
-            if (lVal != Long.MAX_VALUE) {
-              lVal++;
-            }
+            startKey = startKey.next();
           }
-          startKey = RowKey.create(table.getId(), lVal);
         }
 
         if (!r.hasUpperBound()) {
           // INF
           endKey = RowKey.createMax(table.getId());
         } else {
-          Object ub = r.upperEndpoint();
-          checkArgument(ub instanceof Long, "Table scan key range must be long value");
-          long lVal = (long) ub;
+          endKey = RowKey.create(table.getId(), r.upperEndpoint());
           if (r.upperBoundType().equals(BoundType.CLOSED)) {
-            if (lVal != Long.MAX_VALUE) {
-              lVal++;
-            }
+            endKey = endKey.next();
           }
-          endKey = RowKey.create(table.getId(), lVal);
         }
       } else {
         throw new TiClientInternalException("Empty access conditions");
@@ -210,36 +192,29 @@ public class ScanBuilder {
     List<KeyRange> ranges = new ArrayList<>(indexRanges.size());
 
     for (IndexRange ir : indexRanges) {
-      List<Object> values = ir.getAccessPoints();
-      List<DataType> types = ir.getTypes();
-      CompondKey.Builder keyBuilder = CompondKey.newBuilder();
-      for (int i = 0; i < values.size(); i++) {
-        keyBuilder.append(TypedKey.create(values.get(i), types.get(i)));
-      }
+      Key pointKey = ir.getAccessKey();
 
-      Range r = ir.getRange();
+      Range<TypedKey> r = ir.getRange();
       Key lPointKey;
       Key uPointKey;
 
       Key lKey;
       Key uKey;
       if (r == null) {
-        lPointKey = keyBuilder.build();
-        uPointKey = lPointKey.next();
+        lPointKey = pointKey;
+        uPointKey = pointKey.next();
 
         lKey = Key.NULL;
         uKey = Key.NULL;
       } else {
-        lPointKey = keyBuilder.build();
-        uPointKey = lPointKey;
+        lPointKey = pointKey;
+        uPointKey = pointKey;
 
-        DataType type = ir.getRangeType();
         if (!r.hasLowerBound()) {
           // -INF
           lKey = Key.MIN;
         } else {
-          Object lb = r.lowerEndpoint();
-          lKey = TypedKey.create(lb, type);
+          lKey = r.lowerEndpoint();
           if (r.lowerBoundType().equals(BoundType.OPEN)) {
             lKey = lKey.next();
           }
@@ -249,8 +224,7 @@ public class ScanBuilder {
           // INF
           uKey = Key.MAX;
         } else {
-          Object ub = r.upperEndpoint();
-          uKey = TypedKey.create(ub, type);
+          uKey = r.upperEndpoint();
           if (r.upperBoundType().equals(BoundType.CLOSED)) {
             uKey = uKey.next();
           }
@@ -323,13 +297,15 @@ public class ScanBuilder {
         // index, it likely yields nothing. Maybe a check needed
         // to simplify it to a false condition
         TiIndexColumn col = index.getIndexColumns().get(i);
-        IndexMatcher matcher = new IndexMatcher(col, true);
+        IndexMatcher eqMatcher = IndexMatcher.equalOnlyMatcher(col);
         boolean found = false;
         // For first prefix index encountered, it equals to a range
         // and we cannot push equal conditions further
         for (TiExpr cond : conditions) {
-          if (visited.contains(cond)) continue;
-          if (matcher.match(cond)) {
+          if (visited.contains(cond)) {
+            continue;
+          }
+          if (eqMatcher.match(cond)) {
             accessPoints.add(cond);
             TiColumnInfo tiColumnInfo = table.getColumns().get(col.getOffset());
             accessPointTypes.add(tiColumnInfo.getType());
@@ -345,9 +321,11 @@ public class ScanBuilder {
         if (!found) {
           // For first "broken index chain piece"
           // search for a matching range condition
-          matcher = new IndexMatcher(col, false);
+          IndexMatcher matcher = IndexMatcher.matcher(col);
           for (TiExpr cond : conditions) {
-            if (visited.contains(cond)) continue;
+            if (visited.contains(cond)) {
+              continue;
+            }
             if (matcher.match(cond)) {
               accessConditions.add(cond);
               TiColumnInfo tiColumnInfo = table.getColumns().get(col.getOffset());

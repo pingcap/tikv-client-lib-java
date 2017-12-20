@@ -30,6 +30,13 @@ public class CompondKey extends Key {
     this.keys = keys;
   }
 
+  public static CompondKey concat(Key lKey, Key rKey) {
+    Builder builder = newBuilder();
+    builder.append(lKey)
+           .append(rKey);
+    return builder.build();
+  }
+
   public List<Key> getKeys() {
     return keys;
   }
@@ -41,8 +48,9 @@ public class CompondKey extends Key {
   public static class Builder {
     private final List<Key> keys = new ArrayList<>();
 
-    public void append(Key key) {
+    public Builder append(Key key) {
       keys.add(key);
+      return this;
     }
 
     public CompondKey build() {

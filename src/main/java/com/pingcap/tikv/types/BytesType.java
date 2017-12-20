@@ -71,4 +71,14 @@ public class BytesType extends DataType {
       BytesCodec.writeCompactBytes(cdo, bytes);
     }
   }
+
+  /**
+   * get origin default value
+   * @param value a bytes string value
+   * @return a {@link String} Object
+   */
+  @Override
+  public Object getOriginDefaultValueNonNull(String value) {
+    return value;
+  }
 }

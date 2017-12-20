@@ -22,7 +22,6 @@ import com.google.common.collect.Range;
 import com.google.protobuf.ByteString;
 import com.pingcap.tikv.codec.CodecDataInput;
 import com.pingcap.tikv.codec.CodecDataOutput;
-import com.pingcap.tikv.codec.TableCodec;
 import com.pingcap.tikv.exception.TiClientInternalException;
 import com.pingcap.tikv.kvproto.Coprocessor;
 import com.pingcap.tikv.kvproto.Coprocessor.KeyRange;
@@ -96,21 +95,12 @@ public class KeyRangeUtils {
   }
 
   public static String toString(Coprocessor.KeyRange range) {
+    /*
     return String.format("Start:[%s], End: [%s]",
         TableCodec.decodeRowKey(range.getStart()),
         TableCodec.decodeRowKey(range.getEnd()));
-  }
-
-  public static String toString(Coprocessor.KeyRange range, List<DataType> types) {
-    if (range == null || types == null) {
-      return "";
-    }
-    try {
-      return String.format("{[%s], [%s]}",
-          TableCodec.decodeIndexSeekKeyToString(range.getStart(), types),
-          TableCodec.decodeIndexSeekKeyToString(range.getEnd(), types));
-    } catch (Exception ignore) {}
-    return range.toString();
+        */
+    return null;
   }
 
   public static List<DataType> getIndexColumnTypes(TiTableInfo table, TiIndexInfo index) {

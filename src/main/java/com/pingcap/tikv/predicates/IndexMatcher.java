@@ -29,9 +29,17 @@ public class IndexMatcher {
   private final boolean matchEqualTestOnly;
   private final TiIndexColumn indexColumn;
 
-  protected IndexMatcher(TiIndexColumn indexColumn, boolean matchEqualTestOnly) {
+  private IndexMatcher(TiIndexColumn indexColumn, boolean matchEqualTestOnly) {
     this.matchEqualTestOnly = matchEqualTestOnly;
     this.indexColumn = indexColumn;
+  }
+
+  public static IndexMatcher equalOnlyMatcher(TiIndexColumn indexColumn) {
+    return new IndexMatcher(indexColumn, true);
+  }
+
+  public static IndexMatcher matcher(TiIndexColumn indexColumn) {
+    return new IndexMatcher(indexColumn, false);
   }
 
   /**

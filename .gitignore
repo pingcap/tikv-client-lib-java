@@ -49,3 +49,6 @@ bazel-*
 .ensime_cache/
 scripts/pd/
 scripts/tikv/
+
+// jenv configuration
+.java-version

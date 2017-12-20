@@ -86,8 +86,8 @@ public class ScanIterator implements Iterator<Kvrpcpb.KvPair> {
         }
       } else {
         // Start new scan from exact next key in current region
-        ByteString lastKey = currentCache.get(currentCache.size() - 1).getKey();
-        startKey = Key.getNextKeyInByteOrder(lastKey);
+        Key lastKey = toKey(currentCache.get(currentCache.size() - 1).getKey());
+        startKey = lastKey.next().toByteString();
       }
     } catch (Exception e) {
       throw new TiClientInternalException("Error Closing Store client.", e);

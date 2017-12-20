@@ -7,8 +7,9 @@ import com.google.common.collect.ImmutableList;
 import com.google.protobuf.ByteString;
 import com.pingcap.tikv.codec.Codec.IntegerCodec;
 import com.pingcap.tikv.codec.CodecDataOutput;
-import com.pingcap.tikv.codec.TableCodec;
-import com.pingcap.tikv.codec.TableCodec.DecodeResult.Status;
+import com.pingcap.tikv.key.Key;
+import com.pingcap.tikv.key.RowKey;
+import com.pingcap.tikv.key.RowKey.DecodeResult.Status;
 import com.pingcap.tikv.kvproto.Coprocessor.KeyRange;
 import com.pingcap.tikv.kvproto.Kvrpcpb.CommandPri;
 import com.pingcap.tikv.kvproto.Kvrpcpb.IsolationLevel;
@@ -16,7 +17,6 @@ import com.pingcap.tikv.kvproto.Metapb;
 import com.pingcap.tikv.kvproto.Metapb.Peer;
 import com.pingcap.tikv.region.RegionManager;
 import com.pingcap.tikv.region.TiRegion;
-import com.pingcap.tikv.key.Key;
 import gnu.trove.list.array.TLongArrayList;
 import java.util.List;
 import java.util.Map;
@@ -88,7 +88,7 @@ public class RangeSplitterTest {
 
   private static ByteString handleToByteString(long tableId, Long k) {
     if (k != null) {
-      return TableCodec.encodeRowKeyWithHandle(tableId, k);
+      return RowKey.create(tableId, k).toByteString();
     }
     return ByteString.EMPTY;
   }

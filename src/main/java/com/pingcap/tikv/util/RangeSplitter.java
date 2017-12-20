@@ -15,20 +15,21 @@
 
 package com.pingcap.tikv.util;
 
-import static com.pingcap.tikv.util.KeyRangeUtils.formatByteString;
 import static com.pingcap.tikv.key.Key.toKey;
+import static com.pingcap.tikv.util.KeyRangeUtils.formatByteString;
+import static com.pingcap.tikv.util.KeyRangeUtils.makeCoprocRange;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.net.HostAndPort;
 import com.google.protobuf.ByteString;
-import com.pingcap.tikv.codec.TableCodec;
-import com.pingcap.tikv.codec.TableCodec.DecodeResult.Status;
 import com.pingcap.tikv.exception.TiClientInternalException;
+import com.pingcap.tikv.key.RowKey;
+import com.pingcap.tikv.key.RowKey.DecodeResult;
+import com.pingcap.tikv.key.RowKey.DecodeResult.Status;
 import com.pingcap.tikv.kvproto.Coprocessor.KeyRange;
 import com.pingcap.tikv.kvproto.Metapb;
 import com.pingcap.tikv.region.RegionManager;
 import com.pingcap.tikv.region.TiRegion;
-import com.pingcap.tikv.key.RowKey;
 import gnu.trove.list.array.TLongArrayList;
 import java.io.Serializable;
 import java.util.ArrayList;
@@ -103,7 +104,7 @@ public class RangeSplitter {
     handles.sort();
 
     int startPos = 0;
-    TableCodec.DecodeResult decodeResult = new TableCodec.DecodeResult();
+    DecodeResult decodeResult = new DecodeResult();
     while (startPos < handles.size()) {
       long curHandle = handles.get(startPos);
       RowKey key = RowKey.create(tableId, curHandle);
@@ -162,15 +163,18 @@ public class RangeSplitter {
       if (endHandle + 1 == curHandle) {
         endHandle = curHandle;
       } else {
-        newKeyRanges.add(KeyRangeUtils.makeCoprocRangeWithHandle(
-            tableId,
-            startHandle,
-            endHandle + 1));
+        newKeyRanges.add(makeCoprocRange(
+            RowKey.create(tableId, startHandle).toByteString(),
+            RowKey.create(tableId, endHandle + 1).toByteString())
+        );
         startHandle = curHandle;
         endHandle = startHandle;
       }
     }
-    newKeyRanges.add(KeyRangeUtils.makeCoprocRangeWithHandle(tableId, startHandle, endHandle + 1));
+    newKeyRanges.add(makeCoprocRange(
+        RowKey.create(tableId, startHandle).toByteString(),
+        RowKey.create(tableId, endHandle + 1).toByteString())
+    );
     regionTasks.add(new RegionTask(regionStorePair.first, regionStorePair.second, newKeyRanges));
   }
 

@@ -21,6 +21,8 @@ import static com.pingcap.tikv.codec.Codec.IntegerCodec.writeLong;
 import com.pingcap.tikv.codec.Codec.IntegerCodec;
 import com.pingcap.tikv.codec.CodecDataInput;
 import com.pingcap.tikv.codec.CodecDataOutput;
+import com.pingcap.tikv.exception.TiClientInternalException;
+import com.pingcap.tikv.exception.TiExpressionException;
 import com.pingcap.tikv.util.FastByteComparisons;
 import com.pingcap.tikv.key.RowKey.DecodeResult.Status;
 import java.util.Objects;
@@ -41,6 +43,14 @@ public class RowKey extends Key {
     return new RowKey(tableId, handle);
   }
 
+  public static RowKey create(long tableId, TypedKey handle) {
+    Object obj = handle.getValue();
+    if (obj instanceof Long) {
+      return new RowKey(tableId, (long)obj);
+    }
+    throw new TiExpressionException("Cannot encode row key with non-long type");
+  }
+
   public static RowKey createMin(long tableId) {
     return create(tableId, Long.MIN_VALUE);
   }
@@ -54,6 +64,15 @@ public class RowKey extends Key {
     encodePrefix(cdo, tableId);
     writeLong(cdo, handle);
     return cdo.toBytes();
+  }
+
+  @Override
+  public RowKey next() {
+    long handle = getHandle();
+    if (handle == Long.MAX_VALUE) {
+      throw new TiClientInternalException("Handle overflow for Long MAX");
+    }
+    return new RowKey(tableId, handle + 1);
   }
 
   public long getTableId() {

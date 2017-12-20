@@ -35,6 +35,11 @@ public class TypedKey extends Key {
     return type;
   }
 
+  public Object getValue() {
+    CodecDataInput cdi = new CodecDataInput(value);
+    return type.decode(cdi);
+  }
+
   public static TypedKey create(Object val, DataType type) {
     requireNonNull(type, "type is null");
     return new TypedKey(val, type);

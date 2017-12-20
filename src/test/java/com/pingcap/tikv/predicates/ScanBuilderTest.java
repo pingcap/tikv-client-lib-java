@@ -19,12 +19,12 @@ import static org.junit.Assert.assertEquals;
 
 import com.google.common.collect.ImmutableList;
 import com.google.protobuf.ByteString;
-import com.pingcap.tikv.codec.TableCodec;
 import com.pingcap.tikv.expression.TiColumnRef;
 import com.pingcap.tikv.expression.TiConstant;
 import com.pingcap.tikv.expression.TiExpr;
 import com.pingcap.tikv.expression.scalar.Equal;
 import com.pingcap.tikv.expression.scalar.LessEqual;
+import com.pingcap.tikv.key.RowKey;
 import com.pingcap.tikv.meta.MetaUtils;
 import com.pingcap.tikv.meta.TiColumnInfo.InternalTypeHolder;
 import com.pingcap.tikv.meta.TiIndexInfo;
@@ -55,6 +55,8 @@ public class ScanBuilderTest {
             0,
             3, // indicating a prefix type
             0,
+            "",
+            "",
             "",
             "",
             ImmutableList.of());
@@ -159,8 +161,8 @@ public class ScanBuilderTest {
     ScanBuilder scanBuilder = new ScanBuilder();
     ScanBuilder.ScanPlan scanPlan = scanBuilder.buildScan(new ArrayList<>(), index, table);
 
-    ByteString startKey = TableCodec.encodeRowKeyWithHandle(table.getId(), Long.MIN_VALUE);
-    ByteString endKey = TableCodec.encodeRowKeyWithHandle(table.getId(), Long.MAX_VALUE);
+    ByteString startKey = RowKey.create(table.getId(), Long.MIN_VALUE).toByteString();
+    ByteString endKey = RowKey.create(table.getId(), Long.MAX_VALUE).toByteString();
 
     assertEquals(1, scanPlan.getKeyRanges().size());
     assertEquals(startKey, scanPlan.getKeyRanges().get(0).getStart());
