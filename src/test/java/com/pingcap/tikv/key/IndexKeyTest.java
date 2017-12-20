@@ -47,7 +47,7 @@ public class IndexKeyTest {
   @Test
   public void toStringTest() throws Exception {
     Key k1 = Key.toRawKey(new byte[] {1,2,3,4});
-    TypedKey k2 = TypedKey.toTypedKey(666, IntegerType.DEF_LONG_TYPE);
+    TypedKey k2 = TypedKey.toTypedKey(666, IntegerType.INT);
     IndexKey ik = IndexKey.toIndexKey(0, 0, k1, Key.NULL, k2);
     assertEquals("[{1,2,3,4},null,666]", ik.toString());
   }

@@ -31,13 +31,13 @@ import java.sql.Date;
 import java.time.format.DateTimeFormatter;
 
 public class DateType extends DataType {
-  static DateType of(int tp) {
-    return new DateType(tp);
-  }
-  private static final SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd");
-  private static final IntegerType codecObject = IntegerType.DEF_LONG_LONG_TYPE;
+  public static final DateType DATE = new DateType(MySQLType.TypeDate);
+  public static final MySQLType[] subTypes = new MySQLType[] { MySQLType.TypeDate };
 
-  private DateType(int tp) {
+  private static final SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd");
+  private static final IntegerType codecObject = IntegerType.BIGINT;
+
+  private DateType(MySQLType tp) {
     super(tp);
   }
 

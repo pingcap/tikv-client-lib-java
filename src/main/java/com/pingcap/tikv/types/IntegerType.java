@@ -17,11 +17,6 @@
 
 package com.pingcap.tikv.types;
 
-import static com.pingcap.tikv.types.Types.TYPE_INT24;
-import static com.pingcap.tikv.types.Types.TYPE_LONG;
-import static com.pingcap.tikv.types.Types.TYPE_LONG_LONG;
-import static com.pingcap.tikv.types.Types.TYPE_SHORT;
-
 import com.pingcap.tikv.codec.Codec;
 import com.pingcap.tikv.codec.Codec.IntegerCodec;
 import com.pingcap.tikv.codec.CodecDataInput;
@@ -30,17 +25,20 @@ import com.pingcap.tikv.exception.TiClientInternalException;
 import com.pingcap.tikv.exception.TiExpressionException;
 import com.pingcap.tikv.meta.TiColumnInfo;
 
-/** Base class for all integer types: Tiny, Short, Medium, Int, Long and LongLong */
 public class IntegerType extends DataType {
-  public static final IntegerType DEF_LONG_TYPE = new IntegerType(Types.TYPE_LONG);
-  public static final IntegerType DEF_LONG_LONG_TYPE = new IntegerType(Types.TYPE_LONG_LONG);
-  public static final IntegerType DEF_BOOLEAN_TYPE = new IntegerType(Types.TYPE_SHORT);
+  public static final IntegerType TINYINT = new IntegerType(MySQLType.TypeTiny);
+  public static final IntegerType SMALLINT = new IntegerType(MySQLType.TypeShort);
+  public static final IntegerType MEDIUMINT = new IntegerType(MySQLType.TypeInt24);
+  public static final IntegerType INT = new IntegerType(MySQLType.TypeLong);
+  public static final IntegerType BIGINT = new IntegerType(MySQLType.TypeLonglong);
+  public static final IntegerType BOOLEAN = TINYINT;
 
-  static IntegerType of(int tp) {
-    return new IntegerType(tp);
-  }
+  public static final MySQLType[] subTypes = new MySQLType[] {
+      MySQLType.TypeTiny, MySQLType.TypeShort, MySQLType.TypeInt24,
+      MySQLType.TypeLong, MySQLType.TypeLonglong
+  };
 
-  protected IntegerType(int tp) {
+  protected IntegerType(MySQLType tp) {
     super(tp);
   }
 
@@ -83,12 +81,12 @@ public class IntegerType extends DataType {
       comparable = true;
     }
     switch (tp) {
-      case TYPE_SHORT:
-      case TYPE_INT24:
-      case TYPE_LONG:
+      case TypeShort:
+      case TypeInt24:
+      case TypeLong:
         IntegerCodec.writeLongFull(cdo, val, comparable);
         break;
-      case TYPE_LONG_LONG:
+      case TypeLonglong:
         IntegerCodec.writeULongFull(cdo, val, comparable);
         break;
     }

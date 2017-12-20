@@ -37,10 +37,10 @@ public class KeyTest {
     testBytes(new byte[] {1, 2, 0, 10}, new byte[] {1, 2, 1, 10}, x -> x < 0);
     testBytes(new byte[] {1, 2, 0, 10}, new byte[] {1, 2, 0}, x -> x > 0);
 
-    testLiteral(1, 2, IntegerType.DEF_LONG_TYPE, x -> x < 0);
-    testLiteral(13, 13, IntegerType.DEF_LONG_TYPE, x -> x == 0);
-    testLiteral(13, 2, IntegerType.DEF_LONG_TYPE, x -> x > 0);
-    testLiteral(-1, 2, IntegerType.DEF_LONG_TYPE, x -> x < 0);
+    testLiteral(1, 2, IntegerType.INT, x -> x < 0);
+    testLiteral(13, 13, IntegerType.INT, x -> x == 0);
+    testLiteral(13, 2, IntegerType.INT, x -> x > 0);
+    testLiteral(-1, 2, IntegerType.INT, x -> x < 0);
   }
 
   private void testBytes(byte[] lhs, byte[] rhs, Function<Integer, Boolean> tester) {

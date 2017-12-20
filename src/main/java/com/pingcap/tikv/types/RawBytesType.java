@@ -30,11 +30,18 @@ import com.pingcap.tikv.meta.TiColumnInfo;
  * format we set, and essentially changed underlying data
  */
 public class RawBytesType extends BytesType {
-  static RawBytesType ofRaw(int tp) {
-    return new RawBytesType(tp);
-  }
+  public static final RawBytesType BLOB = new RawBytesType(MySQLType.TypeBlob);
+  public static final RawBytesType LONG_TEXT = new RawBytesType(MySQLType.TypeLongBlob);
+  public static final RawBytesType MEDIUM_TEXT = new RawBytesType(MySQLType.TypeMediumBlob);
+  public static final RawBytesType TEXT = new RawBytesType(MySQLType.TypeBlob);
+  public static final RawBytesType TINY_BLOB = new RawBytesType(MySQLType.TypeTinyBlob);
 
-  private RawBytesType(int tp) {
+  public static final MySQLType[] subTypes = new MySQLType[] {
+      MySQLType.TypeBlob, MySQLType.TypeLongBlob,
+      MySQLType.TypeMediumBlob, MySQLType.TypeTinyBlob
+  };
+
+  private RawBytesType(MySQLType tp) {
     super(tp);
   }
 

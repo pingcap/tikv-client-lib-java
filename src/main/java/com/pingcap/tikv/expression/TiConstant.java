@@ -28,7 +28,6 @@ import com.pingcap.tikv.types.*;
 import java.math.BigDecimal;
 import java.util.Objects;
 
-import static com.pingcap.tikv.types.Types.*;
 // Refactor needed.
 // Refer to https://github.com/pingcap/tipb/blob/master/go-tipb/expression.pb.go
 // TODO: This might need a refactor to accept an DataType?
@@ -95,13 +94,13 @@ public class TiConstant implements TiExpr {
     if (value == null) {
       throw new TiExpressionException("NULL constant has no type");
     } else if (isIntegerType()) {
-      return DataTypeFactory.of(TYPE_LONG);
+      return IntegerType.BIGINT;
     } else if (value instanceof String) {
-      return DataTypeFactory.of(TYPE_VARCHAR);
+      return BytesType.VARCHAR;
     } else if (value instanceof Float) {
-      return DataTypeFactory.of(TYPE_FLOAT);
+      return RealType.FLOAT;
     } else if (value instanceof Double) {
-      return DataTypeFactory.of(TYPE_DOUBLE);
+      return RealType.DOUBLE;
     } else {
       throw new TiExpressionException("Constant type not supported.");
     }

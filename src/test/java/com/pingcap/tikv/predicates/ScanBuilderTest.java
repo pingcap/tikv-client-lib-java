@@ -29,9 +29,11 @@ import com.pingcap.tikv.meta.MetaUtils;
 import com.pingcap.tikv.meta.TiColumnInfo.InternalTypeHolder;
 import com.pingcap.tikv.meta.TiIndexInfo;
 import com.pingcap.tikv.meta.TiTableInfo;
+import com.pingcap.tikv.types.BytesType;
 import com.pingcap.tikv.types.DataType;
 import com.pingcap.tikv.types.DataTypeFactory;
-import com.pingcap.tikv.types.Types;
+import com.pingcap.tikv.types.IntegerType;
+import com.pingcap.tikv.types.MySQLType;
 import java.util.ArrayList;
 import java.util.List;
 import org.junit.Test;
@@ -40,10 +42,10 @@ public class ScanBuilderTest {
   private static TiTableInfo createTable() {
     return new MetaUtils.TableBuilder()
         .name("testTable")
-        .addColumn("c1", DataTypeFactory.of(Types.TYPE_LONG), true)
-        .addColumn("c2", DataTypeFactory.of(Types.TYPE_STRING))
-        .addColumn("c3", DataTypeFactory.of(Types.TYPE_STRING))
-        .addColumn("c4", DataTypeFactory.of(Types.TYPE_TINY))
+        .addColumn("c1", IntegerType.INT, true)
+        .addColumn("c2", BytesType.VARCHAR)
+        .addColumn("c3", BytesType.VARCHAR)
+        .addColumn("c4", IntegerType.INT)
         .appendIndex("testIndex", ImmutableList.of("c1", "c2", "c3"), false)
         .build();
   }
@@ -51,7 +53,7 @@ public class ScanBuilderTest {
   private static TiTableInfo createTableWithPrefix() {
     InternalTypeHolder holder =
         new InternalTypeHolder(
-            Types.TYPE_STRING,
+            MySQLType.TypeVarchar.getTypeCode(),
             0,
             3, // indicating a prefix type
             0,
@@ -64,10 +66,10 @@ public class ScanBuilderTest {
     DataType typePrefix = DataTypeFactory.of(holder);
     return new MetaUtils.TableBuilder()
         .name("testTable")
-        .addColumn("c1", DataTypeFactory.of(Types.TYPE_LONG), true)
+        .addColumn("c1", IntegerType.INT, true)
         .addColumn("c2", typePrefix)
-        .addColumn("c3", DataTypeFactory.of(Types.TYPE_STRING))
-        .addColumn("c4", DataTypeFactory.of(Types.TYPE_TINY))
+        .addColumn("c3", BytesType.VARCHAR)
+        .addColumn("c4", IntegerType.INT)
         .appendIndex("testIndex", ImmutableList.of("c1", "c2", "c3"), false)
         .setPkHandle(true)
         .build();

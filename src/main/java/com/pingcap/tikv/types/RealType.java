@@ -26,12 +26,13 @@ import com.pingcap.tikv.codec.InvalidCodecFormatException;
 import com.pingcap.tikv.meta.TiColumnInfo;
 
 public class RealType extends DataType {
+  public static final RealType DOUBLE = new RealType(MySQLType.TypeDouble);
+  public static final RealType FLOAT = new RealType(MySQLType.TypeFloat);
+  public static final RealType REAL = DOUBLE;
 
-  static RealType of(int tp) {
-    return new RealType(tp);
-  }
+  public static final MySQLType[] subTypes = new MySQLType[] { MySQLType.TypeDouble, MySQLType.TypeFloat };
 
-  private RealType(int tp) {
+  private RealType(MySQLType tp) {
     super(tp);
   }
 

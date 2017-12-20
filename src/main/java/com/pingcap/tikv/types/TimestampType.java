@@ -31,10 +31,12 @@ import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 
 public class TimestampType extends DataType {
+  public static final TimestampType TIMESTAMP = new TimestampType(MySQLType.TypeTimestamp);
+  public static final TimestampType TIME = new TimestampType(MySQLType.TypeDuration);
+
+  public static final MySQLType[] subTypes = new MySQLType[] { MySQLType.TypeTimestamp, MySQLType.TypeDuration };
+
   private static final ZoneId UTC_TIMEZONE = ZoneId.of("UTC");
-  static TimestampType of(int tp) {
-    return new TimestampType(tp);
-  }
 
   protected ZoneId getDefaultTimezone() {
     return UTC_TIMEZONE;
@@ -44,7 +46,7 @@ public class TimestampType extends DataType {
     return getClass().getSimpleName();
   }
 
-  TimestampType(int tp) {
+  TimestampType(MySQLType tp) {
     super(tp);
   }
 

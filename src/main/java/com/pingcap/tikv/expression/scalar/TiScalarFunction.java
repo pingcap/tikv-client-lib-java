@@ -41,7 +41,7 @@ public abstract class TiScalarFunction extends TiFunctionExpression {
    */
   ScalarFuncSig getSignature() {
     return ScalarFuncInfer.of(
-        getArgTypeCode(),
+        getArgType().getType(),
         getExprType()
     );
   }

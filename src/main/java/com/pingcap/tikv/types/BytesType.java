@@ -25,13 +25,13 @@ import com.pingcap.tikv.codec.InvalidCodecFormatException;
 import com.pingcap.tikv.meta.TiColumnInfo;
 
 public class BytesType extends DataType {
-  public static final BytesType STRING_TYPE = new BytesType(Types.TYPE_STRING);
+  public static final BytesType VARCHAR = new BytesType(MySQLType.TypeVarchar);
+  public static final BytesType BINARY = new BytesType(MySQLType.TypeString);
+  public static final BytesType CHAR = new BytesType(MySQLType.TypeString);
 
-  static BytesType of(int tp) {
-    return new BytesType(tp);
-  }
+  public static final MySQLType[] subTypes = new MySQLType[] { MySQLType.TypeVarchar, MySQLType.TypeString };
 
-  protected BytesType(int tp) {
+  protected BytesType(MySQLType tp) {
     super(tp);
   }
 

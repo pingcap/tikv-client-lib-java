@@ -20,15 +20,15 @@ package com.pingcap.tikv.types;
 import com.pingcap.tikv.meta.TiColumnInfo;
 
 public class BitType extends IntegerType {
-  private BitType(int tp) {
+  public static final BitType BIT = new BitType(MySQLType.TypeBit);
+
+  public static final MySQLType[] subTypes = new MySQLType[] { MySQLType.TypeBit };
+
+  private BitType(MySQLType tp) {
     super(tp);
   }
 
   protected BitType(TiColumnInfo.InternalTypeHolder holder) {
     super(holder);
-  }
-
-  static BitType of(int tp) {
-    return new BitType(tp);
   }
 }

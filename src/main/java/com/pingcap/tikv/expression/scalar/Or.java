@@ -34,7 +34,7 @@ public class Or extends TiScalarFunction {
 
   @Override
   public IntegerType getType() {
-    return IntegerType.DEF_BOOLEAN_TYPE;
+    return IntegerType.BOOLEAN;
   }
 
   @Override

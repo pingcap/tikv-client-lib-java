@@ -16,16 +16,6 @@
 package com.pingcap.tikv.types;
 
 import static com.pingcap.tikv.codec.Codec.isNullFlag;
-import static com.pingcap.tikv.types.Types.AutoIncrementFlag;
-import static com.pingcap.tikv.types.Types.MultipleKeyFlag;
-import static com.pingcap.tikv.types.Types.NoDefaultValueFlag;
-import static com.pingcap.tikv.types.Types.NotNullFlag;
-import static com.pingcap.tikv.types.Types.OnUpdateNowFlag;
-import static com.pingcap.tikv.types.Types.PriKeyFlag;
-import static com.pingcap.tikv.types.Types.TimestampFlag;
-import static com.pingcap.tikv.types.Types.UniqueKeyFlag;
-import static com.pingcap.tikv.types.Types.UnsignedFlag;
-import static com.pingcap.tikv.types.Types.ZerofillFlag;
 
 import com.google.common.collect.ImmutableList;
 import com.pingcap.tikv.codec.Codec;
@@ -39,6 +29,27 @@ import java.util.List;
 
 /** Base Type for encoding and decoding TiDB row information. */
 public abstract class DataType implements Serializable {
+
+  // Flag Information for strict mysql type
+  private static final int NotNullFlag = 1; /* Field can't be NULL */
+  private static final int PriKeyFlag = 2; /* Field is part of a primary key */
+  private static final int UniqueKeyFlag = 4; /* Field is part of a unique key */
+  private static final int MultipleKeyFlag = 8; /* Field is part of a key */
+  private static final int BlobFlag = 16; /* Field is a blob */
+  private static final int UnsignedFlag = 32; /* Field is unsigned */
+  private static final int ZerofillFlag = 64; /* Field is zerofill */
+  private static final int BinaryFlag = 128; /* Field is binary   */
+  private static final int EnumFlag = 256; /* Field is an enum */
+  private static final int AutoIncrementFlag = 512; /* Field is an auto increment field */
+  private static final int TimestampFlag = 1024; /* Field is a timestamp */
+  private static final int SetFlag = 2048; /* Field is a set */
+  private static final int NoDefaultValueFlag = 4096; /* Field doesn't have a default value */
+  private static final int OnUpdateNowFlag = 8192; /* Field is set to NOW on UPDATE */
+  private static final int NumFlag = 32768; /* Field is a num (for clients) */
+  private static final int PartKeyFlag = 16384; /* Intern: Part of some keys */
+  private static final int GroupFlag = 32768; /* Intern: Group field */
+  private static final int BinCmpFlag = 131072; /* Intern: Used by sql_yacc */
+
   public enum EncodeType {
     KEY,
     VALUE
@@ -47,7 +58,7 @@ public abstract class DataType implements Serializable {
   public static final int UNSPECIFIED_LEN = -1;
 
   // MySQL type
-  protected int tp;
+  protected MySQLType tp;
   // Not Encode/Decode flag, this is used to strict mysql type
   // such as not null, timestamp
   protected int flag;
@@ -57,7 +68,7 @@ public abstract class DataType implements Serializable {
   private List<String> elems;
 
   protected DataType(TiColumnInfo.InternalTypeHolder holder) {
-    this.tp = holder.getTp();
+    this.tp = MySQLType.fromTypeCode(holder.getTp());
     this.flag = holder.getFlag();
     this.length = holder.getFlen();
     this.decimal = holder.getDecimal();
@@ -65,8 +76,8 @@ public abstract class DataType implements Serializable {
     this.elems = holder.getElems() == null ? ImmutableList.of() : holder.getElems();
   }
 
-  protected DataType(int tp) {
-    this.tp = tp;
+  protected DataType(MySQLType type) {
+    this.tp = type;
     this.flag = 0;
     this.elems = ImmutableList.of();
     this.length = UNSPECIFIED_LEN;
@@ -112,32 +123,6 @@ public abstract class DataType implements Serializable {
 
   public static void encodeIndexMinValue(CodecDataOutput cdo) {
     cdo.writeByte(Codec.BYTES_FLAG);
-  }
-
-  public static int indexMinValueFlag() {
-    return Codec.BYTES_FLAG;
-  }
-
-  public static int indexMaxValueFlag() {
-    return Codec.MAX_FLAG;
-  }
-
-  /**
-   * encode max value.
-   *
-   * @param cdo destination of data.
-   */
-  public void encodeMaxValue(CodecDataOutput cdo) {
-    encodeIndexMaxValue(cdo);
-  }
-
-  /**
-   * encode min value.
-   *
-   * @param cdo destination of data.
-   */
-  public void encodeMinValue(CodecDataOutput cdo) {
-    encodeIndexMinValue(cdo);
   }
 
   /**
@@ -188,6 +173,10 @@ public abstract class DataType implements Serializable {
   }
 
   public int getTypeCode() {
+    return tp.getTypeCode();
+  }
+
+  public MySQLType getType() {
     return tp;
   }
 
@@ -261,7 +250,7 @@ public abstract class DataType implements Serializable {
   @Override
   public int hashCode() {
     return (int) (31
-            * (tp == 0 ? 1 : tp)
+            * (tp.getTypeCode() == 0 ? 1 : tp.getTypeCode())
             * (flag == 0 ? 1 : flag)
             * (decimal == 0 ? 1 : decimal)
             * (collation == 0 ? 1 : collation)

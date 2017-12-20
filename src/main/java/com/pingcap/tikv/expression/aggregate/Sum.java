@@ -4,8 +4,7 @@ import com.pingcap.tidb.tipb.ExprType;
 import com.pingcap.tikv.expression.TiExpr;
 import com.pingcap.tikv.expression.TiUnaryFunctionExpression;
 import com.pingcap.tikv.types.DataType;
-import com.pingcap.tikv.types.DataTypeFactory;
-import com.pingcap.tikv.types.Types;
+import com.pingcap.tikv.types.DecimalType;
 
 public class Sum extends TiUnaryFunctionExpression {
 
@@ -20,6 +19,6 @@ public class Sum extends TiUnaryFunctionExpression {
 
   @Override
   public DataType getType() {
-    return DataTypeFactory.of(Types.TYPE_NEW_DECIMAL);
+    return DecimalType.DECIMAL;
   }
 }

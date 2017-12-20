@@ -25,11 +25,10 @@ import com.pingcap.tikv.codec.InvalidCodecFormatException;
 import com.pingcap.tikv.meta.TiColumnInfo;
 
 public class DecimalType extends DataType {
-  static DecimalType of(int tp) {
-    return new DecimalType(tp);
-  }
+  public static final DecimalType DECIMAL = new DecimalType(MySQLType.TypeNewDecimal);
+  public static final MySQLType[] subTypes = new MySQLType[] { MySQLType.TypeNewDecimal };
 
-  private DecimalType(int tp) {
+  private DecimalType(MySQLType tp) {
     super(tp);
   }
 

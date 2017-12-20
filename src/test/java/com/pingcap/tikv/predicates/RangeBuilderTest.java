@@ -36,9 +36,7 @@ import com.pingcap.tikv.meta.MetaUtils;
 import com.pingcap.tikv.meta.TiTableInfo;
 import com.pingcap.tikv.types.BytesType;
 import com.pingcap.tikv.types.DataType;
-import com.pingcap.tikv.types.DataTypeFactory;
 import com.pingcap.tikv.types.IntegerType;
-import com.pingcap.tikv.types.Types;
 import java.util.List;
 import java.util.stream.Collectors;
 import org.junit.Test;
@@ -47,10 +45,10 @@ public class RangeBuilderTest {
   private static TiTableInfo createTable() {
     return new MetaUtils.TableBuilder()
         .name("testTable")
-        .addColumn("c1", DataTypeFactory.of(Types.TYPE_LONG), true)
-        .addColumn("c2", DataTypeFactory.of(Types.TYPE_STRING))
-        .addColumn("c3", DataTypeFactory.of(Types.TYPE_STRING))
-        .addColumn("c4", DataTypeFactory.of(Types.TYPE_TINY))
+        .addColumn("c1", IntegerType.INT, true)
+        .addColumn("c2", BytesType.VARCHAR)
+        .addColumn("c3", BytesType.VARCHAR)
+        .addColumn("c4", IntegerType.INT)
         .appendIndex("testIndex", ImmutableList.of("c1", "c2", "c3"), false)
         .build();
   }
@@ -83,8 +81,7 @@ public class RangeBuilderTest {
             new Equal(TiColumnRef.create("c1", table), TiConstant.create(0)),
             new Equal(TiConstant.create("v1"), TiColumnRef.create("c2", table))
         );
-    List<DataType> types = ImmutableList.of(DataTypeFactory.of(Types.TYPE_LONG),
-                                            DataTypeFactory.of(Types.TYPE_STRING));
+    List<DataType> types = ImmutableList.of(IntegerType.INT, BytesType.VARCHAR);
     RangeBuilder builder = new RangeBuilder();
     List<Key> keys = builder.expressionToPoints(conds, types);
     assertEquals(1, keys.size());
@@ -106,10 +103,7 @@ public class RangeBuilderTest {
             new Equal(TiConstant.create("v1"), TiColumnRef.create("c2", table)),
             new In(
                 TiColumnRef.create("c3", table), TiConstant.create("2"), TiConstant.create("4")));
-    types = ImmutableList.of(
-            DataTypeFactory.of(Types.TYPE_LONG),
-            DataTypeFactory.of(Types.TYPE_STRING),
-            DataTypeFactory.of(Types.TYPE_STRING));
+    types = ImmutableList.of(IntegerType.INT, BytesType.VARCHAR, BytesType.VARCHAR);
 
     keys = builder.expressionToPoints(conds, types);
     assertEquals(6, keys.size());
@@ -136,23 +130,21 @@ public class RangeBuilderTest {
                 TiConstant.create(100L), TiColumnRef.create("c1", table)), // 100 > c1 -> c1 < 100
             new NotEqual(TiColumnRef.create("c1", table), TiConstant.create(50L)) // c1 != 50
             );
-    DataType type = DataTypeFactory.of(Types.TYPE_LONG);
+    DataType type = IntegerType.BIGINT;
     RangeBuilder builder = new RangeBuilder();
     List<Range<TypedKey>> ranges = RangeBuilder.expressionToRanges(conds, type);
     assertEquals(2, ranges.size());
-    assertEquals(Range.closedOpen(TypedKey.toTypedKey(0L, IntegerType.DEF_LONG_TYPE),
-                                  TypedKey.toTypedKey(50L, IntegerType.DEF_LONG_TYPE)), ranges.get(0));
-    assertEquals(Range.open(TypedKey.toTypedKey(50L, IntegerType.DEF_LONG_TYPE),
-                            TypedKey.toTypedKey(100L, IntegerType.DEF_LONG_TYPE)), ranges.get(1));
+    assertEquals(Range.closedOpen(TypedKey.toTypedKey(0L, IntegerType.BIGINT),
+                                  TypedKey.toTypedKey(50L, IntegerType.BIGINT)), ranges.get(0));
+    assertEquals(Range.open(TypedKey.toTypedKey(50L, IntegerType.BIGINT),
+                            TypedKey.toTypedKey(100L, IntegerType.BIGINT)), ranges.get(1));
 
     // Test points and string range
     List<TiExpr> ac =
         ImmutableList.of(
             new In(TiColumnRef.create("c1", table), TiConstant.create(0L), TiConstant.create(1L)),
             new Equal(TiConstant.create("v1"), TiColumnRef.create("c2", table)));
-    List<DataType> types =
-        ImmutableList.of(
-            DataTypeFactory.of(Types.TYPE_LONG), DataTypeFactory.of(Types.TYPE_STRING));
+    List<DataType> types = ImmutableList.of(IntegerType.BIGINT, BytesType.VARCHAR);
     List<Key> keys = builder.expressionToPoints(ac, types);
     assertTrue(
         testPointIndexRanges(
@@ -166,14 +158,14 @@ public class RangeBuilderTest {
                 TiConstant.create("z"), TiColumnRef.create("c3", table)), // z > c3 -> c3 < z
             new NotEqual(TiColumnRef.create("c3", table), TiConstant.create("g")) // c3 != g
             );
-    type = DataTypeFactory.of(Types.TYPE_STRING);
+    type = BytesType.VARCHAR;
     ranges = RangeBuilder.expressionToRanges(conds, type);
 
     assertEquals(2, ranges.size());
 
-    assertEquals(Range.closedOpen(TypedKey.toTypedKey("a", BytesType.STRING_TYPE),
-                                  TypedKey.toTypedKey("g", BytesType.STRING_TYPE)), ranges.get(0));
-    assertEquals(Range.open(TypedKey.toTypedKey("g", BytesType.STRING_TYPE),
-                            TypedKey.toTypedKey("z", BytesType.STRING_TYPE)), ranges.get(1));
+    assertEquals(Range.closedOpen(TypedKey.toTypedKey("a", BytesType.VARCHAR),
+                                  TypedKey.toTypedKey("g", BytesType.VARCHAR)), ranges.get(0));
+    assertEquals(Range.open(TypedKey.toTypedKey("g", BytesType.VARCHAR),
+                            TypedKey.toTypedKey("z", BytesType.VARCHAR)), ranges.get(1));
   }
 }

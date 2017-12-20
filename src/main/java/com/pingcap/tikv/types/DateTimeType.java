@@ -22,17 +22,17 @@ import com.pingcap.tikv.meta.TiColumnInfo;
 import java.time.ZoneId;
 
 public class DateTimeType extends TimestampType {
+  public static final DateTimeType DATETIME = new DateTimeType(MySQLType.TypeDatetime);
+  public static final MySQLType[] subTypes = new MySQLType[] { MySQLType.TypeDatetime };
+
   private static final ZoneId DEFAULT_TIMEZONE = ZoneId.systemDefault();
-  static DateTimeType of(int tp) {
-    return new DateTimeType(tp);
-  }
 
   @Override
   protected ZoneId getDefaultTimezone() {
     return DEFAULT_TIMEZONE;
   }
 
-  private DateTimeType(int tp) {
+  private DateTimeType(MySQLType tp) {
     super(tp);
   }
 

@@ -32,6 +32,6 @@ public class IsNull extends TiScalarFunction {
 
   @Override
   public DataType getType() {
-    return IntegerType.DEF_BOOLEAN_TYPE;
+    return IntegerType.BOOLEAN;
   }
 }

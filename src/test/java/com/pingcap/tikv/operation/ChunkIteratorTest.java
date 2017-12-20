@@ -17,8 +17,6 @@
 
 package com.pingcap.tikv.operation;
 
-import static com.pingcap.tikv.types.Types.TYPE_LONG;
-import static com.pingcap.tikv.types.Types.TYPE_VARCHAR;
 import static org.junit.Assert.assertEquals;
 
 import com.google.protobuf.ByteString;
@@ -28,8 +26,9 @@ import com.pingcap.tikv.codec.CodecDataInput;
 import com.pingcap.tikv.operation.iterator.ChunkIterator;
 import com.pingcap.tikv.row.ObjectRowImpl;
 import com.pingcap.tikv.row.Row;
+import com.pingcap.tikv.types.BytesType;
 import com.pingcap.tikv.types.DataType;
-import com.pingcap.tikv.types.DataTypeFactory;
+import com.pingcap.tikv.types.IntegerType;
 import java.util.ArrayList;
 import java.util.List;
 import org.junit.Before;
@@ -54,8 +53,8 @@ public class ChunkIteratorTest {
   @Test
   public void chunkTest() {
     ChunkIterator<ByteString> chunkIterator = ChunkIterator.getRawBytesChunkIterator(chunks);
-    DataType bytes = DataTypeFactory.of(TYPE_VARCHAR);
-    DataType ints = DataTypeFactory.of(TYPE_LONG);
+    DataType bytes = BytesType.VARCHAR;
+    DataType ints = IntegerType.INT;
     Row row = ObjectRowImpl.create(6);
     CodecDataInput cdi = new CodecDataInput(chunkIterator.next());
     ints.decodeValueToRow(cdi, row, 0);
