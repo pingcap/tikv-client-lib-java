@@ -235,7 +235,7 @@ public class PDClient extends AbstractGRPCClient<PDBlockingStub, PDStub>
         return true;
       }
 
-      // create new Leader
+      // toIndexKey new Leader
       ManagedChannel clientChannel = session.getChannel(leaderUrlStr);
       leaderWrapper =
         new LeaderWrapper(

@@ -40,7 +40,7 @@ public class TypedKey extends Key {
     return type.decode(cdi);
   }
 
-  public static TypedKey create(Object val, DataType type) {
+  public static TypedKey toTypedKey(Object val, DataType type) {
     requireNonNull(type, "type is null");
     return new TypedKey(val, type);
   }

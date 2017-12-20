@@ -47,40 +47,40 @@ public class KeyTest {
     ByteString lhsBS = ByteString.copyFrom(lhs);
     ByteString rhsBS = ByteString.copyFrom(rhs);
 
-    Key lhsComp = toKey(lhsBS);
-    Key rhsComp = toKey(rhsBS);
+    Key lhsComp = Key.toRawKey(lhsBS);
+    Key rhsComp = Key.toRawKey(rhsBS);
 
     assertTrue(tester.apply(lhsComp.compareTo(rhsComp)));
 
-    lhsComp = toKey(lhs);
-    rhsComp = toKey(rhs);
+    lhsComp = toRawKey(lhs);
+    rhsComp = toRawKey(rhs);
 
     assertTrue(tester.apply(lhsComp.compareTo(rhsComp)));
   }
 
   private void testLiteral(Object lhs, Object rhs, DataType type, Function<Integer, Boolean> tester) {
-    Key lhsComp = TypedKey.create(lhs, type);
-    Key rhsComp = TypedKey.create(rhs, type);
+    Key lhsComp = TypedKey.toTypedKey(lhs, type);
+    Key rhsComp = TypedKey.toTypedKey(rhs, type);
 
     assertTrue(tester.apply(lhsComp.compareTo(rhsComp)));
   }
 
   @Test
   public void nextTest() throws Exception {
-    Key k1 = Key.toKey(new byte[]{1,2,3});
-    assertEquals(Key.toKey(new byte[]{1,2,4}), k1.next());
+    Key k1 = Key.toRawKey(new byte[]{1,2,3});
+    assertEquals(Key.toRawKey(new byte[]{1,2,4}), k1.next());
 
-    k1 = Key.toKey(new byte[]{UnsignedBytes.MAX_VALUE, UnsignedBytes.MAX_VALUE});
-    assertEquals(Key.toKey(new byte[]{UnsignedBytes.MAX_VALUE, UnsignedBytes.MAX_VALUE, 0}), k1.next());
+    k1 = Key.toRawKey(new byte[]{UnsignedBytes.MAX_VALUE, UnsignedBytes.MAX_VALUE});
+    assertEquals(Key.toRawKey(new byte[]{UnsignedBytes.MAX_VALUE, UnsignedBytes.MAX_VALUE, 0}), k1.next());
   }
 
   @Test
   public void compareToTest() throws Exception {
-    Key kNegInf = Key.toKey(new byte[0], true);
+    Key kNegInf = Key.toRawKey(new byte[0], true);
     Key kMin = Key.MIN;
-    Key k = Key.toKey(new byte[]{1});
+    Key k = Key.toRawKey(new byte[]{1});
     Key kMax = Key.MAX;
-    Key kInf = Key.toKey(new byte[0], false);
+    Key kInf = Key.toRawKey(new byte[0], false);
     Key[] keys = new Key[] {kInf, kMax, k, kMin, kNegInf};
     Arrays.sort(keys);
     assertArrayEquals(new Key[] {kNegInf, kMin, k, kMax, kInf}, keys);

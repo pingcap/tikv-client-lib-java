@@ -141,7 +141,7 @@ public class ScanBuilder {
         Key key = ir.getAccessKey();
         checkArgument(key instanceof TypedKey, "Table scan key range must be typed key");
         TypedKey typedKey = (TypedKey)key;
-        startKey = RowKey.create(table.getId(), typedKey);
+        startKey = RowKey.toRowKey(table.getId(), typedKey);
         endKey = startKey.next();
       } else if (ir.hasRange()) {
         checkArgument(!ir.hasAccessKeys(), "Table scan must have one and only one access condition / point");
@@ -152,7 +152,7 @@ public class ScanBuilder {
           startKey = RowKey.createMin(table.getId());
         } else {
           // Comparision with null should be filtered since it yields unknown always
-          startKey = RowKey.create(table.getId(), r.lowerEndpoint());
+          startKey = RowKey.toRowKey(table.getId(), r.lowerEndpoint());
           if (r.lowerBoundType().equals(BoundType.OPEN)) {
             startKey = startKey.next();
           }
@@ -162,7 +162,7 @@ public class ScanBuilder {
           // INF
           endKey = RowKey.createMax(table.getId());
         } else {
-          endKey = RowKey.create(table.getId(), r.upperEndpoint());
+          endKey = RowKey.toRowKey(table.getId(), r.upperEndpoint());
           if (r.upperBoundType().equals(BoundType.CLOSED)) {
             endKey = endKey.next();
           }
@@ -230,8 +230,8 @@ public class ScanBuilder {
           }
         }
       }
-      IndexKey lbsKey = IndexKey.create(table.getId(), index.getId(), lPointKey, lKey);
-      IndexKey ubsKey = IndexKey.create(table.getId(), index.getId(), uPointKey, uKey);
+      IndexKey lbsKey = IndexKey.toIndexKey(table.getId(), index.getId(), lPointKey, lKey);
+      IndexKey ubsKey = IndexKey.toIndexKey(table.getId(), index.getId(), uPointKey, uKey);
 
       ranges.add(makeCoprocRange(lbsKey.toByteString(), ubsKey.toByteString()));
     }

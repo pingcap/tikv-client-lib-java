@@ -132,7 +132,7 @@ public class RangeBuilder {
       TiFunctionExpression func = (TiFunctionExpression) expr;
       NormalizedCondition cond = AccessConditionNormalizer.normalize(func);
       ImmutableList.Builder<Key> result = ImmutableList.builder();
-      cond.constantVals.forEach(constVal -> result.add(TypedKey.create(constVal.getValue(), type)));
+      cond.constantVals.forEach(constVal -> result.add(TypedKey.toTypedKey(constVal.getValue(), type)));
       return result.build();
     } catch (Exception e) {
       throw new TiClientInternalException("Failed to convert expr to points: " + expr, e);
@@ -155,7 +155,7 @@ public class RangeBuilder {
     for (TiExpr ac : accessConditions) {
       NormalizedCondition cond = AccessConditionNormalizer.normalize(ac);
       TiConstant constVal = cond.constantVals.get(0);
-      TypedKey literal = TypedKey.create(constVal.getValue(), type);
+      TypedKey literal = TypedKey.toTypedKey(constVal.getValue(), type);
       TiExpr expr = cond.condition;
 
       if (expr instanceof GreaterThan) {

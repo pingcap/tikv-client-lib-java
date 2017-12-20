@@ -39,7 +39,7 @@ public class RangeSplitterTest {
     public Pair<TiRegion, Metapb.Store> getRegionStorePairByKey(ByteString key) {
       for (Map.Entry<KeyRange, TiRegion> entry : mockRegionMap.entrySet()) {
         KeyRange range = entry.getKey();
-        if (KeyRangeUtils.makeRange(range.getStart(), range.getEnd()).contains(Key.toKey(key))) {
+        if (KeyRangeUtils.makeRange(range.getStart(), range.getEnd()).contains(Key.toRawKey(key))) {
           TiRegion region = entry.getValue();
           return Pair.create(region, Metapb.Store.newBuilder().setId(region.getId()).build());
         }
@@ -88,7 +88,7 @@ public class RangeSplitterTest {
 
   private static ByteString handleToByteString(long tableId, Long k) {
     if (k != null) {
-      return RowKey.create(tableId, k).toByteString();
+      return RowKey.toRowKey(tableId, k).toByteString();
     }
     return ByteString.EMPTY;
   }

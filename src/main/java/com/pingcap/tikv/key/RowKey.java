@@ -39,11 +39,11 @@ public class RowKey extends Key {
     this.handle = handle;
   }
 
-  public static RowKey create(long tableId, long handle) {
+  public static RowKey toRowKey(long tableId, long handle) {
     return new RowKey(tableId, handle);
   }
 
-  public static RowKey create(long tableId, TypedKey handle) {
+  public static RowKey toRowKey(long tableId, TypedKey handle) {
     Object obj = handle.getValue();
     if (obj instanceof Long) {
       return new RowKey(tableId, (long)obj);
@@ -52,11 +52,11 @@ public class RowKey extends Key {
   }
 
   public static RowKey createMin(long tableId) {
-    return create(tableId, Long.MIN_VALUE);
+    return toRowKey(tableId, Long.MIN_VALUE);
   }
 
   public static RowKey createMax(long tableId) {
-    return create(tableId, Long.MAX_VALUE);
+    return toRowKey(tableId, Long.MAX_VALUE);
   }
 
   private static byte[] encode(long tableId, long handle) {

@@ -161,8 +161,8 @@ public class ScanBuilderTest {
     ScanBuilder scanBuilder = new ScanBuilder();
     ScanBuilder.ScanPlan scanPlan = scanBuilder.buildScan(new ArrayList<>(), index, table);
 
-    ByteString startKey = RowKey.create(table.getId(), Long.MIN_VALUE).toByteString();
-    ByteString endKey = RowKey.create(table.getId(), Long.MAX_VALUE).toByteString();
+    ByteString startKey = RowKey.toRowKey(table.getId(), Long.MIN_VALUE).toByteString();
+    ByteString endKey = RowKey.toRowKey(table.getId(), Long.MAX_VALUE).toByteString();
 
     assertEquals(1, scanPlan.getKeyRanges().size());
     assertEquals(startKey, scanPlan.getKeyRanges().get(0).getStart());

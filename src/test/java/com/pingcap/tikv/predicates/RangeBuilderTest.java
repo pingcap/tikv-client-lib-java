@@ -140,10 +140,10 @@ public class RangeBuilderTest {
     RangeBuilder builder = new RangeBuilder();
     List<Range<TypedKey>> ranges = RangeBuilder.expressionToRanges(conds, type);
     assertEquals(2, ranges.size());
-    assertEquals(Range.closedOpen(TypedKey.create(0L, IntegerType.DEF_LONG_TYPE),
-                                  TypedKey.create(50L, IntegerType.DEF_LONG_TYPE)), ranges.get(0));
-    assertEquals(Range.open(TypedKey.create(50L, IntegerType.DEF_LONG_TYPE),
-                            TypedKey.create(100L, IntegerType.DEF_LONG_TYPE)), ranges.get(1));
+    assertEquals(Range.closedOpen(TypedKey.toTypedKey(0L, IntegerType.DEF_LONG_TYPE),
+                                  TypedKey.toTypedKey(50L, IntegerType.DEF_LONG_TYPE)), ranges.get(0));
+    assertEquals(Range.open(TypedKey.toTypedKey(50L, IntegerType.DEF_LONG_TYPE),
+                            TypedKey.toTypedKey(100L, IntegerType.DEF_LONG_TYPE)), ranges.get(1));
 
     // Test points and string range
     List<TiExpr> ac =
@@ -171,9 +171,9 @@ public class RangeBuilderTest {
 
     assertEquals(2, ranges.size());
 
-    assertEquals(Range.closedOpen(TypedKey.create("a", BytesType.STRING_TYPE),
-                                  TypedKey.create("g", BytesType.STRING_TYPE)), ranges.get(0));
-    assertEquals(Range.open(TypedKey.create("g", BytesType.STRING_TYPE),
-                            TypedKey.create("z", BytesType.STRING_TYPE)), ranges.get(1));
+    assertEquals(Range.closedOpen(TypedKey.toTypedKey("a", BytesType.STRING_TYPE),
+                                  TypedKey.toTypedKey("g", BytesType.STRING_TYPE)), ranges.get(0));
+    assertEquals(Range.open(TypedKey.toTypedKey("g", BytesType.STRING_TYPE),
+                            TypedKey.toTypedKey("z", BytesType.STRING_TYPE)), ranges.get(1));
   }
 }

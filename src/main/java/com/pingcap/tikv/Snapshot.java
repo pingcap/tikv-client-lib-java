@@ -135,7 +135,7 @@ public class Snapshot {
     List<ByteString> keyBuffer = new ArrayList<>();
     List<KvPair> result = new ArrayList<>(keys.size());
     for (ByteString key : keys) {
-      if (curRegion == null || !curKeyRange.contains(toKey(key))) {
+      if (curRegion == null || !curKeyRange.contains(Key.toRawKey(key))) {
         Pair<TiRegion, Store> pair = session.getRegionManager().getRegionStorePairByKey(key);
         lastPair = pair;
         curRegion = pair.first;

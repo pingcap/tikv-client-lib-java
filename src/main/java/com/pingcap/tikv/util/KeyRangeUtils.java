@@ -98,7 +98,7 @@ public class KeyRangeUtils {
   }
 
   public static Range<Key> makeRange(ByteString startKey, ByteString endKey) {
-    return Range.closedOpen(toKey(startKey, true), toKey(endKey));
+    return Range.closedOpen(Key.toRawKey(startKey, true), Key.toRawKey(endKey));
   }
 
   public static Coprocessor.KeyRange makeCoprocRange(ByteString startKey, ByteString endKey) {

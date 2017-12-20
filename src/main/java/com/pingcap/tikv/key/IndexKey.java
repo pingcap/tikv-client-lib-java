@@ -34,7 +34,7 @@ public class IndexKey extends Key {
     this.dataKeys = dataKeys;
   }
 
-  public static IndexKey create(long tableId, long indexId, Key... dataKeys) {
+  public static IndexKey toIndexKey(long tableId, long indexId, Key... dataKeys) {
     return new IndexKey(tableId, indexId, dataKeys);
   }
 

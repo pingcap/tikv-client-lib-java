@@ -23,6 +23,7 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.net.HostAndPort;
 import com.google.protobuf.ByteString;
 import com.pingcap.tikv.exception.TiClientInternalException;
+import com.pingcap.tikv.key.Key;
 import com.pingcap.tikv.key.RowKey;
 import com.pingcap.tikv.key.RowKey.DecodeResult;
 import com.pingcap.tikv.key.RowKey.DecodeResult.Status;
@@ -107,7 +108,7 @@ public class RangeSplitter {
     DecodeResult decodeResult = new DecodeResult();
     while (startPos < handles.size()) {
       long curHandle = handles.get(startPos);
-      RowKey key = RowKey.create(tableId, curHandle);
+      RowKey key = RowKey.toRowKey(tableId, curHandle);
       Pair<TiRegion, Metapb.Store> regionStorePair = regionManager.getRegionStorePairByKey(ByteString.copyFrom(key.getBytes()));
       byte[] endKey = regionStorePair.first.getEndKey().toByteArray();
       RowKey.tryDecodeRowKey(tableId, endKey, decodeResult);
@@ -164,16 +165,16 @@ public class RangeSplitter {
         endHandle = curHandle;
       } else {
         newKeyRanges.add(makeCoprocRange(
-            RowKey.create(tableId, startHandle).toByteString(),
-            RowKey.create(tableId, endHandle + 1).toByteString())
+            RowKey.toRowKey(tableId, startHandle).toByteString(),
+            RowKey.toRowKey(tableId, endHandle + 1).toByteString())
         );
         startHandle = curHandle;
         endHandle = startHandle;
       }
     }
     newKeyRanges.add(makeCoprocRange(
-        RowKey.create(tableId, startHandle).toByteString(),
-        RowKey.create(tableId, endHandle + 1).toByteString())
+        RowKey.toRowKey(tableId, startHandle).toByteString(),
+        RowKey.toRowKey(tableId, endHandle + 1).toByteString())
     );
     regionTasks.add(new RegionTask(regionStorePair.first, regionStorePair.second, newKeyRanges));
   }
@@ -222,7 +223,7 @@ public class RangeSplitter {
       // both key range is close-opened
       // initial range inside PD is guaranteed to be -INF to +INF
       // Both keys are at right hand side and then always not -INF
-      if (toKey(range.getEnd()).compareTo(toKey(region.getEndKey())) > 0) {
+      if (Key.toRawKey(range.getEnd()).compareTo(Key.toRawKey(region.getEndKey())) > 0) {
         // current region does not cover current end key
         KeyRange cutRange =
             KeyRange.newBuilder().setStart(range.getStart()).setEnd(region.getEndKey()).build();

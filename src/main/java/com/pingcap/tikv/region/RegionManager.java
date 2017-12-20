@@ -67,7 +67,7 @@ public class RegionManager {
 
     public synchronized TiRegion getRegionByKey(ByteString key) {
       Long regionId;
-      regionId = keyToRegionIdCache.get(toKey(key));
+      regionId = keyToRegionIdCache.get(Key.toRawKey(key));
       if (logger.isDebugEnabled()) {
         logger.debug(String.format("getRegionByKey key[%s] -> ID[%s]", formatBytes(key), regionId));
       }

@@ -89,7 +89,7 @@ public class ScanIterator implements Iterator<Kvrpcpb.KvPair> {
         }
       } else {
         // Start new scan from exact next key in current region
-        Key lastKey = toKey(currentCache.get(currentCache.size() - 1).getKey());
+        Key lastKey = Key.toRawKey(currentCache.get(currentCache.size() - 1).getKey());
         startKey = lastKey.next().toByteString();
       }
     } catch (Exception e) {
@@ -138,7 +138,7 @@ public class ScanIterator implements Iterator<Kvrpcpb.KvPair> {
 
 
   private boolean contains(ByteString key) {
-    return scanRange.contains(toKey(key));
+    return scanRange.contains(Key.toRawKey(key));
   }
 
   @Override

@@ -44,19 +44,19 @@ public class Key implements Comparable<Key> {
     this(value, false);
   }
 
-  public static Key toKey(ByteString bytes, boolean negative) {
+  public static Key toRawKey(ByteString bytes, boolean negative) {
     return new Key(bytes.toByteArray(), negative);
   }
 
-  public static Key toKey(ByteString bytes) {
+  public static Key toRawKey(ByteString bytes) {
     return new Key(bytes.toByteArray());
   }
 
-  public static Key toKey(byte[] bytes, boolean negative) {
+  public static Key toRawKey(byte[] bytes, boolean negative) {
     return new Key(bytes, negative);
   }
 
-  public static Key toKey(byte[] bytes) {
+  public static Key toRawKey(byte[] bytes) {
     return new Key(bytes);
   }
 
@@ -109,9 +109,9 @@ public class Key implements Comparable<Key> {
       }
     }
     if (i == -1) {
-      return toKey(Arrays.copyOf(value, value.length + 1));
+      return toRawKey(Arrays.copyOf(value, value.length + 1));
     } else {
-      return toKey(newVal);
+      return toRawKey(newVal);
     }
   }
 
