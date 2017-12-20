@@ -13,16 +13,18 @@
  * limitations under the License.
  */
 
-package com.pingcap.tikv.util;
+package com.pingcap.tikv.key;
 
 import static com.pingcap.tikv.key.Key.toKey;
+import static org.junit.Assert.assertArrayEquals;
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
+import com.google.common.primitives.UnsignedBytes;
 import com.google.protobuf.ByteString;
 import com.pingcap.tikv.types.DataType;
 import com.pingcap.tikv.types.IntegerType;
-import com.pingcap.tikv.key.Key;
-import com.pingcap.tikv.key.TypedKey;
+import java.util.Arrays;
 import java.util.function.Function;
 import org.junit.Test;
 
@@ -61,5 +63,26 @@ public class KeyTest {
     Key rhsComp = TypedKey.create(rhs, type);
 
     assertTrue(tester.apply(lhsComp.compareTo(rhsComp)));
+  }
+
+  @Test
+  public void nextTest() throws Exception {
+    Key k1 = Key.toKey(new byte[]{1,2,3});
+    assertEquals(Key.toKey(new byte[]{1,2,4}), k1.next());
+
+    k1 = Key.toKey(new byte[]{UnsignedBytes.MAX_VALUE, UnsignedBytes.MAX_VALUE});
+    assertEquals(Key.toKey(new byte[]{UnsignedBytes.MAX_VALUE, UnsignedBytes.MAX_VALUE, 0}), k1.next());
+  }
+
+  @Test
+  public void compareToTest() throws Exception {
+    Key kNegInf = Key.toKey(new byte[0], true);
+    Key kMin = Key.MIN;
+    Key k = Key.toKey(new byte[]{1});
+    Key kMax = Key.MAX;
+    Key kInf = Key.toKey(new byte[0], false);
+    Key[] keys = new Key[] {kInf, kMax, k, kMin, kNegInf};
+    Arrays.sort(keys);
+    assertArrayEquals(new Key[] {kNegInf, kMin, k, kMax, kInf}, keys);
   }
 }

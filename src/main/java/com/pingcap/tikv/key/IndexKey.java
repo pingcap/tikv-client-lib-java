@@ -45,9 +45,10 @@ public class IndexKey extends Key {
     cdo.write(IDX_PREFIX_SEP);
     IntegerCodec.writeLong(cdo, indexId);
     for (Key key : dataKeys) {
-      if (key != null) {
-        cdo.write(key.getBytes());
+      if (key == null) {
+        key = Key.NULL;
       }
+      cdo.write(key.getBytes());
     }
     return cdo.toBytes();
   }
@@ -66,6 +67,6 @@ public class IndexKey extends Key {
 
   @Override
   public String toString() {
-    return String.format("[%s]", Joiner.on(",").useForNull("Null").join(dataKeys));
+    return String.format("[%s]", Joiner.on(",").useForNull("null").join(dataKeys));
   }
 }

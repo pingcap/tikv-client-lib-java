@@ -15,11 +15,11 @@
  *
  */
 
-package com.pingcap.tikv.types;
+package com.pingcap.tikv.codec;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertArrayEquals;
+import static org.junit.Assert.assertEquals;
 
-import com.pingcap.tikv.codec.MyDecimal;
 import java.util.ArrayList;
 import java.util.List;
 import org.junit.Test;

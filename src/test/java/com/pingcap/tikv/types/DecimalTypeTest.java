@@ -17,31 +17,5 @@
 
 package com.pingcap.tikv.types;
 
-import static org.junit.Assert.assertEquals;
-
-import com.pingcap.tikv.codec.Codec.DecimalCodec;
-import com.pingcap.tikv.codec.CodecDataInput;
-import com.pingcap.tikv.codec.CodecDataOutput;
-import java.math.BigDecimal;
-import org.junit.Test;
-
 public class DecimalTypeTest {
-  @Test
-  public void writeDoubleAndReadDoubleTest() {
-    // issue scientific notation in toBin
-    CodecDataOutput cdo = new CodecDataOutput();
-    DecimalCodec.writeDouble(cdo, 0.01);
-    double u = DecimalCodec.readDouble(new CodecDataInput(cdo.toBytes()));
-    assertEquals(0.01, u, 0.0001);
-
-    cdo.reset();
-    DecimalCodec.writeDouble(cdo, 206.0);
-    u = DecimalCodec.readDouble(new CodecDataInput(cdo.toBytes()));
-    assertEquals(206.0, u, 0.0001);
-
-    cdo.reset();
-    DecimalCodec.writeDecimal(cdo, BigDecimal.valueOf(206.0));
-    u = DecimalCodec.readDouble(new CodecDataInput(cdo.toBytes()));
-    assertEquals(206.0, u, 0.0001);
-  }
 }

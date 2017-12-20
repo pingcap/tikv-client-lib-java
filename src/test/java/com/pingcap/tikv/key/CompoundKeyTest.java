@@ -15,8 +15,26 @@
  *
  */
 
-package com.pingcap.tikv.types;
+package com.pingcap.tikv.key;
 
-public class RealTypeTest {
+import org.junit.Test;
+
+
+public class CompoundKeyTest {
+
+  @Test
+  public void concatTest() throws Exception {
+
+  }
+
+  @Test
+  public void getKeysTest() throws Exception {
+
+  }
+
+  @Test
+  public void toStringTest() throws Exception {
+
+  }
 
 }

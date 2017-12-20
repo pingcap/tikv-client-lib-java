@@ -66,7 +66,7 @@ public class Key implements Comparable<Key> {
     return new Key(cdo.toBytes()) {
       @Override
       public String toString() {
-        return "Null";
+        return "null";
       }
     };
   }
@@ -109,7 +109,7 @@ public class Key implements Comparable<Key> {
       }
     }
     if (i == -1) {
-      return toKey(Arrays.copyOf(newVal, value.length + 1));
+      return toKey(Arrays.copyOf(value, value.length + 1));
     } else {
       return toKey(newVal);
     }
@@ -130,7 +130,7 @@ public class Key implements Comparable<Key> {
       return true;
     }
     if (other instanceof Key) {
-      return ((Key) other).compareTo(this) == 0;
+      return compareTo((Key)other) == 0;
     } else {
       return false;
     }
@@ -160,7 +160,7 @@ public class Key implements Comparable<Key> {
     } else if (infFlag > 0) {
       return "+INF";
     } else {
-      return formatBytes(value);
+      return String.format("{%s}", formatBytes(value));
     }
   }
 }

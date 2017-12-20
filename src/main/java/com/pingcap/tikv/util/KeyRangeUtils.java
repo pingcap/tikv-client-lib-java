@@ -23,15 +23,9 @@ import com.google.protobuf.ByteString;
 import com.pingcap.tikv.codec.CodecDataInput;
 import com.pingcap.tikv.codec.CodecDataOutput;
 import com.pingcap.tikv.exception.TiClientInternalException;
+import com.pingcap.tikv.key.Key;
 import com.pingcap.tikv.kvproto.Coprocessor;
 import com.pingcap.tikv.kvproto.Coprocessor.KeyRange;
-import com.pingcap.tikv.meta.TiColumnInfo;
-import com.pingcap.tikv.meta.TiIndexColumn;
-import com.pingcap.tikv.meta.TiIndexInfo;
-import com.pingcap.tikv.meta.TiTableInfo;
-import com.pingcap.tikv.types.DataType;
-
-import com.pingcap.tikv.key.Key;
 import java.util.List;
 
 public class KeyRangeUtils {
@@ -101,15 +95,6 @@ public class KeyRangeUtils {
         TableCodec.decodeRowKey(range.getEnd()));
         */
     return null;
-  }
-
-  public static List<DataType> getIndexColumnTypes(TiTableInfo table, TiIndexInfo index) {
-    ImmutableList.Builder<DataType> types = ImmutableList.builder();
-    for (TiIndexColumn indexColumn : index.getIndexColumns()) {
-      TiColumnInfo tableColumn = table.getColumns().get(indexColumn.getOffset());
-      types.add(tableColumn.getType());
-    }
-    return types.build();
   }
 
   public static Range<Key> makeRange(ByteString startKey, ByteString endKey) {
