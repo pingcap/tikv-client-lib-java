@@ -54,10 +54,13 @@ public class ScanIterator implements Iterator<Kvrpcpb.KvPair> {
       TiSession session,
       RegionManager rm,
       long version) {
-    requireNonNull(range, "range is null");
     this.startKey = requireNonNull(startKey, "start key is null");
     this.batchSize = batchSize;
-    this.scanRange = KeyRangeUtils.makeRange(range.getStart(), range.getEnd());
+    if (range == null) {
+      this.scanRange = Range.all();
+    } else {
+      this.scanRange = KeyRangeUtils.makeRange(range.getStart(), range.getEnd());
+    }
     this.session = session;
     this.regionCache = rm;
     this.version = version;
