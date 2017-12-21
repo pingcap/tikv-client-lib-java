@@ -436,7 +436,7 @@ public class Codec {
      * @param time localDateTime that need to be encoded.
      * @return a packed long.
      */
-    public static long toPackedLong(LocalDateTime time) {
+    static long toPackedLong(LocalDateTime time) {
       return toPackedLong(time.getYear(),
           time.getMonthValue(),
           time.getDayOfMonth(),
@@ -451,7 +451,7 @@ public class Codec {
      *
      * @return a packed long.
      */
-    private static long toPackedLong(int year, int month, int day, int hour, int minute,
+    static long toPackedLong(int year, int month, int day, int hour, int minute,
         int second, int micro) {
       long ymd = (year * 13 + month) << 5 | day;
       long hms = hour << 12 | minute << 6 | second;
@@ -464,7 +464,7 @@ public class Codec {
      * @param date Date object that need to be encoded.
      * @return a packed long.
      */
-    public static long toPackedLong(Date date) {
+    static long toPackedLong(Date date) {
       return toPackedLong(
           date.getYear() + 1900,
           date.getMonth() + 1,
@@ -478,7 +478,7 @@ public class Codec {
      * @param packed a long value
      * @return a decoded LocalDateTime.
      */
-    public static LocalDateTime fromPackedLong(long packed) {
+    static LocalDateTime fromPackedLong(long packed) {
       // TODO: As for JDBC behavior, it can be configured to "round" or "toNull"
       // for now we didn't pass in session so we do a toNull behavior
       if (packed == 0) {
