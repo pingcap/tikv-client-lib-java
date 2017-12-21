@@ -196,45 +196,40 @@ public abstract class DataType implements Serializable {
     return (flag & NotNullFlag) > 0;
   }
 
-  public static boolean hasNoDefaultFlag(int flag) {
+  public boolean isNoDefault() {
     return (flag & NoDefaultValueFlag) > 0;
   }
 
-  public static boolean hasAutoIncrementFlag(int flag) {
+  public boolean isAutoIncrement() {
     return (flag & AutoIncrementFlag) > 0;
   }
 
-  public static boolean hasUnsignedFlag(int flag) {
+  public boolean isUnsigned() {
     return (flag & UnsignedFlag) > 0;
   }
 
-  public static boolean hasZerofillFlag(int flag) {
+  public boolean isZeroFill() {
     return (flag & ZerofillFlag) > 0;
   }
 
-  public static boolean hasBinaryFlag(int flag) {
+  public boolean isBinary() {
     return (flag & PriKeyFlag) > 0;
   }
 
-  public static boolean hasUniKeyFlag(int flag) {
+  public boolean isUniqueKey() {
     return (flag & UniqueKeyFlag) > 0;
   }
 
-  public static boolean hasMultipleKeyFlag(int flag) {
+  public boolean isMultiKey() {
     return (flag & MultipleKeyFlag) > 0;
   }
 
-  public static boolean hasTimestampFlag(int flag) {
+  public boolean isTimestamp() {
     return (flag & TimestampFlag) > 0;
   }
 
-  public static boolean hasOnUpdateNowFlag(int flag) {
+  public boolean isOnUpdateNow() {
     return (flag & OnUpdateNowFlag) > 0;
-  }
-
-  public boolean needCast(Object val) {
-    // TODO: Add implementations
-    return false;
   }
 
   @Override

@@ -72,19 +72,11 @@ public class IntegerType extends DataType {
     } else {
       throw new TiExpressionException("Cannot cast non-number value to long");
     }
-    boolean comparable = false;
-    if (encodeType == EncodeType.KEY) {
-      comparable = true;
-    }
-    switch (tp) {
-      case TypeShort:
-      case TypeInt24:
-      case TypeLong:
-        IntegerCodec.writeLongFull(cdo, val, comparable);
-        break;
-      case TypeLonglong:
-        IntegerCodec.writeULongFull(cdo, val, comparable);
-        break;
+    boolean comparable = (encodeType == EncodeType.KEY);
+    if (isUnsigned()) {
+      IntegerCodec.writeULongFull(cdo, val, comparable);
+    } else {
+      IntegerCodec.writeLongFull(cdo, val, comparable);
     }
   }
 
