@@ -18,9 +18,17 @@ package com.pingcap.tikv.expression;
 import com.pingcap.tidb.tipb.Expr;
 import com.pingcap.tidb.tipb.ExprType;
 import com.pingcap.tikv.codec.CodecDataOutput;
+import com.pingcap.tikv.exception.TiExpressionException;
 import com.pingcap.tikv.meta.TiTableInfo;
 import com.pingcap.tikv.types.DataType;
 import com.pingcap.tikv.types.DataType.EncodeType;
+import com.pingcap.tikv.types.DateTimeType;
+import com.pingcap.tikv.types.DecimalType;
+import com.pingcap.tikv.types.IntegerType;
+import com.pingcap.tikv.types.RealType;
+import com.pingcap.tikv.types.StringType;
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.Objects;
 
 // Refactor needed.
@@ -36,6 +44,7 @@ public class TiConstant implements TiExpr {
 
   private TiConstant(Object value) {
     this.value = value;
+    this.type = getDefaultType();
   }
 
   public boolean isIntegerType() {
@@ -45,7 +54,27 @@ public class TiConstant implements TiExpr {
         || value instanceof Byte;
   }
 
-  public void bindType(DataType type) {
+  private DataType getDefaultType() {
+    if (value == null) {
+      throw new TiExpressionException("NULL constant has no type");
+    } else if (isIntegerType()) {
+      return IntegerType.BIGINT;
+    } else if (value instanceof String) {
+      return StringType.VARCHAR;
+    } else if (value instanceof Float) {
+      return RealType.FLOAT;
+    } else if (value instanceof Double) {
+      return RealType.DOUBLE;
+    } else if (value instanceof BigDecimal) {
+      return DecimalType.DECIMAL;
+    } else if (value instanceof LocalDateTime) {
+      return DateTimeType.DATETIME;
+    } else {
+      throw new TiExpressionException("Constant type not supported.");
+    }
+  }
+
+  public void coerce(DataType type) {
     this.type = type;
   }
 
