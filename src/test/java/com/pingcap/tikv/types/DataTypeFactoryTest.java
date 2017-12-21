@@ -46,9 +46,14 @@ public class DataTypeFactoryTest {
     assertEquals(type, dataType.getType());
     assertEquals(cls, dataType.getClass());
   }
+
   @Test
   public void of() throws Exception {
     mappingTest(MySQLType.TypeBit, BitType.class);
+    mappingTest(MySQLType.TypeLong, IntegerType.class);
+    mappingTest(MySQLType.TypeTiny, IntegerType.class);
+    mappingTest(MySQLType.TypeVarchar, BytesType.class);
+    mappingTest(MySQLType.TypeDate, DateType.class);
   }
 
 }

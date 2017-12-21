@@ -17,6 +17,34 @@
 
 package com.pingcap.tikv.types;
 
-public class RealTypeTest {
+import static org.junit.Assert.assertEquals;
 
+import com.pingcap.tikv.codec.CodecDataInput;
+import com.pingcap.tikv.codec.CodecDataOutput;
+import com.pingcap.tikv.types.DataType.EncodeType;
+import org.junit.Test;
+
+public class RealTypeTest {
+  @Test
+  public void encodeTest() throws Exception {
+    DataType type = RealType.DOUBLE;
+    double originalVal = 666.66;
+    byte[] encodedKey = encode(originalVal, EncodeType.KEY, type);
+    Object val = decode(encodedKey, type);
+    assertEquals(originalVal, (double)val, 0.01);
+
+    encodedKey = encode(null, EncodeType.KEY, type);
+    val = decode(encodedKey, type);
+    assertEquals(null, val);
+  }
+
+  private static byte[] encode(Object val, EncodeType encodeType, DataType type) {
+    CodecDataOutput cdo = new CodecDataOutput();
+    type.encode(cdo, encodeType, val);
+    return cdo.toBytes();
+  }
+
+  private static Object decode(byte[] val, DataType type) {
+    return type.decode(new CodecDataInput(val));
+  }
 }

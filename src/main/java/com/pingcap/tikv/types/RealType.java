@@ -45,7 +45,7 @@ public class RealType extends DataType {
     return RealCodec.readDouble(cdi);
   }
 
-  RealType(TiColumnInfo.InternalTypeHolder holder) {
+  private RealType(TiColumnInfo.InternalTypeHolder holder) {
     super(holder);
   }
 

@@ -17,5 +17,30 @@
 
 package com.pingcap.tikv.types;
 
+import static org.junit.Assert.assertEquals;
+
+import com.pingcap.tikv.codec.CodecDataInput;
+import com.pingcap.tikv.codec.CodecDataOutput;
+import com.pingcap.tikv.types.DataType.EncodeType;
+import org.junit.Test;
+
 public class DecimalTypeTest {
+  @Test
+  public void encodeTest() throws Exception {
+    DataType type = DecimalType.DECIMAL;
+    double originalVal = 6.66;
+    byte[] encodedKey = encode(originalVal, EncodeType.KEY, type);
+    Object val = decode(encodedKey, type);
+    assertEquals(originalVal, (double)val, 0.01);
+  }
+
+  private static byte[] encode(Object val, EncodeType encodeType, DataType type) {
+    CodecDataOutput cdo = new CodecDataOutput();
+    type.encode(cdo, encodeType, val);
+    return cdo.toBytes();
+  }
+
+  private static Object decode(byte[] val, DataType type) {
+    return type.decode(new CodecDataInput(val));
+  }
 }
