@@ -15,9 +15,6 @@
 
 package com.pingcap.tikv.predicates;
 
-import static com.google.common.base.Preconditions.checkArgument;
-import static java.util.Objects.requireNonNull;
-
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.BoundType;
 import com.google.common.collect.ImmutableList;
@@ -37,10 +34,14 @@ import com.pingcap.tikv.meta.TiTableInfo;
 import com.pingcap.tikv.predicates.RangeBuilder.IndexRange;
 import com.pingcap.tikv.types.DataType;
 import com.pingcap.tikv.types.IntegerType;
+
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+
+import static com.google.common.base.Preconditions.checkArgument;
+import static java.util.Objects.requireNonNull;
 
 // TODO: Rethink value binding part since we abstract away datum of TiDB
 public class ScanBuilder {
@@ -80,8 +81,7 @@ public class ScanBuilder {
 
   // Build scan plan picking access path with lowest cost by estimation
   public ScanPlan buildScan(List<TiExpr> conditions, TiTableInfo table) {
-    TiIndexInfo pkIndex = TiIndexInfo.generateFakePrimaryKeyIndex(table);
-    ScanPlan minPlan = buildScan(conditions, pkIndex, table);
+    ScanPlan minPlan = buildTableScan(conditions, table);
     double minCost = minPlan.getCost();
     for (TiIndexInfo index : table.getIndices()) {
       ScanPlan plan = buildScan(conditions, index, table);
@@ -93,10 +93,9 @@ public class ScanBuilder {
     return minPlan;
   }
 
-  public ScanPlan buildTableScan(List<TiExpr> conditions, TiTableInfo table) {
+  private ScanPlan buildTableScan(List<TiExpr> conditions, TiTableInfo table) {
     TiIndexInfo pkIndex = TiIndexInfo.generateFakePrimaryKeyIndex(table);
-    ScanPlan plan = buildScan(conditions, pkIndex, table);
-    return plan;
+    return buildScan(conditions, pkIndex, table);
   }
 
   public ScanPlan buildScan(List<TiExpr> conditions, TiIndexInfo index, TiTableInfo table) {
@@ -121,7 +120,11 @@ public class ScanBuilder {
     if (index == null || index.isFakePrimaryKey()) {
       keyRanges = buildTableScanKeyRange(table, irs);
     } else {
-      keyRanges = buildIndexScanKeyRange(table, index, irs);
+      boolean isDoubleRead = isCoveringIndex(table.getColumns(), index, table.isPkHandle());
+      if (isDoubleRead) {
+        cost *= 2;
+      }
+      keyRanges = buildIndexScanKeyRange(table, index, irs, isDoubleRead);
     }
 
     return new ScanPlan(keyRanges, result.residualConditions, index, cost);
@@ -202,7 +205,7 @@ public class ScanBuilder {
   }
 
   private List<KeyRange> buildIndexScanKeyRange(
-      TiTableInfo table, TiIndexInfo index, List<IndexRange> indexRanges) {
+      TiTableInfo table, TiIndexInfo index, List<IndexRange> indexRanges, boolean isDoubleRead) {
     requireNonNull(table, "Table cannot be null to encoding keyRange");
     requireNonNull(index, "Index cannot be null to encoding keyRange");
     requireNonNull(index, "indexRanges cannot be null to encoding keyRange");
@@ -300,6 +303,30 @@ public class ScanBuilder {
       ranges.add(KeyRange.newBuilder().setStart(rangeMin).setEnd(rangeMax).build());
     }
     return ranges;
+  }
+
+  public boolean isCoveringIndex(List<TiColumnInfo> columns, TiIndexInfo indexColumns, boolean pkIsHandle) {
+    for (TiColumnInfo colInfo: columns) {
+      if (pkIsHandle && colInfo.isPrimaryKey()) {
+        continue;
+      }
+      if (colInfo.getId() == -1) {
+        continue;
+      }
+      boolean isIndexColumn = false;
+      for (TiIndexColumn indexCol: indexColumns.getIndexColumns()) {
+        boolean isFullLength = indexCol.getLength() == DataType.UNSPECIFIED_LEN ||
+            indexCol.getLength() == colInfo.getType().getLength();
+        if (colInfo.getName().equalsIgnoreCase(indexCol.getName()) && isFullLength) {
+          isIndexColumn = true;
+          break;
+        }
+      }
+      if (!isIndexColumn) {
+        return false;
+      }
+    }
+    return true;
   }
 
   public static class IndexMatchingResult {

@@ -25,6 +25,7 @@ import com.pingcap.tikv.codec.CodecDataOutput;
 import com.pingcap.tikv.types.DataType;
 import com.pingcap.tikv.types.DataType.EncodeType;
 import com.pingcap.tikv.types.DataTypeFactory;
+
 import java.io.Serializable;
 import java.util.List;
 
@@ -107,7 +108,7 @@ public class TiColumnInfo implements Serializable {
     return comment;
   }
 
-  boolean isPrimaryKey() {
+  public boolean isPrimaryKey() {
     return isPrimaryKey;
   }
 
