@@ -51,6 +51,9 @@ public class TimestampType extends DataType {
     super(holder);
   }
 
+  /**
+   * {@inheritDoc}
+   */
   @Override
   protected Object decodeNotNull(int flag, CodecDataInput cdi) {
     LocalDateTime localDateTime;
@@ -65,10 +68,7 @@ public class TimestampType extends DataType {
   }
 
   /**
-   * encode a value to cdo per type.
-   *  @param cdo destination of data.
-   * @param encodeType Key or Value.
-   * @param value need to be encoded.
+   * {@inheritDoc}
    */
   @Override
   protected void encodeNotNull(CodecDataOutput cdo, EncodeType encodeType, Object value) {
@@ -82,7 +82,7 @@ public class TimestampType extends DataType {
   }
 
   /**
-   * get origin value from string
+   * {@inheritDoc}
    * @param value a timestamp value in string in format "yyyy-MM-dd HH:mm:ss"
    * @return a {@link LocalDateTime} Object
    * TODO: need decode time with time zone info.

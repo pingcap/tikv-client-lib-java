@@ -31,12 +31,12 @@ public class DataTypeFactory {
     ImmutableMap.Builder<MySQLType, Constructor<? extends DataType>> builder = ImmutableMap.builder();
     ImmutableMap.Builder<MySQLType, DataType> instBuilder = ImmutableMap.builder();
     extractTypeMap(BitType.subTypes, BitType.class, builder, instBuilder);
-    extractTypeMap(BytesType.subTypes, BytesType.class, builder, instBuilder);
+    extractTypeMap(StringType.subTypes, StringType.class, builder, instBuilder);
     extractTypeMap(DateTimeType.subTypes, DateTimeType.class, builder, instBuilder);
     extractTypeMap(DateType.subTypes, DateType.class, builder, instBuilder);
     extractTypeMap(DecimalType.subTypes, DecimalType.class, builder, instBuilder);
     extractTypeMap(IntegerType.subTypes, IntegerType.class, builder, instBuilder);
-    extractTypeMap(RawBytesType.subTypes, RawBytesType.class, builder, instBuilder);
+    extractTypeMap(BytesType.subTypes, BytesType.class, builder, instBuilder);
     extractTypeMap(RealType.subTypes, RealType.class, builder, instBuilder);
     extractTypeMap(TimestampType.subTypes, TimestampType.class, builder, instBuilder);
     dataTypeCreatorMap = builder.build();

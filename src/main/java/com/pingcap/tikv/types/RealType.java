@@ -38,6 +38,9 @@ public class RealType extends DataType {
     super(tp);
   }
 
+  /**
+   * {@inheritDoc}
+   */
   @Override
   protected Object decodeNotNull(int flag, CodecDataInput cdi) {
     // check flag first and then read.
@@ -52,10 +55,7 @@ public class RealType extends DataType {
   }
 
   /**
-   * encode a value to cdo.
-   *  @param cdo destination of data.
-   * @param encodeType Key or Value.
-   * @param value need to be encoded.
+   * {@inheritDoc}
    */
   @Override
   protected void encodeNotNull(CodecDataOutput cdo, EncodeType encodeType, Object value) {
@@ -69,10 +69,8 @@ public class RealType extends DataType {
     RealCodec.writeDoubleFully(cdo, val);
   }
 
-  /*
-   * get origin default value
-   * @param value a float value represents in string
-   * @return a {@link Float} Object
+  /**
+   * {@inheritDoc}
    */
   @Override
   public Object getOriginDefaultValueNonNull(String value) {

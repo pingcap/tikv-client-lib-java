@@ -40,6 +40,9 @@ public class DateType extends DataType {
     super(tp);
   }
 
+  /**
+   * {@inheritDoc}
+   */
   @Override
   protected Object decodeNotNull(int flag, CodecDataInput cdi) {
     LocalDateTime localDateTime;
@@ -59,6 +62,9 @@ public class DateType extends DataType {
         localDateTime.getDayOfMonth());
   }
 
+  /**
+   * {@inheritDoc}
+   */
   @Override
   protected void encodeNotNull(CodecDataOutput cdo, EncodeType encodeType, Object value) {
     Date in;
@@ -76,7 +82,7 @@ public class DateType extends DataType {
   }
 
   /**
-   * get origin default value in string
+   * {@inheritDoc}
    * @param value a date represents in string in "yyyy-MM-dd" format
    * @return a {@link Date} Object
    */

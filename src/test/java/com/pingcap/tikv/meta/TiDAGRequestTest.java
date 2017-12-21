@@ -29,7 +29,7 @@ import com.pingcap.tikv.expression.aggregate.Sum;
 import com.pingcap.tikv.expression.scalar.LessEqual;
 import com.pingcap.tikv.expression.scalar.Plus;
 import com.pingcap.tikv.kvproto.Coprocessor;
-import com.pingcap.tikv.types.BytesType;
+import com.pingcap.tikv.types.StringType;
 import com.pingcap.tikv.types.IntegerType;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -42,8 +42,8 @@ public class TiDAGRequestTest {
     return new MetaUtils.TableBuilder()
         .name("testTable")
         .addColumn("c1", IntegerType.INT, true)
-        .addColumn("c2", BytesType.VARCHAR)
-        .addColumn("c3", BytesType.VARCHAR)
+        .addColumn("c2", StringType.VARCHAR)
+        .addColumn("c3", StringType.VARCHAR)
         .addColumn("c4", IntegerType.INT)
         .appendIndex("testIndex", ImmutableList.of("c1", "c2"), false)
         .build();

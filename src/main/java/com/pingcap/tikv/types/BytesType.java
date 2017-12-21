@@ -24,14 +24,21 @@ import com.pingcap.tikv.codec.CodecDataOutput;
 import com.pingcap.tikv.codec.InvalidCodecFormatException;
 import com.pingcap.tikv.meta.TiColumnInfo;
 
+/**
+ * TODO: if we need to unify string type and binary types? Indeed they are encoded as the same
+ * However, decode to string actually going through encoding/decoding by whatever charset.encoding
+ * format we set, and essentially changed underlying data
+ */
 public class BytesType extends DataType {
-  public static final BytesType VARCHAR = new BytesType(MySQLType.TypeVarchar);
-  public static final BytesType BINARY = new BytesType(MySQLType.TypeString);
-  public static final BytesType CHAR = new BytesType(MySQLType.TypeString);
+  public static final BytesType BLOB = new BytesType(MySQLType.TypeBlob);
+  public static final BytesType LONG_TEXT = new BytesType(MySQLType.TypeLongBlob);
+  public static final BytesType MEDIUM_TEXT = new BytesType(MySQLType.TypeMediumBlob);
+  public static final BytesType TEXT = new BytesType(MySQLType.TypeBlob);
+  public static final BytesType TINY_BLOB = new BytesType(MySQLType.TypeTinyBlob);
 
   public static final MySQLType[] subTypes = new MySQLType[] {
-      MySQLType.TypeVarchar,
-      MySQLType.TypeString
+      MySQLType.TypeBlob, MySQLType.TypeLongBlob,
+      MySQLType.TypeMediumBlob, MySQLType.TypeTinyBlob
   };
 
   protected BytesType(MySQLType tp) {
@@ -42,30 +49,30 @@ public class BytesType extends DataType {
     super(holder);
   }
 
+  /**
+   * {@inheritDoc}
+   */
   @Override
   protected Object decodeNotNull(int flag, CodecDataInput cdi) {
     if (flag == Codec.COMPACT_BYTES_FLAG) {
-      return new String(BytesCodec.readCompactBytes(cdi));
+      return BytesCodec.readCompactBytes(cdi);
     } else if (flag == Codec.BYTES_FLAG) {
-      return new String(BytesCodec.readBytes(cdi));
+      return BytesCodec.readBytes(cdi);
     } else {
       throw new InvalidCodecFormatException("Invalid Flag type for : " + flag);
     }
   }
 
   /**
-   * encode value to cdo per type. If key, then it is memory comparable. If value, no guarantee.
-   *  @param cdo destination of data.
-   * @param encodeType Key or Value.
-   * @param value need to be encoded.
+   * {@inheritDoc}
    */
   @Override
   protected void encodeNotNull(CodecDataOutput cdo, EncodeType encodeType, Object value) {
     byte[] bytes;
-    if (value instanceof String) {
-      bytes = ((String) value).getBytes();
+    if (value instanceof byte[]) {
+      bytes = (byte[]) value;
     } else {
-      throw new UnsupportedOperationException("can not cast non-String type to String");
+      throw new UnsupportedOperationException("can not cast non bytes type to bytes array");
     }
     if (encodeType == EncodeType.KEY) {
       BytesCodec.writeBytesFully(cdo, bytes);
@@ -75,9 +82,7 @@ public class BytesType extends DataType {
   }
 
   /**
-   * get origin default value
-   * @param value a bytes string value
-   * @return a {@link String} Object
+   * {@inheritDoc}
    */
   @Override
   public Object getOriginDefaultValueNonNull(String value) {

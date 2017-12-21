@@ -29,7 +29,7 @@ import com.pingcap.tikv.expression.aggregate.Sum;
 import com.pingcap.tikv.expression.scalar.Plus;
 import com.pingcap.tikv.meta.TiDAGRequest;
 import com.pingcap.tikv.meta.TiTableInfo;
-import com.pingcap.tikv.types.BytesType;
+import com.pingcap.tikv.types.StringType;
 import com.pingcap.tikv.types.DataType;
 import com.pingcap.tikv.types.DecimalType;
 import java.util.List;
@@ -54,7 +54,7 @@ public class SchemaInferTest {
     tiDAGRequest.getFields().add(name);
     List<DataType> dataTypes = SchemaInfer.create(tiDAGRequest).getTypes();
     assertEquals(1, dataTypes.size());
-    assertEquals(BytesType.VARCHAR, dataTypes.get(0));
+    assertEquals(StringType.VARCHAR, dataTypes.get(0));
   }
 
   @Test
@@ -77,7 +77,7 @@ public class SchemaInferTest {
     List<DataType> dataTypes = SchemaInfer.create(dagRequest).getTypes();
     assertEquals(2, dataTypes.size());
     assertEquals(DecimalType.DECIMAL, dataTypes.get(0));
-    assertEquals(BytesType.VARCHAR, dataTypes.get(1));
+    assertEquals(StringType.VARCHAR, dataTypes.get(1));
   }
 
   @Test
@@ -90,6 +90,6 @@ public class SchemaInferTest {
     List<DataType> dataTypes = SchemaInfer.create(dagRequest).getTypes();
     assertEquals(2, dataTypes.size());
     assertEquals(DecimalType.DECIMAL, dataTypes.get(0));
-    assertEquals(BytesType.VARCHAR, dataTypes.get(1));
+    assertEquals(StringType.VARCHAR, dataTypes.get(1));
   }
 }

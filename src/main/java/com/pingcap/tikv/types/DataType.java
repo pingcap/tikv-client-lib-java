@@ -140,7 +140,19 @@ public abstract class DataType implements Serializable {
     }
   }
 
+  /**
+   * Encode a value to cdo.
+   *  @param cdo destination of data.
+   * @param encodeType Key or Value.
+   * @param value need to be encoded.
+   */
   protected abstract void encodeNotNull(CodecDataOutput cdo, EncodeType encodeType, Object value);
+
+  /**
+   * get origin default value
+   * @param value a int value represents in string
+   * @return a int object
+   */
   public abstract Object getOriginDefaultValueNonNull(String value);
 
   public Object getOriginDefaultValue(String value) {

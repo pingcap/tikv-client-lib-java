@@ -96,7 +96,7 @@ public class TiConstant implements TiExpr {
     } else if (isIntegerType()) {
       return IntegerType.BIGINT;
     } else if (value instanceof String) {
-      return BytesType.VARCHAR;
+      return StringType.VARCHAR;
     } else if (value instanceof Float) {
       return RealType.FLOAT;
     } else if (value instanceof Double) {

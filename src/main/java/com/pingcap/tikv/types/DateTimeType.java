@@ -27,6 +27,9 @@ public class DateTimeType extends TimestampType {
 
   private static final ZoneId DEFAULT_TIMEZONE = ZoneId.systemDefault();
 
+  /**
+   * {@inheritDoc}
+   */
   @Override
   protected ZoneId getDefaultTimezone() {
     return DEFAULT_TIMEZONE;

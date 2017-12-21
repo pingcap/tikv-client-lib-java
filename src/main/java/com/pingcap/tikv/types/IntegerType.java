@@ -42,12 +42,11 @@ public class IntegerType extends DataType {
     super(tp);
   }
 
+  /**
+   * {@inheritDoc}
+   */
   @Override
   protected Object decodeNotNull(int flag, CodecDataInput cdi) {
-    return decodeNotNullPrimitive(flag, cdi);
-  }
-
-  public static long decodeNotNullPrimitive(int flag, CodecDataInput cdi) {
     switch (flag) {
       case Codec.UVARINT_FLAG:
         return IntegerCodec.readUVarLong(cdi);
@@ -63,10 +62,7 @@ public class IntegerType extends DataType {
   }
 
   /**
-   * Encode a value to cdo.
-   *  @param cdo destination of data.
-   * @param encodeType Key or Value.
-   * @param value need to be encoded.
+   * {@inheritDoc}
    */
   @Override
   protected void encodeNotNull(CodecDataOutput cdo, EncodeType encodeType, Object value) {
@@ -93,9 +89,7 @@ public class IntegerType extends DataType {
   }
 
   /**
-   * get origin default value
-   * @param value a int value represents in string
-   * @return a int object
+   * {@inheritDoc}
    */
   @Override
   public Object getOriginDefaultValueNonNull(String value) {

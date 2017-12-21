@@ -33,7 +33,7 @@ import com.pingcap.tikv.meta.MetaUtils;
 import com.pingcap.tikv.meta.TiIndexColumn;
 import com.pingcap.tikv.meta.TiIndexInfo;
 import com.pingcap.tikv.meta.TiTableInfo;
-import com.pingcap.tikv.types.BytesType;
+import com.pingcap.tikv.types.StringType;
 import com.pingcap.tikv.types.IntegerType;
 import org.junit.Test;
 
@@ -42,8 +42,8 @@ public class IndexMatcherTest {
     return new MetaUtils.TableBuilder()
         .name("testTable")
         .addColumn("c1", IntegerType.INT, true)
-        .addColumn("c2", BytesType.VARCHAR)
-        .addColumn("c3", BytesType.VARCHAR)
+        .addColumn("c2", StringType.VARCHAR)
+        .addColumn("c3", StringType.VARCHAR)
         .addColumn("c4", IntegerType.INT)
         .appendIndex("testIndex", ImmutableList.of("c1", "c2"), false)
         .build();

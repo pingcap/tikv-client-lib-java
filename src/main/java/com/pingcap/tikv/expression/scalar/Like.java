@@ -20,7 +20,7 @@ import static com.google.common.base.Preconditions.checkArgument;
 import com.pingcap.tidb.tipb.ExprType;
 import com.pingcap.tidb.tipb.ScalarFuncSig;
 import com.pingcap.tikv.expression.TiExpr;
-import com.pingcap.tikv.types.BytesType;
+import com.pingcap.tikv.types.StringType;
 import com.pingcap.tikv.types.DataType;
 import com.pingcap.tikv.types.IntegerType;
 
@@ -44,8 +44,8 @@ public class Like extends TiScalarFunction {
     // Validate 2 arguments
     super.validateArguments();
     // Validate 2 arguments are strings
-    checkArgument(this.args.get(0).getType() instanceof BytesType);
-    checkArgument(this.args.get(1).getType() instanceof BytesType);
+    checkArgument(this.args.get(0).getType() instanceof StringType);
+    checkArgument(this.args.get(1).getType() instanceof StringType);
   }
 
   @Override

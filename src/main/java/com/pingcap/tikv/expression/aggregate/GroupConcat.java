@@ -3,7 +3,7 @@ package com.pingcap.tikv.expression.aggregate;
 import com.pingcap.tidb.tipb.ExprType;
 import com.pingcap.tikv.expression.TiExpr;
 import com.pingcap.tikv.expression.TiUnaryFunctionExpression;
-import com.pingcap.tikv.types.BytesType;
+import com.pingcap.tikv.types.StringType;
 import com.pingcap.tikv.types.DataType;
 
 public class GroupConcat extends TiUnaryFunctionExpression {
@@ -19,6 +19,6 @@ public class GroupConcat extends TiUnaryFunctionExpression {
 
   @Override
   public DataType getType() {
-    return BytesType.VARCHAR;
+    return StringType.VARCHAR;
   }
 }

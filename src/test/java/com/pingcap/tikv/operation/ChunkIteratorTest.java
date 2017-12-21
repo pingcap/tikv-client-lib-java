@@ -26,7 +26,7 @@ import com.pingcap.tikv.codec.CodecDataInput;
 import com.pingcap.tikv.operation.iterator.ChunkIterator;
 import com.pingcap.tikv.row.ObjectRowImpl;
 import com.pingcap.tikv.row.Row;
-import com.pingcap.tikv.types.BytesType;
+import com.pingcap.tikv.types.StringType;
 import com.pingcap.tikv.types.DataType;
 import com.pingcap.tikv.types.IntegerType;
 import java.util.ArrayList;
@@ -53,7 +53,7 @@ public class ChunkIteratorTest {
   @Test
   public void chunkTest() {
     ChunkIterator<ByteString> chunkIterator = ChunkIterator.getRawBytesChunkIterator(chunks);
-    DataType bytes = BytesType.VARCHAR;
+    DataType bytes = StringType.VARCHAR;
     DataType ints = IntegerType.INT;
     Row row = ObjectRowImpl.create(6);
     CodecDataInput cdi = new CodecDataInput(chunkIterator.next());

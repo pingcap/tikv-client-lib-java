@@ -37,10 +37,9 @@ public class DecimalType extends DataType {
     super(holder);
   }
 
+
   /**
-   * decode a decimal value from Cdi and return it.
-   *
-   * @param cdi source of data.
+   * {@inheritDoc}
    */
   @Override
   protected Object decodeNotNull(int flag, CodecDataInput cdi) {
@@ -51,10 +50,7 @@ public class DecimalType extends DataType {
   }
 
   /**
-   * Encode a Decimal to Byte String.
-   *  @param cdo destination of data.
-   * @param encodeType Key or Value.
-   * @param value need to be encoded.
+   * {@inheritDoc}
    */
   @Override
   protected void encodeNotNull(CodecDataOutput cdo, EncodeType encodeType, Object value) {
@@ -68,9 +64,7 @@ public class DecimalType extends DataType {
   }
 
   /**
-   * get origin value from string.
-   * @param value a decimal value represents in string.
-   * @return a Double Value
+   * {@inheritDoc}
    */
   @Override
   public Object getOriginDefaultValueNonNull(String value) {
