@@ -17,7 +17,6 @@
 
 package com.pingcap.tikv.types;
 
-import com.pingcap.tikv.codec.Codec.BytesCodec;
 import com.pingcap.tikv.codec.CodecDataInput;
 import com.pingcap.tikv.codec.CodecDataOutput;
 import com.pingcap.tikv.meta.TiColumnInfo;
@@ -59,10 +58,6 @@ public class StringType extends BytesType {
     } else {
       throw new UnsupportedOperationException("can not cast non-String type to String");
     }
-    if (encodeType == EncodeType.KEY) {
-      BytesCodec.writeBytesFully(cdo, bytes);
-    } else {
-      BytesCodec.writeCompactBytesFully(cdo, bytes);
-    }
+    super.encodeNotNull(cdo, encodeType, bytes);
   }
 }

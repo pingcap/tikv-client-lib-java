@@ -17,6 +17,7 @@
 
 package com.pingcap.tikv.types;
 
+import com.pingcap.tidb.tipb.ExprType;
 import com.pingcap.tikv.codec.Codec;
 import com.pingcap.tikv.codec.Codec.IntegerCodec;
 import com.pingcap.tikv.codec.CodecDataInput;
@@ -72,12 +73,19 @@ public class IntegerType extends DataType {
     } else {
       throw new TiExpressionException("Cannot cast non-number value to long");
     }
-    boolean comparable = (encodeType == EncodeType.KEY);
+    boolean comparable = (encodeType != EncodeType.VALUE);
+    boolean writeFlag = (encodeType != EncodeType.PROTO);
+
     if (isUnsigned()) {
-      IntegerCodec.writeULongFull(cdo, val, comparable);
+      IntegerCodec.writeULongFull(cdo, val, comparable, writeFlag);
     } else {
-      IntegerCodec.writeLongFull(cdo, val, comparable);
+      IntegerCodec.writeLongFull(cdo, val, comparable, writeFlag);
     }
+  }
+
+  @Override
+  public ExprType getProtoExprType() {
+    return isUnsigned() ?  ExprType.Uint64 : ExprType.Int64;
   }
 
   /**

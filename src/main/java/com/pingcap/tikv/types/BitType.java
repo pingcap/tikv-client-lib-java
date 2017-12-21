@@ -65,6 +65,7 @@ public class BitType extends IntegerType {
       throw new TiExpressionException("Cannot cast non-number value to long");
     }
     boolean comparable = (encodeType == EncodeType.KEY);
-    IntegerCodec.writeULongFull(cdo, val, comparable);
+    boolean writeFlag = (encodeType != EncodeType.PROTO);
+    IntegerCodec.writeULongFull(cdo, val, comparable, writeFlag);
   }
 }

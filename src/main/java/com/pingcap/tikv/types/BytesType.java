@@ -17,6 +17,7 @@
 
 package com.pingcap.tikv.types;
 
+import com.pingcap.tidb.tipb.ExprType;
 import com.pingcap.tikv.codec.Codec;
 import com.pingcap.tikv.codec.Codec.BytesCodec;
 import com.pingcap.tikv.codec.CodecDataInput;
@@ -74,11 +75,21 @@ public class BytesType extends DataType {
     } else {
       throw new UnsupportedOperationException("can not cast non bytes type to bytes array");
     }
-    if (encodeType == EncodeType.KEY) {
-      BytesCodec.writeBytesFully(cdo, bytes);
-    } else {
-      BytesCodec.writeCompactBytesFully(cdo, bytes);
+    switch (encodeType) {
+      case KEY:
+        BytesCodec.writeBytesFully(cdo, bytes, true);
+        break;
+      case VALUE:
+        BytesCodec.writeCompactBytesFully(cdo, bytes, true);
+        break;
+      case PROTO:
+        BytesCodec.writeBytesRaw(cdo, bytes);
     }
+  }
+
+  @Override
+  public ExprType getProtoExprType() {
+    return getCharset().equals(Charset.CharsetBin) ? ExprType.Bytes : ExprType.String;
   }
 
   /**

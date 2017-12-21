@@ -17,6 +17,7 @@
 
 package com.pingcap.tikv.types;
 
+import com.pingcap.tidb.tipb.ExprType;
 import com.pingcap.tikv.codec.Codec;
 import com.pingcap.tikv.codec.Codec.DateTimeCodec;
 import com.pingcap.tikv.codec.CodecDataInput;
@@ -67,18 +68,24 @@ public class DateType extends DataType {
    */
   @Override
   protected void encodeNotNull(CodecDataOutput cdo, EncodeType encodeType, Object value) {
-    Date in;
+    Date date;
     try {
       if (value instanceof Date) {
-        in = (Date) value;
+        date = (Date) value;
       } else {
         // format ensure only date part without time
-        in = new Date(format.parse(value.toString()).getTime());
+        date = new Date(format.parse(value.toString()).getTime());
       }
     } catch (Exception e) {
       throw new TiClientInternalException("Can not cast Object to LocalDateTime: " + value, e);
     }
-    DateTimeCodec.writeDateFully(cdo, in);
+    boolean writeFlag = (encodeType != EncodeType.PROTO);
+    DateTimeCodec.writeDateFully(cdo, date, writeFlag);
+  }
+
+  @Override
+  public ExprType getProtoExprType() {
+    return ExprType.MysqlTime;
   }
 
   /**

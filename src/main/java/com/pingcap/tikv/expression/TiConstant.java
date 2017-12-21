@@ -17,15 +17,10 @@ package com.pingcap.tikv.expression;
 
 import com.pingcap.tidb.tipb.Expr;
 import com.pingcap.tidb.tipb.ExprType;
-import com.pingcap.tikv.codec.Codec.DecimalCodec;
-import com.pingcap.tikv.codec.Codec.IntegerCodec;
-import com.pingcap.tikv.codec.Codec.RealCodec;
 import com.pingcap.tikv.codec.CodecDataOutput;
-import com.pingcap.tikv.exception.TiExpressionException;
 import com.pingcap.tikv.meta.TiTableInfo;
-import com.pingcap.tikv.types.*;
-
-import java.math.BigDecimal;
+import com.pingcap.tikv.types.DataType;
+import com.pingcap.tikv.types.DataType.EncodeType;
 import java.util.Objects;
 
 // Refactor needed.
@@ -33,6 +28,7 @@ import java.util.Objects;
 // TODO: This might need a refactor to accept an DataType?
 public class TiConstant implements TiExpr {
   private Object value;
+  private DataType type;
 
   public static TiConstant create(Object value) {
     return new TiConstant(value);
@@ -47,6 +43,10 @@ public class TiConstant implements TiExpr {
         || value instanceof Integer
         || value instanceof Short
         || value instanceof Byte;
+  }
+
+  public void bindType(DataType type) {
+    this.type = type;
   }
 
   public Object getValue() {
@@ -64,46 +64,18 @@ public class TiConstant implements TiExpr {
     // We don't allow build a unsigned long constant for now
     if (value == null) {
       builder.setTp(ExprType.Null);
-    } else if (isIntegerType()) {
-      builder.setTp(ExprType.Int64);
-      IntegerCodec.writeLong(cdo, ((Number) value).longValue());
-    } else if (value instanceof String) {
-      builder.setTp(ExprType.String);
-      // Instead of using BytesType codec, coprocessor reads
-      // raw string as bytes
-      cdo.write(((String) value).getBytes());
-    } else if (value instanceof Float) {
-      builder.setTp(ExprType.Float32);
-      RealCodec.writeDouble(cdo, (Float) value);
-    } else if (value instanceof Double) {
-      builder.setTp(ExprType.Float64);
-      RealCodec.writeDouble(cdo, (Double) value);
-    } else if (value instanceof BigDecimal) {
-      builder.setTp(ExprType.MysqlDecimal);
-      DecimalCodec.writeDecimal(cdo, (BigDecimal) value);
+      return builder.build();
     } else {
-      throw new TiExpressionException("Constant type not supported.");
+      builder.setTp(type.getProtoExprType());
+      type.encode(cdo, EncodeType.PROTO, value);
+      builder.setVal(cdo.toByteString());
+      return builder.build();
     }
-    builder.setVal(cdo.toByteString());
-
-    return builder.build();
   }
 
   @Override
   public DataType getType() {
-    if (value == null) {
-      throw new TiExpressionException("NULL constant has no type");
-    } else if (isIntegerType()) {
-      return IntegerType.BIGINT;
-    } else if (value instanceof String) {
-      return StringType.VARCHAR;
-    } else if (value instanceof Float) {
-      return RealType.FLOAT;
-    } else if (value instanceof Double) {
-      return RealType.DOUBLE;
-    } else {
-      throw new TiExpressionException("Constant type not supported.");
-    }
+    return type;
   }
 
   @Override

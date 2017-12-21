@@ -17,11 +17,13 @@
 
 package com.pingcap.tikv.types;
 
+import com.pingcap.tidb.tipb.ExprType;
 import com.pingcap.tikv.codec.Codec;
 import com.pingcap.tikv.codec.Codec.RealCodec;
 import com.pingcap.tikv.codec.CodecDataInput;
 import com.pingcap.tikv.codec.CodecDataOutput;
 import com.pingcap.tikv.codec.InvalidCodecFormatException;
+import com.pingcap.tikv.exception.TiClientInternalException;
 import com.pingcap.tikv.meta.TiColumnInfo;
 
 public class RealType extends DataType {
@@ -65,8 +67,18 @@ public class RealType extends DataType {
     } else {
       throw new UnsupportedOperationException("Can not cast Un-number to Float");
     }
+    boolean writeFlag = (encodeType != EncodeType.PROTO);
+    RealCodec.writeDoubleFully(cdo, val, writeFlag);
+  }
 
-    RealCodec.writeDoubleFully(cdo, val);
+  @Override
+  public ExprType getProtoExprType() {
+    if (tp == MySQLType.TypeDouble) {
+      return ExprType.Float64;
+    } else if (tp == MySQLType.TypeFloat) {
+      return ExprType.Float32;
+    }
+    throw new TiClientInternalException("Unknown Type encoding proto " + tp);
   }
 
   /**

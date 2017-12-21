@@ -18,6 +18,7 @@ package com.pingcap.tikv.types;
 import static com.pingcap.tikv.codec.Codec.isNullFlag;
 
 import com.google.common.collect.ImmutableList;
+import com.pingcap.tidb.tipb.ExprType;
 import com.pingcap.tikv.codec.Codec;
 import com.pingcap.tikv.codec.CodecDataInput;
 import com.pingcap.tikv.codec.CodecDataOutput;
@@ -52,7 +53,8 @@ public abstract class DataType implements Serializable {
 
   public enum EncodeType {
     KEY,
-    VALUE
+    VALUE,
+    PROTO
   }
 
   public static final int UNSPECIFIED_LEN = -1;
@@ -63,6 +65,7 @@ public abstract class DataType implements Serializable {
   // such as not null, timestamp
   protected int flag;
   protected int decimal;
+  private String charset;
   protected int collation;
   protected long length;
   private List<String> elems;
@@ -72,6 +75,7 @@ public abstract class DataType implements Serializable {
     this.flag = holder.getFlag();
     this.length = holder.getFlen();
     this.decimal = holder.getDecimal();
+    this.charset = holder.getCharset();
     this.collation = Collation.translate(holder.getCollate());
     this.elems = holder.getElems() == null ? ImmutableList.of() : holder.getElems();
   }
@@ -148,6 +152,8 @@ public abstract class DataType implements Serializable {
    */
   protected abstract void encodeNotNull(CodecDataOutput cdo, EncodeType encodeType, Object value);
 
+  public abstract ExprType getProtoExprType();
+
   /**
    * get origin default value
    * @param value a int value represents in string
@@ -172,10 +178,6 @@ public abstract class DataType implements Serializable {
     return decimal;
   }
 
-  public void setFlag(int flag) {
-    this.flag = flag;
-  }
-
   public int getFlag() {
     return flag;
   }
@@ -190,6 +192,10 @@ public abstract class DataType implements Serializable {
 
   public MySQLType getType() {
     return tp;
+  }
+
+  public String getCharset() {
+    return charset;
   }
 
   public static boolean hasNotNullFlag(int flag) {

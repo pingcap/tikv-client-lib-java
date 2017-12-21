@@ -17,6 +17,7 @@
 
 package com.pingcap.tikv.types;
 
+import com.pingcap.tidb.tipb.ExprType;
 import com.pingcap.tikv.codec.Codec;
 import com.pingcap.tikv.codec.Codec.DateTimeCodec;
 import com.pingcap.tikv.codec.CodecDataInput;
@@ -78,7 +79,13 @@ public class TimestampType extends DataType {
     } else {
       throw new UnsupportedOperationException("Can not cast Object to LocalDateTime ");
     }
-    DateTimeCodec.writeDateTimeFully(cdo, localDateTime);
+    boolean writeFlag = (encodeType != EncodeType.PROTO);
+    DateTimeCodec.writeDateTimeFully(cdo, localDateTime, writeFlag);
+  }
+
+  @Override
+  public ExprType getProtoExprType() {
+    return ExprType.MysqlTime;
   }
 
   /**

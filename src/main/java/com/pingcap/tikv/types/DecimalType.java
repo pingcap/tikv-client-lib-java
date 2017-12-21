@@ -17,6 +17,7 @@
 
 package com.pingcap.tikv.types;
 
+import com.pingcap.tidb.tipb.ExprType;
 import com.pingcap.tikv.codec.Codec;
 import com.pingcap.tikv.codec.Codec.DecimalCodec;
 import com.pingcap.tikv.codec.CodecDataInput;
@@ -60,7 +61,13 @@ public class DecimalType extends DataType {
     } else {
       throw new UnsupportedOperationException("can not cast non Number type to Double");
     }
-    DecimalCodec.writeDecimalFully(cdo, val);
+    boolean writeFlag = (encodeType != EncodeType.PROTO);
+    DecimalCodec.writeDecimalFully(cdo, val, writeFlag);
+  }
+
+  @Override
+  public ExprType getProtoExprType() {
+    return ExprType.MysqlDecimal;
   }
 
   /**

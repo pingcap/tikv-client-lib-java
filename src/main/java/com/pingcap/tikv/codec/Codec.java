@@ -59,12 +59,16 @@ public class Codec {
      * @param comparable If the output should be memory comparable without decoding. In real TiDB use
      *     case, if used in Key encoding, we output memory comparable format otherwise not
      */
-    public static void writeLongFull(CodecDataOutput cdo, long lVal, boolean comparable) {
+    public static void writeLongFull(CodecDataOutput cdo, long lVal, boolean comparable, boolean writeFlag) {
       if (comparable) {
-        cdo.writeByte(INT_FLAG);
+        if (writeFlag) {
+          cdo.writeByte(INT_FLAG);
+        }
         writeLong(cdo, lVal);
       } else {
-        cdo.writeByte(VARINT_FLAG);
+        if (writeFlag) {
+          cdo.writeByte(VARINT_FLAG);
+        }
         writeVarLong(cdo, lVal);
       }
     }
@@ -77,12 +81,16 @@ public class Codec {
      * @param comparable If the output should be memory comparable without decoding. In real TiDB use
      *     case, if used in Key encoding, we output memory comparable format otherwise not
      */
-    public static void writeULongFull(CodecDataOutput cdo, long lVal, boolean comparable) {
+    public static void writeULongFull(CodecDataOutput cdo, long lVal, boolean comparable, boolean writeFlag) {
       if (comparable) {
-        cdo.writeByte(UINT_FLAG);
+        if (writeFlag) {
+          cdo.writeByte(UINT_FLAG);
+        }
         writeULong(cdo, lVal);
       } else {
-        cdo.writeByte(UVARINT_FLAG);
+        if (writeFlag) {
+          cdo.writeByte(UVARINT_FLAG);
+        }
         writeUVarLong(cdo, lVal);
       }
     }
@@ -206,8 +214,14 @@ public class Codec {
     private static final int MARKER = 0xFF;
     private static final byte PAD = (byte) 0x0;
 
-    public static void writeBytesFully(CodecDataOutput cdo, byte[] data) {
-      cdo.write(Codec.BYTES_FLAG);
+    public static void writeBytesRaw(CodecDataOutput cdo, byte[] data) {
+      cdo.write(data);
+    }
+
+    public static void writeBytesFully(CodecDataOutput cdo, byte[] data, boolean writeFlag) {
+      if (writeFlag) {
+        cdo.write(Codec.BYTES_FLAG);
+      }
       BytesCodec.writeBytes(cdo, data);
     }
 
@@ -237,8 +251,10 @@ public class Codec {
       }
     }
 
-    public static void writeCompactBytesFully(CodecDataOutput cdo, byte[] data) {
-      cdo.write(Codec.COMPACT_BYTES_FLAG);
+    public static void writeCompactBytesFully(CodecDataOutput cdo, byte[] data, boolean writeFlag) {
+      if (writeFlag) {
+        cdo.write(Codec.COMPACT_BYTES_FLAG);
+      }
       writeCompactBytes(cdo, data);
     }
 
@@ -251,7 +267,7 @@ public class Codec {
     public static void writeCompactBytes(CodecDataOutput cdo, byte[] data) {
       int length = data.length;
       IntegerCodec.writeVarLong(cdo, length);
-      cdo.writeBytes(Arrays.toString(data));
+      cdo.write(data);
     }
 
     // readBytes decodes bytes which is encoded by EncodeBytes before,
@@ -347,8 +363,10 @@ public class Codec {
       return u;
     }
 
-    public static void writeDoubleFully(CodecDataOutput cdo, double val) {
-      cdo.writeByte(FLOATING_FLAG);
+    public static void writeDoubleFully(CodecDataOutput cdo, double val, boolean writeFlag) {
+      if (writeFlag) {
+        cdo.writeByte(FLOATING_FLAG);
+      }
       writeDouble(cdo, val);
     }
 
@@ -410,8 +428,10 @@ public class Codec {
       }
     }
 
-    public static void writeDecimalFully(CodecDataOutput cdo, BigDecimal val) {
-      cdo.writeByte(DECIMAL_FLAG);
+    public static void writeDecimalFully(CodecDataOutput cdo, BigDecimal val, boolean writeFlag) {
+      if (writeFlag) {
+        cdo.writeByte(DECIMAL_FLAG);
+      }
       writeDecimal(cdo, val);
     }
 
@@ -499,14 +519,14 @@ public class Codec {
       return LocalDateTime.of(year, month, day, hour, minute, second, microsec * 1000);
     }
 
-    public static void writeDateTimeFully(CodecDataOutput cdo, LocalDateTime dateTime) {
+    public static void writeDateTimeFully(CodecDataOutput cdo, LocalDateTime dateTime, boolean writeFlag) {
       long val = DateTimeCodec.toPackedLong(dateTime);
-      IntegerCodec.writeULongFull(cdo, val, true);
+      IntegerCodec.writeULongFull(cdo, val, true, writeFlag);
     }
 
-    public static void writeDateFully(CodecDataOutput cdo, java.sql.Date date) {
+    public static void writeDateFully(CodecDataOutput cdo, java.sql.Date date, boolean writeFlag) {
       long val = DateTimeCodec.toPackedLong(date);
-      IntegerCodec.writeULongFull(cdo, val, true);
+      IntegerCodec.writeULongFull(cdo, val, true, writeFlag);
     }
 
     public static LocalDateTime readFromUVarInt(CodecDataInput cdi) {
