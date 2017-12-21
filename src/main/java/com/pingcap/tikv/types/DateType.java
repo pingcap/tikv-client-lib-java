@@ -17,17 +17,17 @@
 
 package com.pingcap.tikv.types;
 
-import static com.pingcap.tikv.codec.Codec.DateTimeCodec.fromPackedLong;
-import static com.pingcap.tikv.codec.Codec.DateTimeCodec.toPackedLong;
-
+import com.pingcap.tikv.codec.Codec;
+import com.pingcap.tikv.codec.Codec.DateTimeCodec;
 import com.pingcap.tikv.codec.CodecDataInput;
 import com.pingcap.tikv.codec.CodecDataOutput;
+import com.pingcap.tikv.codec.InvalidCodecFormatException;
 import com.pingcap.tikv.exception.TiClientInternalException;
 import com.pingcap.tikv.meta.TiColumnInfo;
+import java.sql.Date;
 import java.text.SimpleDateFormat;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.sql.Date;
 import java.time.format.DateTimeFormatter;
 
 public class DateType extends DataType {
@@ -35,7 +35,6 @@ public class DateType extends DataType {
   public static final MySQLType[] subTypes = new MySQLType[] { MySQLType.TypeDate };
 
   private static final SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd");
-  private static final IntegerType codecObject = IntegerType.BIGINT;
 
   private DateType(MySQLType tp) {
     super(tp);
@@ -43,8 +42,14 @@ public class DateType extends DataType {
 
   @Override
   protected Object decodeNotNull(int flag, CodecDataInput cdi) {
-    long val = IntegerType.decodeNotNullPrimitive(flag, cdi);
-    LocalDateTime localDateTime = fromPackedLong(val);
+    LocalDateTime localDateTime;
+    if (flag == Codec.UVARINT_FLAG) {
+      localDateTime = DateTimeCodec.readFromUVarInt(cdi);
+    } else if (flag == Codec.UINT_FLAG) {
+      localDateTime = DateTimeCodec.readFromUInt(cdi);
+    } else {
+      throw new InvalidCodecFormatException("Invalid Flag type for " + getClass().getSimpleName() + ": " + flag);
+    }
     if (localDateTime == null) {
       return null;
     }
@@ -67,8 +72,7 @@ public class DateType extends DataType {
     } catch (Exception e) {
       throw new TiClientInternalException("Can not cast Object to LocalDateTime: " + value, e);
     }
-    long val = toPackedLong(in);
-    codecObject.encodeNotNull(cdo, encodeType, val);
+    DateTimeCodec.writeDateFully(cdo, in);
   }
 
   /**

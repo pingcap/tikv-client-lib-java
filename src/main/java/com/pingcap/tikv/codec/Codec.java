@@ -44,8 +44,6 @@ public class Codec {
   }
 
 
-
-
   public static class IntegerCodec {
     private static final long SIGN_MASK = ~Long.MAX_VALUE;
 
@@ -139,45 +137,6 @@ public class Codec {
     }
 
     /**
-     * Decode data as signed long from CodecDataInput assuming type flag at the beginning
-     *
-     * @param cdi source of data
-     * @return value decoded
-     * @exception InvalidCodecFormatException wrong format of binary encoding encountered
-     */
-    public static long readLongFully(CodecDataInput cdi) {
-      int flag = cdi.readByte();
-
-      switch (flag) {
-        case INT_FLAG:
-          return readLong(cdi);
-        case VARINT_FLAG:
-          return readVarLong(cdi);
-        default:
-          throw new InvalidCodecFormatException("Invalid Flag type for signed long type: " + flag);
-      }
-    }
-
-    /**
-     * Decode data as unsigned long from CodecDataInput assuming type flag at the beginning
-     *
-     * @param cdi source of data
-     * @return value decoded
-     * @exception InvalidCodecFormatException wrong format of binary encoding encountered
-     */
-    public static long readULongFully(CodecDataInput cdi) {
-      byte flag = cdi.readByte();
-      switch (flag) {
-        case UINT_FLAG:
-          return readULong(cdi);
-        case UVARINT_FLAG:
-          return readUVarLong(cdi);
-        default:
-          throw new InvalidCodecFormatException("Invalid Flag type for unsigned long type: " + flag);
-      }
-    }
-
-    /**
      * Decode as signed long, assuming encoder flips signed bit for memory comparable
      *
      * @param cdi source of data
@@ -247,6 +206,11 @@ public class Codec {
     private static final int MARKER = 0xFF;
     private static final byte PAD = (byte) 0x0;
 
+    public static void writeBytesFully(CodecDataOutput cdo, byte[] data) {
+      cdo.write(Codec.BYTES_FLAG);
+      BytesCodec.writeBytes(cdo, data);
+    }
+
     // writeBytes guarantees the encoded value is in ascending order for comparison,
     // encoding with the following rule:
     //  [group1][marker1]...[groupN][markerN]
@@ -271,6 +235,11 @@ public class Codec {
         }
         cdo.write((byte) (MARKER - padCount));
       }
+    }
+
+    public static void writeCompactBytesFully(CodecDataOutput cdo, byte[] data) {
+      cdo.write(Codec.COMPACT_BYTES_FLAG);
+      writeCompactBytes(cdo, data);
     }
 
     /**
@@ -368,7 +337,7 @@ public class Codec {
       return Double.longBitsToDouble(u);
     }
 
-    public static long encodeDoubleToCmpLong(double val) {
+    private static long encodeDoubleToCmpLong(double val) {
       long u = Double.doubleToRawLongBits(val);
       if (val >= 0) {
         u |= signMask;
@@ -376,6 +345,11 @@ public class Codec {
         u = ~u;
       }
       return u;
+    }
+
+    public static void writeDoubleFully(CodecDataOutput cdo, double val) {
+      cdo.writeByte(FLOATING_FLAG);
+      writeDouble(cdo, val);
     }
 
     /**
@@ -387,16 +361,6 @@ public class Codec {
     public static void writeDouble(CodecDataOutput cdo, double val) {
       IntegerCodec.writeULong(cdo, encodeDoubleToCmpLong(val));
     }
-
-    /**
-     * Encoding a float value to byte buffer
-     *
-     * @param cdo For outputting data in bytes array
-     * @param val The data to encode
-     */
-    public static void writeFloat(CodecDataOutput cdo, float val) {
-      writeDouble(cdo, val);
-    }
   }
 
   public static class DecimalCodec {
@@ -406,7 +370,7 @@ public class Codec {
      *
      * @param cdi cdi is source data.
      */
-    public static BigDecimal readDecimalFully(CodecDataInput cdi) {
+    public static BigDecimal readDecimal(CodecDataInput cdi) {
       if (cdi.available() < 3) {
         throw new IllegalArgumentException("insufficient bytes to read value");
       }
@@ -437,7 +401,7 @@ public class Codec {
      * @param cdo cdo is destination data.
      * @param dec is decimal value that will be written into cdo.
      */
-    static void writeDecimalFully(CodecDataOutput cdo, MyDecimal dec) {
+    static void writeDecimal(CodecDataOutput cdo, MyDecimal dec) {
       int[] data = dec.toBin(dec.precision(), dec.frac());
       cdo.writeByte(dec.precision());
       cdo.writeByte(dec.frac());
@@ -446,14 +410,9 @@ public class Codec {
       }
     }
 
-    /**
-     * Decode as float
-     *
-     * @param cdi source of data
-     * @return decoded unsigned long value
-     */
-    public static double readDouble(CodecDataInput cdi) {
-      return readDecimalFully(cdi).doubleValue();
+    public static void writeDecimalFully(CodecDataOutput cdo, BigDecimal val) {
+      cdo.writeByte(DECIMAL_FLAG);
+      writeDecimal(cdo, val);
     }
 
     /**
@@ -465,19 +424,7 @@ public class Codec {
     public static void writeDecimal(CodecDataOutput cdo, BigDecimal val) {
       MyDecimal dec = new MyDecimal();
       dec.fromString(val.toPlainString());
-      writeDecimalFully(cdo, dec);
-    }
-
-    /**
-     * Encoding a double value to byte buffer
-     *
-     * @param cdo For outputting data in bytes array
-     * @param val The data to encode
-     */
-    public static void writeDouble(CodecDataOutput cdo, double val) {
-      MyDecimal dec = new MyDecimal();
-      dec.fromDecimal(val);
-      writeDecimalFully(cdo, dec);
+      writeDecimal(cdo, dec);
     }
   }
 
@@ -504,7 +451,8 @@ public class Codec {
      *
      * @return a packed long.
      */
-    private static long toPackedLong(int year, int month, int day, int hour, int minute, int second, int micro) {
+    private static long toPackedLong(int year, int month, int day, int hour, int minute,
+        int second, int micro) {
       long ymd = (year * 13 + month) << 5 | day;
       long hms = hour << 12 | minute << 6 | second;
       return ((ymd << 17 | hms) << 24) | micro;
@@ -549,6 +497,24 @@ public class Codec {
       int hour = hms >> 12;
       int microsec = (int) (packed % (1 << 24));
       return LocalDateTime.of(year, month, day, hour, minute, second, microsec * 1000);
+    }
+
+    public static void writeDateTimeFully(CodecDataOutput cdo, LocalDateTime dateTime) {
+      long val = DateTimeCodec.toPackedLong(dateTime);
+      IntegerCodec.writeULongFull(cdo, val, true);
+    }
+
+    public static void writeDateFully(CodecDataOutput cdo, java.sql.Date date) {
+      long val = DateTimeCodec.toPackedLong(date);
+      IntegerCodec.writeULongFull(cdo, val, true);
+    }
+
+    public static LocalDateTime readFromUVarInt(CodecDataInput cdi) {
+      return DateTimeCodec.fromPackedLong(IntegerCodec.readUVarLong(cdi));
+    }
+
+    public static LocalDateTime readFromUInt(CodecDataInput cdi) {
+      return DateTimeCodec.fromPackedLong(IntegerCodec.readULong(cdi));
     }
   }
 }

@@ -16,6 +16,10 @@
 package com.pingcap.tikv.codec;
 
 
+import static com.pingcap.tikv.codec.Codec.INT_FLAG;
+import static com.pingcap.tikv.codec.Codec.UINT_FLAG;
+import static com.pingcap.tikv.codec.Codec.UVARINT_FLAG;
+import static com.pingcap.tikv.codec.Codec.VARINT_FLAG;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotEquals;
@@ -41,19 +45,19 @@ public class CodecTest {
   public void writeDoubleAndReadDoubleTest() {
     // issue scientific notation in toBin
     CodecDataOutput cdo = new CodecDataOutput();
-    DecimalCodec.writeDouble(cdo, 0.01);
-    double u = DecimalCodec.readDouble(new CodecDataInput(cdo.toBytes()));
+    RealCodec.writeDouble(cdo, 0.01);
+    double u = RealCodec.readDouble(new CodecDataInput(cdo.toBytes()));
     assertEquals(0.01, u, 0.0001);
 
     cdo.reset();
-    DecimalCodec.writeDouble(cdo, 206.0);
-    u = DecimalCodec.readDouble(new CodecDataInput(cdo.toBytes()));
+    RealCodec.writeDouble(cdo, 206.0);
+    u = RealCodec.readDouble(new CodecDataInput(cdo.toBytes()));
     assertEquals(206.0, u, 0.0001);
 
     cdo.reset();
     DecimalCodec.writeDecimal(cdo, BigDecimal.valueOf(206.0));
-    u = DecimalCodec.readDouble(new CodecDataInput(cdo.toBytes()));
-    assertEquals(206.0, u, 0.0001);
+    BigDecimal bigDec = DecimalCodec.readDecimal(new CodecDataInput(cdo.toBytes()));
+    assertEquals(206.0, bigDec.doubleValue(), 0.0001);
   }
 
   @Test
@@ -78,15 +82,17 @@ public class CodecTest {
         },
         cdo.toBytes());
     CodecDataInput cdi = new CodecDataInput(cdo.toBytes());
-    long value = IntegerCodec.readLongFully(cdi);
+    assertEquals(INT_FLAG, cdi.readByte());
+    long value = IntegerCodec.readLong(cdi);
     assertEquals(9999L, value);
-    value = IntegerCodec.readLongFully(cdi);
+    assertEquals(VARINT_FLAG, cdi.readByte());
+    value = IntegerCodec.readVarLong(cdi);
     assertEquals(-2333L, value);
 
     byte[] wrongData = new byte[] {(byte) 0x8, (byte) 0xb9};
     cdi = new CodecDataInput(wrongData);
     try {
-      IntegerCodec.readLongFully(cdi);
+      IntegerCodec.readLong(cdi);
       fail();
     } catch (Exception e) {
       assertTrue(true);
@@ -123,10 +129,13 @@ public class CodecTest {
         },
         cdo.toBytes());
     CodecDataInput cdi = new CodecDataInput(cdo.toBytes());
-    long value = IntegerCodec.readULongFully(cdi);
 
+    assertEquals(UINT_FLAG, cdi.readByte());
+    long value = IntegerCodec.readULong(cdi);
     assertEquals(0xffffffffffffffffL, value);
-    value = IntegerCodec.readULongFully(cdi);
+
+    assertEquals(UVARINT_FLAG, cdi.readByte());
+    value = IntegerCodec.readUVarLong(cdi);
     assertEquals(Long.MIN_VALUE, value);
 
     byte[] wrongData =
@@ -137,7 +146,8 @@ public class CodecTest {
         };
     cdi = new CodecDataInput(wrongData);
     try {
-      IntegerCodec.readULongFully(cdi);
+      cdi.skipBytes(1);
+      IntegerCodec.readUVarLong(cdi);
       fail();
     } catch (Exception e) {
       assertTrue(true);

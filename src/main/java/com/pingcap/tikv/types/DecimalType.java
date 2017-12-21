@@ -23,6 +23,7 @@ import com.pingcap.tikv.codec.CodecDataInput;
 import com.pingcap.tikv.codec.CodecDataOutput;
 import com.pingcap.tikv.codec.InvalidCodecFormatException;
 import com.pingcap.tikv.meta.TiColumnInfo;
+import java.math.BigDecimal;
 
 public class DecimalType extends DataType {
   public static final DecimalType DECIMAL = new DecimalType(MySQLType.TypeNewDecimal);
@@ -46,7 +47,7 @@ public class DecimalType extends DataType {
     if (flag != Codec.DECIMAL_FLAG) {
       throw new InvalidCodecFormatException("Invalid Flag type for decimal type: " + flag);
     }
-    return DecimalCodec.readDecimalFully(cdi);
+    return DecimalCodec.readDecimal(cdi);
   }
 
   /**
@@ -57,13 +58,13 @@ public class DecimalType extends DataType {
    */
   @Override
   protected void encodeNotNull(CodecDataOutput cdo, EncodeType encodeType, Object value) {
-    double val;
-    if (value instanceof Number) {
-      val = ((Number) value).doubleValue();
+    BigDecimal val;
+    if (value instanceof BigDecimal) {
+      val = (BigDecimal) value;
     } else {
       throw new UnsupportedOperationException("can not cast non Number type to Double");
     }
-    DecimalCodec.writeDouble(cdo, val);
+    DecimalCodec.writeDecimalFully(cdo, val);
   }
 
   /**

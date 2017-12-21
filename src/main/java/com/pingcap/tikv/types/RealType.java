@@ -18,7 +18,6 @@
 package com.pingcap.tikv.types;
 
 import com.pingcap.tikv.codec.Codec;
-import com.pingcap.tikv.codec.Codec.IntegerCodec;
 import com.pingcap.tikv.codec.Codec.RealCodec;
 import com.pingcap.tikv.codec.CodecDataInput;
 import com.pingcap.tikv.codec.CodecDataOutput;
@@ -30,7 +29,10 @@ public class RealType extends DataType {
   public static final RealType FLOAT = new RealType(MySQLType.TypeFloat);
   public static final RealType REAL = DOUBLE;
 
-  public static final MySQLType[] subTypes = new MySQLType[] { MySQLType.TypeDouble, MySQLType.TypeFloat };
+  public static final MySQLType[] subTypes = new MySQLType[] {
+      MySQLType.TypeDouble,
+      MySQLType.TypeFloat
+  };
 
   private RealType(MySQLType tp) {
     super(tp);
@@ -64,7 +66,7 @@ public class RealType extends DataType {
       throw new UnsupportedOperationException("Can not cast Un-number to Float");
     }
 
-    IntegerCodec.writeULong(cdo, RealCodec.encodeDoubleToCmpLong(val));
+    RealCodec.writeDoubleFully(cdo, val);
   }
 
   /*

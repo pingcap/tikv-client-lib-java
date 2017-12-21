@@ -29,7 +29,10 @@ public class BytesType extends DataType {
   public static final BytesType BINARY = new BytesType(MySQLType.TypeString);
   public static final BytesType CHAR = new BytesType(MySQLType.TypeString);
 
-  public static final MySQLType[] subTypes = new MySQLType[] { MySQLType.TypeVarchar, MySQLType.TypeString };
+  public static final MySQLType[] subTypes = new MySQLType[] {
+      MySQLType.TypeVarchar,
+      MySQLType.TypeString
+  };
 
   protected BytesType(MySQLType tp) {
     super(tp);
@@ -65,11 +68,9 @@ public class BytesType extends DataType {
       throw new UnsupportedOperationException("can not cast non-String type to String");
     }
     if (encodeType == EncodeType.KEY) {
-      cdo.write(Codec.BYTES_FLAG);
-      BytesCodec.writeBytes(cdo, bytes);
+      BytesCodec.writeBytesFully(cdo, bytes);
     } else {
-      cdo.write(Codec.COMPACT_BYTES_FLAG);
-      BytesCodec.writeCompactBytes(cdo, bytes);
+      BytesCodec.writeCompactBytesFully(cdo, bytes);
     }
   }
 

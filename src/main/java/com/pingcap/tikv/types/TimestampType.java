@@ -19,7 +19,6 @@ package com.pingcap.tikv.types;
 
 import com.pingcap.tikv.codec.Codec;
 import com.pingcap.tikv.codec.Codec.DateTimeCodec;
-import com.pingcap.tikv.codec.Codec.IntegerCodec;
 import com.pingcap.tikv.codec.CodecDataInput;
 import com.pingcap.tikv.codec.CodecDataOutput;
 import com.pingcap.tikv.codec.InvalidCodecFormatException;
@@ -34,16 +33,14 @@ public class TimestampType extends DataType {
   public static final TimestampType TIMESTAMP = new TimestampType(MySQLType.TypeTimestamp);
   public static final TimestampType TIME = new TimestampType(MySQLType.TypeDuration);
 
-  public static final MySQLType[] subTypes = new MySQLType[] { MySQLType.TypeTimestamp, MySQLType.TypeDuration };
+  public static final MySQLType[] subTypes = new MySQLType[] {
+      MySQLType.TypeTimestamp, MySQLType.TypeDuration
+  };
 
   private static final ZoneId UTC_TIMEZONE = ZoneId.of("UTC");
 
   protected ZoneId getDefaultTimezone() {
     return UTC_TIMEZONE;
-  }
-
-  private String getClassName() {
-    return getClass().getSimpleName();
   }
 
   TimestampType(MySQLType tp) {
@@ -56,23 +53,15 @@ public class TimestampType extends DataType {
 
   @Override
   protected Object decodeNotNull(int flag, CodecDataInput cdi) {
+    LocalDateTime localDateTime;
     if (flag == Codec.UVARINT_FLAG) {
-      // read packedUInt
-      LocalDateTime localDateTime = DateTimeCodec.fromPackedLong(IntegerCodec.readUVarLong(cdi));
-      if (localDateTime == null) {
-        return null;
-      }
-      return Timestamp.from(ZonedDateTime.of(localDateTime, getDefaultTimezone()).toInstant());
+      localDateTime = DateTimeCodec.readFromUVarInt(cdi);
     } else if (flag == Codec.UINT_FLAG) {
-      // read UInt
-      LocalDateTime localDateTime = DateTimeCodec.fromPackedLong(IntegerCodec.readULong(cdi));
-      if (localDateTime == null) {
-        return null;
-      }
-      return Timestamp.from(ZonedDateTime.of(localDateTime, getDefaultTimezone()).toInstant());
+      localDateTime = DateTimeCodec.readFromUInt(cdi);
     } else {
-      throw new InvalidCodecFormatException("Invalid Flag type for " + getClassName() + ": " + flag);
+      throw new InvalidCodecFormatException("Invalid Flag type for " + getClass().getSimpleName() + ": " + flag);
     }
+    return Timestamp.from(ZonedDateTime.of(localDateTime, getDefaultTimezone()).toInstant());
   }
 
   /**
@@ -89,8 +78,7 @@ public class TimestampType extends DataType {
     } else {
       throw new UnsupportedOperationException("Can not cast Object to LocalDateTime ");
     }
-    long val = DateTimeCodec.toPackedLong(localDateTime);
-    IntegerCodec.writeULongFull(cdo, val, true);
+    DateTimeCodec.writeDateTimeFully(cdo, localDateTime);
   }
 
   /**

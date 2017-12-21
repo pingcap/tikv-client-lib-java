@@ -75,9 +75,9 @@ public class RawBytesType extends BytesType {
       throw new UnsupportedOperationException("can not cast non bytes type to bytes array");
     }
     if (encodeType == EncodeType.KEY) {
-      BytesCodec.writeBytes(cdo, bytes);
+      BytesCodec.writeBytesFully(cdo, bytes);
     } else {
-      BytesCodec.writeCompactBytes(cdo, bytes);
+      BytesCodec.writeCompactBytesFully(cdo, bytes);
     }
   }
 }

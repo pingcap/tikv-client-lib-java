@@ -74,7 +74,7 @@ public class TiConstant implements TiExpr {
       cdo.write(((String) value).getBytes());
     } else if (value instanceof Float) {
       builder.setTp(ExprType.Float32);
-      RealCodec.writeFloat(cdo, (Float) value);
+      RealCodec.writeDouble(cdo, (Float) value);
     } else if (value instanceof Double) {
       builder.setTp(ExprType.Float64);
       RealCodec.writeDouble(cdo, (Double) value);
