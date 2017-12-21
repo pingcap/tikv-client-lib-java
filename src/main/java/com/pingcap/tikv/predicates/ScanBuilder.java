@@ -93,7 +93,7 @@ public class ScanBuilder {
     return minPlan;
   }
 
-  private ScanPlan buildTableScan(List<TiExpr> conditions, TiTableInfo table) {
+  public ScanPlan buildTableScan(List<TiExpr> conditions, TiTableInfo table) {
     TiIndexInfo pkIndex = TiIndexInfo.generateFakePrimaryKeyIndex(table);
     return buildScan(conditions, pkIndex, table);
   }
@@ -305,7 +305,7 @@ public class ScanBuilder {
     return ranges;
   }
 
-  public boolean isCoveringIndex(List<TiColumnInfo> columns, TiIndexInfo indexColumns, boolean pkIsHandle) {
+  private boolean isCoveringIndex(List<TiColumnInfo> columns, TiIndexInfo indexColumns, boolean pkIsHandle) {
     for (TiColumnInfo colInfo: columns) {
       if (pkIsHandle && colInfo.isPrimaryKey()) {
         continue;
