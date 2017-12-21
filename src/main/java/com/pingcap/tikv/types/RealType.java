@@ -50,7 +50,7 @@ public class RealType extends DataType {
     return RealCodec.readDouble(cdi);
   }
 
-  private RealType(TiColumnInfo.InternalTypeHolder holder) {
+  RealType(TiColumnInfo.InternalTypeHolder holder) {
     super(holder);
   }
 
@@ -74,6 +74,6 @@ public class RealType extends DataType {
    */
   @Override
   public Object getOriginDefaultValueNonNull(String value) {
-    return Float.parseFloat(value);
+    return Double.parseDouble(value);
   }
 }

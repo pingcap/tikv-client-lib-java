@@ -68,6 +68,6 @@ public class DecimalType extends DataType {
    */
   @Override
   public Object getOriginDefaultValueNonNull(String value) {
-    return Double.parseDouble(value);
+    return new BigDecimal(value);
   }
 }
