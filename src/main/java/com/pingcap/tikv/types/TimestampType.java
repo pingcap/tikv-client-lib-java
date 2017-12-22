@@ -25,9 +25,8 @@ import com.pingcap.tikv.codec.CodecDataOutput;
 import com.pingcap.tikv.codec.InvalidCodecFormatException;
 import com.pingcap.tikv.meta.TiColumnInfo;
 import java.sql.Timestamp;
-import java.time.LocalDateTime;
-import java.time.ZoneId;
-import java.time.ZonedDateTime;
+import org.joda.time.DateTimeZone;
+import org.joda.time.LocalDateTime;
 
 public class TimestampType extends DataType {
   public static final TimestampType TIMESTAMP = new TimestampType(MySQLType.TypeTimestamp);
@@ -37,18 +36,19 @@ public class TimestampType extends DataType {
       MySQLType.TypeTimestamp, MySQLType.TypeDuration
   };
 
-  private static final ZoneId UTC_TIMEZONE = ZoneId.of("UTC");
-
-  protected ZoneId getDefaultTimezone() {
-    return UTC_TIMEZONE;
-  }
-
   TimestampType(MySQLType tp) {
     super(tp);
   }
 
   TimestampType(TiColumnInfo.InternalTypeHolder holder) {
     super(holder);
+  }
+
+  /**
+   * {@inheritDoc}
+   */
+  protected DateTimeZone getTimezone() {
+    return DateTimeZone.UTC;
   }
 
   /**
@@ -64,7 +64,7 @@ public class TimestampType extends DataType {
     } else {
       throw new InvalidCodecFormatException("Invalid Flag type for " + getClass().getSimpleName() + ": " + flag);
     }
-    return Timestamp.from(ZonedDateTime.of(localDateTime, getDefaultTimezone()).toInstant());
+    return new Timestamp(localDateTime.toDateTime(getTimezone()).getMillis());
   }
 
   /**

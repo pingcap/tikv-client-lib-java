@@ -22,7 +22,6 @@ import static com.pingcap.tikv.codec.Codec.UVARINT_FLAG;
 import static com.pingcap.tikv.codec.Codec.VARINT_FLAG;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
@@ -33,11 +32,10 @@ import com.pingcap.tikv.codec.Codec.DecimalCodec;
 import com.pingcap.tikv.codec.Codec.IntegerCodec;
 import com.pingcap.tikv.codec.Codec.RealCodec;
 import java.math.BigDecimal;
-import java.text.ParseException;
-import java.text.SimpleDateFormat;
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
-import java.util.Date;
+import org.joda.time.LocalDate;
+import org.joda.time.LocalDateTime;
+import org.joda.time.format.DateTimeFormat;
+import org.joda.time.format.DateTimeFormatter;
 import org.junit.Test;
 
 public class CodecTest {
@@ -240,18 +238,13 @@ public class CodecTest {
   }
 
   @Test
-  public void fromPackedLongAndToPackedLongTest() throws ParseException {
+  public void fromPackedLongAndToPackedLongTest() {
 
-    LocalDateTime time = LocalDateTime.of(1999, 12, 12, 1, 1, 1, 1000);
+    LocalDateTime time = new LocalDateTime(1999, 12, 12, 1, 1, 1, 999);
     LocalDateTime time1 = DateTimeCodec.fromPackedLong(DateTimeCodec.toPackedLong(time));
     assertEquals(time, time1);
 
-    // since precision is microseconds, any nanoseconds is smaller than 1000 will be dropped.
-    time = LocalDateTime.of(1999, 12, 12, 1, 1, 1, 1);
-    time1 = DateTimeCodec.fromPackedLong(DateTimeCodec.toPackedLong(time));
-    assertNotEquals(time, time1);
-
-    DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss:SSSSSSS");
+    DateTimeFormatter formatter = DateTimeFormat.forPattern("yyyy-MM-dd HH:mm:ss:SSSSSSS");
     LocalDateTime time2 = LocalDateTime.parse("2010-10-10 10:11:11:0000000", formatter);
     LocalDateTime time3 = DateTimeCodec.fromPackedLong(DateTimeCodec.toPackedLong(time2));
     assertEquals(time2, time3);
@@ -272,10 +265,10 @@ public class CodecTest {
     LocalDateTime time10 = DateTimeCodec.fromPackedLong(DateTimeCodec.toPackedLong(time9));
     assertEquals(time9, time10);
 
-    SimpleDateFormat formatter1 = new SimpleDateFormat("yyyy-MM-dd");
-    Date date1 = formatter1.parse("2099-10-30");
+    DateTimeFormatter formatter1 = DateTimeFormat.forPattern("yyyy-MM-dd");
+    LocalDate date1 = LocalDate.parse("2099-10-30", formatter1);
     long time11 = DateTimeCodec.toPackedLong(date1);
     LocalDateTime time12 = DateTimeCodec.fromPackedLong(time11);
-    assertEquals(time12.toLocalDate(), new java.sql.Date(date1.getTime()).toLocalDate());
+    assertEquals(time12.toLocalDate(), date1);
   }
 }

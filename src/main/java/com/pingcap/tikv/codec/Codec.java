@@ -20,9 +20,10 @@ import static com.google.common.base.Preconditions.checkArgument;
 
 import gnu.trove.list.array.TIntArrayList;
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
 import java.util.Arrays;
-import java.util.Date;
+import org.joda.time.DateTimeZone;
+import org.joda.time.LocalDate;
+import org.joda.time.LocalDateTime;
 
 public class Codec {
 
@@ -442,12 +443,26 @@ public class Codec {
      */
     static long toPackedLong(LocalDateTime time) {
       return toPackedLong(time.getYear(),
-          time.getMonthValue(),
+          time.getMonthOfYear(),
           time.getDayOfMonth(),
-          time.getHour(),
-          time.getMinute(),
-          time.getSecond(),
-          time.getNano() / 1000);
+          time.getHourOfDay(),
+          time.getMinuteOfHour(),
+          time.getSecondOfMinute(),
+          time.getMillisOfSecond() * 1000);
+    }
+
+    static long toPackedLong(long utcMillsTs) {
+      LocalDate date = new LocalDate(utcMillsTs, DateTimeZone.UTC);
+      return toPackedLong(date);
+    }
+
+    static long toPackedLong(LocalDate date) {
+      return Codec.DateTimeCodec.toPackedLong(
+          date.getYear(),
+          date.getMonthOfYear(),
+          date.getDayOfMonth(),
+          0, 0, 0, 0
+      );
     }
 
     /**
@@ -460,20 +475,6 @@ public class Codec {
       long ymd = (year * 13 + month) << 5 | day;
       long hms = hour << 12 | minute << 6 | second;
       return ((ymd << 17 | hms) << 24) | micro;
-    }
-
-    /**
-     * Encode a Date to a packed long with all time fields zero.
-     *
-     * @param date Date object that need to be encoded.
-     * @return a packed long.
-     */
-    static long toPackedLong(Date date) {
-      return toPackedLong(
-          date.getYear() + 1900,
-          date.getMonth() + 1,
-          date.getDate(),
-          0, 0, 0, 0);
     }
 
     /**
@@ -500,7 +501,7 @@ public class Codec {
       int minute = (hms >> 6) & ((1 << 6) - 1);
       int hour = hms >> 12;
       int microsec = (int) (packed % (1 << 24));
-      return LocalDateTime.of(year, month, day, hour, minute, second, microsec * 1000);
+      return new LocalDateTime(year, month, day, hour, minute, second, microsec / 1000);
     }
 
     public static void writeDateTimeFully(CodecDataOutput cdo, LocalDateTime dateTime) {
@@ -508,7 +509,7 @@ public class Codec {
       IntegerCodec.writeULongFull(cdo, val, true);
     }
 
-    public static void writeDateFully(CodecDataOutput cdo, java.sql.Date date) {
+    public static void writeDateFully(CodecDataOutput cdo, LocalDate date) {
       long val = DateTimeCodec.toPackedLong(date);
       IntegerCodec.writeULongFull(cdo, val, true);
     }
@@ -518,7 +519,7 @@ public class Codec {
       IntegerCodec.writeULong(cdo, val);
     }
 
-    public static void writeDateProto(CodecDataOutput cdo, java.sql.Date date) {
+    public static void writeDateProto(CodecDataOutput cdo, LocalDate date) {
       long val = DateTimeCodec.toPackedLong(date);
       IntegerCodec.writeULong(cdo, val);
     }

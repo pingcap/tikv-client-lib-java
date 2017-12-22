@@ -23,12 +23,12 @@ import static java.util.Objects.requireNonNull;
 import com.pingcap.tikv.exception.TiClientInternalException;
 import java.math.BigDecimal;
 import java.math.BigInteger;
-import java.sql.Date;
-import java.text.DateFormat;
-import java.text.ParseException;
-import java.text.SimpleDateFormat;
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
+import java.sql.Timestamp;
+import org.joda.time.DateTimeZone;
+import org.joda.time.LocalDate;
+import org.joda.time.LocalDateTime;
+import org.joda.time.format.DateTimeFormat;
+import org.joda.time.format.DateTimeFormatter;
 
 
 public class Converter {
@@ -67,27 +67,31 @@ public class Converter {
     throw new TiClientInternalException(String.format("Cannot cast %s to bytes", val.getClass().getSimpleName()));
   }
 
-  private static final DateTimeFormatter dateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+  private static final DateTimeFormatter dateTimeFormatter = DateTimeFormat.forPattern("yyyy-MM-dd HH:mm:ss");
   public static LocalDateTime convertToDateTime(Object val) {
     requireNonNull(val, "val is null");
     if (val instanceof LocalDateTime) {
       return (LocalDateTime) val;
     } else if (val instanceof String) {
-      return LocalDateTime.parse((String)val, dateTimeFormatter);
+      return dateTimeFormatter.parseLocalDateTime((String)val);
+    } else if (val instanceof Long) {
+      return new LocalDateTime((long)val, DateTimeZone.UTC);
+    } else if (val instanceof Timestamp) {
+      return new LocalDateTime(((Timestamp)val).getTime(), DateTimeZone.UTC);
     } else {
       throw new UnsupportedOperationException("Can not cast Object to LocalDateTime ");
     }
   }
 
-  private static final DateFormat dateFormatter = new SimpleDateFormat("yyyy-MM-dd");
-  public static Date convertToDate(Object val) {
+  private static final DateTimeFormatter dateFormatter = DateTimeFormat.forPattern("yyyy-MM-dd");
+  public static LocalDate convertToDate(Object val) {
     requireNonNull(val, "val is null");
-    if (val instanceof Date) {
-      return (Date) val;
+    if (val instanceof LocalDate) {
+      return (LocalDate) val;
     } else if (val instanceof String) {
       try {
-        return new Date(dateFormatter.parse((String)val).getTime());
-      } catch (ParseException e) {
+        return dateFormatter.parseLocalDate((String)val);
+      } catch (Exception e) {
         throw new TiClientInternalException(String.format("Error parsing string to date", (String)val), e);
       }
     } else {

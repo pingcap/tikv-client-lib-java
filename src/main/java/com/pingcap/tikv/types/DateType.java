@@ -24,15 +24,12 @@ import com.pingcap.tikv.codec.CodecDataInput;
 import com.pingcap.tikv.codec.CodecDataOutput;
 import com.pingcap.tikv.codec.InvalidCodecFormatException;
 import com.pingcap.tikv.meta.TiColumnInfo;
-import java.sql.Date;
-import java.text.SimpleDateFormat;
-import java.time.LocalDateTime;
+import org.joda.time.LocalDate;
+import org.joda.time.LocalDateTime;
 
 public class DateType extends DataType {
   public static final DateType DATE = new DateType(MySQLType.TypeDate);
   public static final MySQLType[] subTypes = new MySQLType[] { MySQLType.TypeDate };
-
-  private static final SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd");
 
   private DateType(MySQLType tp) {
     super(tp);
@@ -46,7 +43,7 @@ public class DateType extends DataType {
    * {@inheritDoc}
    */
   @Override
-  protected Object decodeNotNull(int flag, CodecDataInput cdi) {
+  protected LocalDate decodeNotNull(int flag, CodecDataInput cdi) {
     LocalDateTime localDateTime;
     if (flag == Codec.UVARINT_FLAG) {
       localDateTime = DateTimeCodec.readFromUVarInt(cdi);
@@ -58,10 +55,7 @@ public class DateType extends DataType {
     if (localDateTime == null) {
       return null;
     }
-    //TODO revisit this later.
-    return new Date(localDateTime.getYear() - 1900,
-        localDateTime.getMonthValue() - 1,
-        localDateTime.getDayOfMonth());
+    return localDateTime.toLocalDate();
   }
 
   /**
@@ -69,7 +63,7 @@ public class DateType extends DataType {
    */
   @Override
   protected void encodeKey(CodecDataOutput cdo, Object value) {
-    Date date = Converter.convertToDate(value);
+    LocalDate date = Converter.convertToDate(value);
     DateTimeCodec.writeDateFully(cdo, date);
   }
 
@@ -78,7 +72,7 @@ public class DateType extends DataType {
    */
   @Override
   protected void encodeValue(CodecDataOutput cdo, Object value) {
-    Date date = Converter.convertToDate(value);
+    LocalDate date = Converter.convertToDate(value);
     DateTimeCodec.writeDateFully(cdo, date);
   }
 
@@ -87,7 +81,7 @@ public class DateType extends DataType {
    */
   @Override
   protected void encodeProto(CodecDataOutput cdo, Object value) {
-    Date date = Converter.convertToDate(value);
+    LocalDate date = Converter.convertToDate(value);
     DateTimeCodec.writeDateProto(cdo, date);
   }
 

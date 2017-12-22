@@ -18,20 +18,19 @@
 package com.pingcap.tikv.types;
 
 import com.pingcap.tikv.meta.TiColumnInfo;
-
-import java.time.ZoneId;
+import org.joda.time.DateTimeZone;
 
 public class DateTimeType extends TimestampType {
   public static final DateTimeType DATETIME = new DateTimeType(MySQLType.TypeDatetime);
   public static final MySQLType[] subTypes = new MySQLType[] { MySQLType.TypeDatetime };
 
-  private static final ZoneId DEFAULT_TIMEZONE = ZoneId.systemDefault();
+  private static final DateTimeZone DEFAULT_TIMEZONE = DateTimeZone.getDefault();
 
   /**
    * {@inheritDoc}
    */
   @Override
-  protected ZoneId getDefaultTimezone() {
+  protected DateTimeZone getTimezone() {
     return DEFAULT_TIMEZONE;
   }
 

@@ -1,22 +1,9 @@
 package com.pingcap.tikv.meta;
 
-import static com.google.common.base.Preconditions.checkArgument;
-import static com.pingcap.tikv.predicates.PredicateUtils.mergeCNFExpressions;
-import static java.util.Objects.requireNonNull;
-
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Joiner;
 import com.google.common.collect.ImmutableMap;
-import com.pingcap.tidb.tipb.Aggregation;
-import com.pingcap.tidb.tipb.ColumnInfo;
-import com.pingcap.tidb.tipb.DAGRequest;
-import com.pingcap.tidb.tipb.ExecType;
-import com.pingcap.tidb.tipb.Executor;
-import com.pingcap.tidb.tipb.IndexScan;
-import com.pingcap.tidb.tipb.Limit;
-import com.pingcap.tidb.tipb.Selection;
-import com.pingcap.tidb.tipb.TableScan;
-import com.pingcap.tidb.tipb.TopN;
+import com.pingcap.tidb.tipb.*;
 import com.pingcap.tikv.exception.DAGRequestException;
 import com.pingcap.tikv.exception.TiClientInternalException;
 import com.pingcap.tikv.expression.TiByItem;
@@ -26,11 +13,16 @@ import com.pingcap.tikv.kvproto.Coprocessor;
 import com.pingcap.tikv.types.DataType;
 import com.pingcap.tikv.util.KeyRangeUtils;
 import com.pingcap.tikv.util.Pair;
+
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+
+import static com.google.common.base.Preconditions.checkArgument;
+import static com.pingcap.tikv.predicates.PredicateUtils.mergeCNFExpressions;
+import static java.util.Objects.requireNonNull;
 
 /**
  * Type TiDAGRequest.
@@ -40,6 +32,11 @@ import java.util.stream.Collectors;
 public class TiDAGRequest implements Serializable {
   public TiDAGRequest(PushDownType pushDownType) {
     this.pushDownType = pushDownType;
+  }
+
+  public TiDAGRequest(PushDownType pushDownType, int timeZoneOffset) {
+    this(pushDownType);
+    this.timeZoneOffset = timeZoneOffset;
   }
 
   public enum TruncateMode {

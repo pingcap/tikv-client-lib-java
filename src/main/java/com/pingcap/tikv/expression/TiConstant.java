@@ -23,18 +23,52 @@ import com.pingcap.tikv.meta.TiTableInfo;
 import com.pingcap.tikv.types.DataType;
 import com.pingcap.tikv.types.DataType.EncodeType;
 import com.pingcap.tikv.types.DateTimeType;
+import com.pingcap.tikv.types.DateType;
 import com.pingcap.tikv.types.DecimalType;
 import com.pingcap.tikv.types.IntegerType;
 import com.pingcap.tikv.types.RealType;
 import com.pingcap.tikv.types.StringType;
+import com.pingcap.tikv.types.TimestampType;
+import java.io.Serializable;
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
+import java.sql.Timestamp;
 import java.util.Objects;
+import org.joda.time.LocalDate;
+import org.joda.time.LocalDateTime;
+
 
 // Refactor needed.
 // Refer to https://github.com/pingcap/tipb/blob/master/go-tipb/expression.pb.go
 // TODO: This might need a refactor to accept an DataType?
 public class TiConstant implements TiExpr {
+  public static class DateWrapper implements Serializable {
+    private Long value;
+
+    public DateWrapper(Long value) {
+      this.value = value;
+    }
+
+    @Override
+    public String toString() {
+      return value == null ? "" : value.toString();
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+      if (obj == this) {
+        return true;
+      } else if (obj instanceof DateWrapper) {
+        return ((DateWrapper) obj).value.equals(value);
+      }
+      return false;
+    }
+
+    @Override
+    public int hashCode() {
+      return (int) (7 * (31 * value));
+    }
+  }
+
   private Object value;
   private DataType type;
 
@@ -47,7 +81,7 @@ public class TiConstant implements TiExpr {
     this.type = getDefaultType();
   }
 
-  public boolean isIntegerType() {
+  protected boolean isIntegerType() {
     return value instanceof Long
         || value instanceof Integer
         || value instanceof Short
@@ -69,8 +103,12 @@ public class TiConstant implements TiExpr {
       return DecimalType.DECIMAL;
     } else if (value instanceof LocalDateTime) {
       return DateTimeType.DATETIME;
+    } else if (value instanceof LocalDate) {
+      return DateType.DATE;
+    } else if (value instanceof Timestamp) {
+      return TimestampType.TIMESTAMP;
     } else {
-      throw new TiExpressionException("Constant type not supported.");
+      throw new TiExpressionException("Constant type not supported:" + value.getClass().getSimpleName());
     }
   }
 
@@ -89,17 +127,16 @@ public class TiConstant implements TiExpr {
   @Override
   public Expr toProto() {
     Expr.Builder builder = Expr.newBuilder();
-    CodecDataOutput cdo = new CodecDataOutput();
-    // We don't allow build a unsigned long constant for now
     if (value == null) {
       builder.setTp(ExprType.Null);
       return builder.build();
     } else {
       builder.setTp(type.getProtoExprType());
+      CodecDataOutput cdo = new CodecDataOutput();
       type.encode(cdo, EncodeType.PROTO, value);
       builder.setVal(cdo.toByteString());
-      return builder.build();
     }
+    return builder.build();
   }
 
   @Override
