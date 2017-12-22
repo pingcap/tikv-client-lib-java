@@ -34,6 +34,11 @@ maven_jar(
 )
 
 maven_jar(
+    name = "joda_time",
+    artifact = "joda-time:joda-time:2.9.9",
+)
+
+maven_jar(
     name = "junit_junit",
     artifact = "junit:junit:4.12",
 )

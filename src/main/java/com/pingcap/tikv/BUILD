@@ -15,6 +15,7 @@ java_library(
         "@com_google_errorprone_error_prone_annotations//jar",
         "@com_google_guava_guava//jar",
         "@com_google_protobuf_protobuf_java//jar",
+        "@joda_time//jar",
         # the following are defined in rules_protobuf
         "@org_pubref_rules_protobuf//java:grpc_compiletime_deps",
         "@org_pubref_rules_protobuf//java:netty_runtime_deps",

@@ -22,6 +22,7 @@
         <powermock.version>1.6.6</powermock.version>
         <jackson.version>2.6.6</jackson.version>
         <trove4j.version>3.0.1</trove4j.version>
+        <joda-time.version>2.9.9</joda-time.version>
         <proto.folder>${basedir}/proto</proto.folder>
     </properties>
 
@@ -82,6 +83,11 @@
             <groupId>com.fasterxml.jackson.core</groupId>
             <artifactId>jackson-databind</artifactId>
             <version>${jackson.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>joda-time</groupId>
+            <artifactId>joda-time</artifactId>
+            <version>${joda-time.version}</version>
         </dependency>
         <!-- for test -->
         <dependency>

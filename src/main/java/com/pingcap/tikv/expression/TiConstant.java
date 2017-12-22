@@ -21,15 +21,48 @@ import com.pingcap.tikv.codec.CodecDataOutput;
 import com.pingcap.tikv.exception.TiExpressionException;
 import com.pingcap.tikv.meta.TiTableInfo;
 import com.pingcap.tikv.types.*;
+import org.joda.time.DateTimeZone;
+import org.joda.time.LocalDate;
 
+import java.io.Serializable;
 import java.math.BigDecimal;
+import java.sql.Timestamp;
 import java.util.Objects;
 
 import static com.pingcap.tikv.types.Types.*;
+
 // Refactor needed.
 // Refer to https://github.com/pingcap/tipb/blob/master/go-tipb/expression.pb.go
 // TODO: This might need a refactor to accept an DataType?
 public class TiConstant implements TiExpr {
+  public static class DateWrapper implements Serializable {
+    private Long value;
+
+    public DateWrapper(Long value) {
+      this.value = value;
+    }
+
+    @Override
+    public String toString() {
+      return value == null ? "" : value.toString();
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+      if (obj == this) {
+        return true;
+      } else if (obj instanceof DateWrapper) {
+        return ((DateWrapper) obj).value.equals(value);
+      }
+      return false;
+    }
+
+    @Override
+    public int hashCode() {
+      return (int) (7 * (31 * value));
+    }
+  }
+
   private Object value;
 
   public static TiConstant create(Object value) {
@@ -40,7 +73,7 @@ public class TiConstant implements TiExpr {
     this.value = value;
   }
 
-  public boolean isIntegerType() {
+  protected boolean isIntegerType() {
     return value instanceof Long
         || value instanceof Integer
         || value instanceof Short
@@ -79,6 +112,12 @@ public class TiConstant implements TiExpr {
     } else if (value instanceof BigDecimal) {
       builder.setTp(ExprType.MysqlDecimal);
       DecimalType.writeDecimal(cdo, (BigDecimal) value);
+    } else if (value instanceof DateWrapper) {
+      builder.setTp(ExprType.MysqlTime);
+      IntegerType.writeULong(cdo, calcTimestampFromTime(((DateWrapper) value).value));
+    } else if (value instanceof Timestamp) {
+      builder.setTp(ExprType.MysqlTime);
+      IntegerType.writeULong(cdo, TimestampType.toPackedLong(((Timestamp) value).toLocalDateTime()));
     } else {
       throw new TiExpressionException("Constant type not supported.");
     }
@@ -102,6 +141,17 @@ public class TiConstant implements TiExpr {
     } else {
       throw new TiExpressionException("Constant type not supported.");
     }
+  }
+
+  private static long calcTimestampFromTime(Long time) {
+    LocalDate jodaDate = new LocalDate(time, DateTimeZone.UTC);
+    return TimestampType.toPackedLong(
+        jodaDate.getYear(),
+        jodaDate.getMonthOfYear(),
+        jodaDate.getDayOfMonth(),
+        0, 0, 0, 0
+        // java.sql.Date does not provide these precision conceptually, need to set them 0
+    );
   }
 
   @Override
