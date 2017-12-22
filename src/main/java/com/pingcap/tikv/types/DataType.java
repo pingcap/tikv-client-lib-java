@@ -26,7 +26,6 @@ import com.pingcap.tikv.codec.CodecDataOutput;
 import com.pingcap.tikv.exception.TiClientInternalException;
 import com.pingcap.tikv.meta.Collation;
 import com.pingcap.tikv.meta.TiColumnInfo;
-import com.pingcap.tikv.row.Row;
 import java.io.Serializable;
 import java.util.List;
 
@@ -89,10 +88,6 @@ public abstract class DataType implements Serializable {
     this.collation = Collation.DEF_COLLATION_CODE;
   }
 
-  protected void decodeValueNoNullToRow(Row row, int pos, Object value) {
-    row.set(pos, this, value);
-  }
-
   protected abstract Object decodeNotNull(int flag, CodecDataInput cdi);
 
   /**
@@ -108,13 +103,8 @@ public abstract class DataType implements Serializable {
     return decodeNotNull(flag, cdi);
   }
 
-  public void decodeValueToRow(CodecDataInput cdi, Row row, int pos) {
-    int flag = cdi.readUnsignedByte();
-    if (isNullFlag(flag)) {
-      row.setNull(pos);
-    } else {
-      decodeValueNoNullToRow(row, pos, decodeNotNull(flag, cdi));
-    }
+  public boolean isNextNull(CodecDataInput cdi) {
+    return isNullFlag(cdi.peekByte());
   }
 
   public static void encodeMaxValue(CodecDataOutput cdo) {
