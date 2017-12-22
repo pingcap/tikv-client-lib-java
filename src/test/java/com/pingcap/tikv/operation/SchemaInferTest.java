@@ -29,9 +29,9 @@ import com.pingcap.tikv.expression.aggregate.Sum;
 import com.pingcap.tikv.expression.scalar.Plus;
 import com.pingcap.tikv.meta.TiDAGRequest;
 import com.pingcap.tikv.meta.TiTableInfo;
-import com.pingcap.tikv.types.StringType;
 import com.pingcap.tikv.types.DataType;
 import com.pingcap.tikv.types.DecimalType;
+import com.pingcap.tikv.types.StringType;
 import java.util.List;
 import org.junit.Test;
 
@@ -54,7 +54,7 @@ public class SchemaInferTest {
     tiDAGRequest.getFields().add(name);
     List<DataType> dataTypes = SchemaInfer.create(tiDAGRequest).getTypes();
     assertEquals(1, dataTypes.size());
-    assertEquals(StringType.VARCHAR, dataTypes.get(0));
+    assertEquals(StringType.VARCHAR.getClass(), dataTypes.get(0).getClass());
   }
 
   @Test
@@ -64,7 +64,7 @@ public class SchemaInferTest {
     tiDAGRequest.addAggregate(sum);
     List<DataType> dataTypes = SchemaInfer.create(tiDAGRequest).getTypes();
     assertEquals(1, dataTypes.size());
-    assertEquals(DecimalType.DECIMAL, dataTypes.get(0));
+    assertEquals(DecimalType.DECIMAL.getClass(), dataTypes.get(0).getClass());
   }
 
   @Test
@@ -76,8 +76,8 @@ public class SchemaInferTest {
     dagRequest.getGroupByItems().add(simpleGroupBy);
     List<DataType> dataTypes = SchemaInfer.create(dagRequest).getTypes();
     assertEquals(2, dataTypes.size());
-    assertEquals(DecimalType.DECIMAL, dataTypes.get(0));
-    assertEquals(StringType.VARCHAR, dataTypes.get(1));
+    assertEquals(DecimalType.DECIMAL.getClass(), dataTypes.get(0).getClass());
+    assertEquals(StringType.VARCHAR.getClass(), dataTypes.get(1).getClass());
   }
 
   @Test
@@ -89,7 +89,7 @@ public class SchemaInferTest {
     dagRequest.getGroupByItems().add(complexGroupBy);
     List<DataType> dataTypes = SchemaInfer.create(dagRequest).getTypes();
     assertEquals(2, dataTypes.size());
-    assertEquals(DecimalType.DECIMAL, dataTypes.get(0));
-    assertEquals(StringType.VARCHAR, dataTypes.get(1));
+    assertEquals(DecimalType.DECIMAL.getClass(), dataTypes.get(0).getClass());
+    assertEquals(StringType.VARCHAR.getClass(), dataTypes.get(1).getClass());
   }
 }

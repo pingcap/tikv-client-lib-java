@@ -32,24 +32,24 @@ import java.util.List;
 public abstract class DataType implements Serializable {
 
   // Flag Information for strict mysql type
-  private static final int NotNullFlag = 1; /* Field can't be NULL */
-  private static final int PriKeyFlag = 2; /* Field is part of a primary key */
-  private static final int UniqueKeyFlag = 4; /* Field is part of a unique key */
-  private static final int MultipleKeyFlag = 8; /* Field is part of a key */
-  private static final int BlobFlag = 16; /* Field is a blob */
-  private static final int UnsignedFlag = 32; /* Field is unsigned */
-  private static final int ZerofillFlag = 64; /* Field is zerofill */
-  private static final int BinaryFlag = 128; /* Field is binary   */
-  private static final int EnumFlag = 256; /* Field is an enum */
-  private static final int AutoIncrementFlag = 512; /* Field is an auto increment field */
-  private static final int TimestampFlag = 1024; /* Field is a timestamp */
-  private static final int SetFlag = 2048; /* Field is a set */
-  private static final int NoDefaultValueFlag = 4096; /* Field doesn't have a default value */
-  private static final int OnUpdateNowFlag = 8192; /* Field is set to NOW on UPDATE */
-  private static final int NumFlag = 32768; /* Field is a num (for clients) */
-  private static final int PartKeyFlag = 16384; /* Intern: Part of some keys */
-  private static final int GroupFlag = 32768; /* Intern: Group field */
-  private static final int BinCmpFlag = 131072; /* Intern: Used by sql_yacc */
+  protected static final int NotNullFlag = 1; /* Field can't be NULL */
+  protected static final int PriKeyFlag = 2; /* Field is part of a primary key */
+  protected static final int UniqueKeyFlag = 4; /* Field is part of a unique key */
+  protected static final int MultipleKeyFlag = 8; /* Field is part of a key */
+  protected static final int BlobFlag = 16; /* Field is a blob */
+  protected static final int UnsignedFlag = 32; /* Field is unsigned */
+  protected static final int ZerofillFlag = 64; /* Field is zerofill */
+  protected static final int BinaryFlag = 128; /* Field is binary   */
+  protected static final int EnumFlag = 256; /* Field is an enum */
+  protected static final int AutoIncrementFlag = 512; /* Field is an auto increment field */
+  protected static final int TimestampFlag = 1024; /* Field is a timestamp */
+  protected static final int SetFlag = 2048; /* Field is a set */
+  protected static final int NoDefaultValueFlag = 4096; /* Field doesn't have a default value */
+  protected static final int OnUpdateNowFlag = 8192; /* Field is set to NOW on UPDATE */
+  protected static final int NumFlag = 32768; /* Field is a num (for clients) */
+  protected static final int PartKeyFlag = 16384; /* Intern: Part of some keys */
+  protected static final int GroupFlag = 32768; /* Intern: Group field */
+  protected static final int BinCmpFlag = 131072; /* Intern: Used by sql_yacc */
 
   public enum EncodeType {
     KEY,
@@ -117,7 +117,7 @@ public abstract class DataType implements Serializable {
     }
   }
 
-  public static void encodeIndexMaxValue(CodecDataOutput cdo) {
+  public static void encodeMaxValue(CodecDataOutput cdo) {
     cdo.writeByte(Codec.MAX_FLAG);
   }
 
@@ -125,7 +125,7 @@ public abstract class DataType implements Serializable {
     cdo.writeByte(Codec.NULL_FLAG);
   }
 
-  public static void encodeIndexMinValue(CodecDataOutput cdo) {
+  public static void encodeIndex(CodecDataOutput cdo) {
     cdo.writeByte(Codec.BYTES_FLAG);
   }
 
@@ -210,10 +210,6 @@ public abstract class DataType implements Serializable {
     return (flag & AutoIncrementFlag) > 0;
   }
 
-  public boolean isUnsigned() {
-    return (flag & UnsignedFlag) > 0;
-  }
-
   public boolean isZeroFill() {
     return (flag & ZerofillFlag) > 0;
   }
@@ -253,6 +249,7 @@ public abstract class DataType implements Serializable {
       return tp == otherType.tp
           && flag == otherType.flag
           && decimal == otherType.decimal
+          && (charset != null && charset.equals(otherType.charset))
           && collation == otherType.collation
           && length == otherType.length
           && elems.equals(otherType.elems);
@@ -266,6 +263,7 @@ public abstract class DataType implements Serializable {
             * (tp.getTypeCode() == 0 ? 1 : tp.getTypeCode())
             * (flag == 0 ? 1 : flag)
             * (decimal == 0 ? 1 : decimal)
+            * (charset == null ? 1 : charset.hashCode())
             * (collation == 0 ? 1 : collation)
             * (length == 0 ? 1 : length)
             * (elems.hashCode()));

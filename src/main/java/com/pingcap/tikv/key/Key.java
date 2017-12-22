@@ -73,7 +73,7 @@ public class Key implements Comparable<Key> {
 
   private static Key createTypelessMin() {
     CodecDataOutput cdo = new CodecDataOutput();
-    DataType.encodeIndexMinValue(cdo);
+    DataType.encodeIndex(cdo);
     return new Key(cdo.toBytes()) {
       @Override
       public String toString() {
@@ -84,7 +84,7 @@ public class Key implements Comparable<Key> {
 
   private static Key createTypelessMax() {
     CodecDataOutput cdo = new CodecDataOutput();
-    DataType.encodeIndexMaxValue(cdo);
+    DataType.encodeMaxValue(cdo);
     return new Key(cdo.toBytes()) {
       @Override
       public String toString() {
