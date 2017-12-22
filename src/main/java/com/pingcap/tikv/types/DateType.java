@@ -23,13 +23,10 @@ import com.pingcap.tikv.codec.Codec.DateTimeCodec;
 import com.pingcap.tikv.codec.CodecDataInput;
 import com.pingcap.tikv.codec.CodecDataOutput;
 import com.pingcap.tikv.codec.InvalidCodecFormatException;
-import com.pingcap.tikv.exception.TiClientInternalException;
 import com.pingcap.tikv.meta.TiColumnInfo;
 import java.sql.Date;
 import java.text.SimpleDateFormat;
-import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
 
 public class DateType extends DataType {
   public static final DateType DATE = new DateType(MySQLType.TypeDate);
@@ -39,6 +36,10 @@ public class DateType extends DataType {
 
   private DateType(MySQLType tp) {
     super(tp);
+  }
+
+  DateType(TiColumnInfo.InternalTypeHolder holder) {
+    super(holder);
   }
 
   /**
@@ -67,20 +68,27 @@ public class DateType extends DataType {
    * {@inheritDoc}
    */
   @Override
-  protected void encodeNotNull(CodecDataOutput cdo, EncodeType encodeType, Object value) {
-    Date date;
-    try {
-      if (value instanceof Date) {
-        date = (Date) value;
-      } else {
-        // format ensure only date part without time
-        date = new Date(format.parse(value.toString()).getTime());
-      }
-    } catch (Exception e) {
-      throw new TiClientInternalException("Can not cast Object to LocalDateTime: " + value, e);
-    }
-    boolean writeFlag = (encodeType != EncodeType.PROTO);
-    DateTimeCodec.writeDateFully(cdo, date, writeFlag);
+  protected void encodeKey(CodecDataOutput cdo, Object value) {
+    Date date = Converter.convertToDate(value);
+    DateTimeCodec.writeDateFully(cdo, date);
+  }
+
+  /**
+   * {@inheritDoc}
+   */
+  @Override
+  protected void encodeValue(CodecDataOutput cdo, Object value) {
+    Date date = Converter.convertToDate(value);
+    DateTimeCodec.writeDateFully(cdo, date);
+  }
+
+  /**
+   * {@inheritDoc}
+   */
+  @Override
+  protected void encodeProto(CodecDataOutput cdo, Object value) {
+    Date date = Converter.convertToDate(value);
+    DateTimeCodec.writeDateProto(cdo, date);
   }
 
   @Override
@@ -88,19 +96,8 @@ public class DateType extends DataType {
     return ExprType.MysqlTime;
   }
 
-  /**
-   * {@inheritDoc}
-   * @param value a date represents in string in "yyyy-MM-dd" format
-   * @return a {@link Date} Object
-   */
   @Override
   public Object getOriginDefaultValueNonNull(String value) {
-    DateTimeFormatter dateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
-    LocalDate localDate = LocalDate.parse(value, dateTimeFormatter);
-    return new Date(localDate.getYear(), localDate.getMonthValue(), localDate.getDayOfMonth());
-  }
-
-  DateType(TiColumnInfo.InternalTypeHolder holder) {
-    super(holder);
+    return Converter.convertToDate(value);
   }
 }

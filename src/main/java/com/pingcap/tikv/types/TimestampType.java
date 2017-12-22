@@ -28,7 +28,6 @@ import java.sql.Timestamp;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
-import java.time.format.DateTimeFormatter;
 
 public class TimestampType extends DataType {
   public static final TimestampType TIMESTAMP = new TimestampType(MySQLType.TypeTimestamp);
@@ -72,15 +71,24 @@ public class TimestampType extends DataType {
    * {@inheritDoc}
    */
   @Override
-  protected void encodeNotNull(CodecDataOutput cdo, EncodeType encodeType, Object value) {
-    LocalDateTime localDateTime;
-    if (value instanceof LocalDateTime) {
-      localDateTime = (LocalDateTime) value;
-    } else {
-      throw new UnsupportedOperationException("Can not cast Object to LocalDateTime ");
-    }
-    boolean writeFlag = (encodeType != EncodeType.PROTO);
-    DateTimeCodec.writeDateTimeFully(cdo, localDateTime, writeFlag);
+  protected void encodeKey(CodecDataOutput cdo, Object value) {
+    DateTimeCodec.writeDateTimeFully(cdo, Converter.convertToDateTime(value));
+  }
+
+  /**
+   * {@inheritDoc}
+   */
+  @Override
+  protected void encodeValue(CodecDataOutput cdo, Object value) {
+    DateTimeCodec.writeDateTimeFully(cdo, Converter.convertToDateTime(value));
+  }
+
+  /**
+   * {@inheritDoc}
+   */
+  @Override
+  protected void encodeProto(CodecDataOutput cdo, Object value) {
+    DateTimeCodec.writeDateTimeProto(cdo, Converter.convertToDateTime(value));
   }
 
   @Override
@@ -96,8 +104,7 @@ public class TimestampType extends DataType {
    */
   @Override
   public Object getOriginDefaultValueNonNull(String value) {
-    DateTimeFormatter dateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
-    return LocalDateTime.parse(value, dateTimeFormatter);
+    return Converter.convertToDateTime(value);
   }
 
 }

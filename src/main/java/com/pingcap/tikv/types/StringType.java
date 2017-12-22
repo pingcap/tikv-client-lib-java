@@ -18,7 +18,6 @@
 package com.pingcap.tikv.types;
 
 import com.pingcap.tikv.codec.CodecDataInput;
-import com.pingcap.tikv.codec.CodecDataOutput;
 import com.pingcap.tikv.meta.TiColumnInfo;
 
 public class StringType extends BytesType {
@@ -45,19 +44,5 @@ public class StringType extends BytesType {
   @Override
   protected Object decodeNotNull(int flag, CodecDataInput cdi) {
     return new String((byte[])super.decodeNotNull(flag, cdi));
-  }
-
-  /**
-   * {@inheritDoc}
-   */
-  @Override
-  protected void encodeNotNull(CodecDataOutput cdo, EncodeType encodeType, Object value) {
-    byte[] bytes;
-    if (value instanceof String) {
-      bytes = ((String) value).getBytes();
-    } else {
-      throw new UnsupportedOperationException("can not cast non-String type to String");
-    }
-    super.encodeNotNull(cdo, encodeType, bytes);
   }
 }

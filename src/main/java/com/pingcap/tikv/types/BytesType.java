@@ -68,23 +68,27 @@ public class BytesType extends DataType {
    * {@inheritDoc}
    */
   @Override
-  protected void encodeNotNull(CodecDataOutput cdo, EncodeType encodeType, Object value) {
-    byte[] bytes;
-    if (value instanceof byte[]) {
-      bytes = (byte[]) value;
-    } else {
-      throw new UnsupportedOperationException("can not cast non bytes type to bytes array");
-    }
-    switch (encodeType) {
-      case KEY:
-        BytesCodec.writeBytesFully(cdo, bytes, true);
-        break;
-      case VALUE:
-        BytesCodec.writeCompactBytesFully(cdo, bytes, true);
-        break;
-      case PROTO:
-        BytesCodec.writeBytesRaw(cdo, bytes);
-    }
+  protected void encodeKey(CodecDataOutput cdo, Object value) {
+    byte[] bytes = Converter.convertToBytes(value);
+    BytesCodec.writeBytesFully(cdo, bytes);
+  }
+
+  /**
+   * {@inheritDoc}
+   */
+  @Override
+  protected void encodeValue(CodecDataOutput cdo, Object value) {
+    byte[] bytes = Converter.convertToBytes(value);
+    BytesCodec.writeCompactBytesFully(cdo, bytes);
+  }
+
+  /**
+   * {@inheritDoc}
+   */
+  @Override
+  protected void encodeProto(CodecDataOutput cdo, Object value) {
+    byte[] bytes = Converter.convertToBytes(value);
+    BytesCodec.writeBytesRaw(cdo, bytes);
   }
 
   @Override

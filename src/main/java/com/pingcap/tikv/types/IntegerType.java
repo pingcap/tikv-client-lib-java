@@ -23,7 +23,6 @@ import com.pingcap.tikv.codec.Codec.IntegerCodec;
 import com.pingcap.tikv.codec.CodecDataInput;
 import com.pingcap.tikv.codec.CodecDataOutput;
 import com.pingcap.tikv.exception.TiClientInternalException;
-import com.pingcap.tikv.exception.TiExpressionException;
 import com.pingcap.tikv.meta.TiColumnInfo;
 
 public class IntegerType extends DataType {
@@ -66,20 +65,38 @@ public class IntegerType extends DataType {
    * {@inheritDoc}
    */
   @Override
-  protected void encodeNotNull(CodecDataOutput cdo, EncodeType encodeType, Object value) {
-    long val;
-    if (value instanceof Number) {
-      val = ((Number) value).longValue();
-    } else {
-      throw new TiExpressionException("Cannot cast non-number value to long");
-    }
-    boolean comparable = (encodeType != EncodeType.VALUE);
-    boolean writeFlag = (encodeType != EncodeType.PROTO);
-
+  protected void encodeKey(CodecDataOutput cdo, Object value) {
+    long longVal = Converter.convertToLong(value);
     if (isUnsigned()) {
-      IntegerCodec.writeULongFull(cdo, val, comparable, writeFlag);
+      IntegerCodec.writeULongFull(cdo, longVal, true);
     } else {
-      IntegerCodec.writeLongFull(cdo, val, comparable, writeFlag);
+      IntegerCodec.writeLongFull(cdo, longVal, true);
+    }
+  }
+
+  /**
+   * {@inheritDoc}
+   */
+  @Override
+  protected void encodeValue(CodecDataOutput cdo, Object value) {
+    long longVal = Converter.convertToLong(value);
+    if (isUnsigned()) {
+      IntegerCodec.writeULongFull(cdo, longVal, false);
+    } else {
+      IntegerCodec.writeLongFull(cdo, longVal, false);
+    }
+  }
+
+  /**
+   * {@inheritDoc}
+   */
+  @Override
+  protected void encodeProto(CodecDataOutput cdo, Object value) {
+    long longVal = Converter.convertToLong(value);
+    if (isUnsigned()) {
+      IntegerCodec.writeULong(cdo, longVal);
+    } else {
+      IntegerCodec.writeLong(cdo, longVal);
     }
   }
 

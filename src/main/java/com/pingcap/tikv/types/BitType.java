@@ -20,9 +20,7 @@ package com.pingcap.tikv.types;
 import com.pingcap.tikv.codec.Codec;
 import com.pingcap.tikv.codec.Codec.IntegerCodec;
 import com.pingcap.tikv.codec.CodecDataInput;
-import com.pingcap.tikv.codec.CodecDataOutput;
 import com.pingcap.tikv.exception.TiClientInternalException;
-import com.pingcap.tikv.exception.TiExpressionException;
 import com.pingcap.tikv.meta.TiColumnInfo;
 
 public class BitType extends IntegerType {
@@ -56,21 +54,5 @@ public class BitType extends IntegerType {
   @Override
   public boolean isUnsigned() {
     return true;
-  }
-
-  /**
-   * {@inheritDoc}
-   */
-  @Override
-  protected void encodeNotNull(CodecDataOutput cdo, EncodeType encodeType, Object value) {
-    long val;
-    if (value instanceof Number) {
-      val = ((Number) value).longValue();
-    } else {
-      throw new TiExpressionException("Cannot cast non-number value to long");
-    }
-    boolean comparable = (encodeType == EncodeType.KEY);
-    boolean writeFlag = (encodeType != EncodeType.PROTO);
-    IntegerCodec.writeULongFull(cdo, val, comparable, writeFlag);
   }
 }

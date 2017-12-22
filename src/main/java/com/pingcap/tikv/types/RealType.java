@@ -40,6 +40,10 @@ public class RealType extends DataType {
     super(tp);
   }
 
+  RealType(TiColumnInfo.InternalTypeHolder holder) {
+    super(holder);
+  }
+
   /**
    * {@inheritDoc}
    */
@@ -52,23 +56,22 @@ public class RealType extends DataType {
     return RealCodec.readDouble(cdi);
   }
 
-  RealType(TiColumnInfo.InternalTypeHolder holder) {
-    super(holder);
+  @Override
+  protected void encodeKey(CodecDataOutput cdo, Object value) {
+    double val = Converter.convertToDouble(value);
+    RealCodec.writeDoubleFully(cdo, val);
   }
 
-  /**
-   * {@inheritDoc}
-   */
   @Override
-  protected void encodeNotNull(CodecDataOutput cdo, EncodeType encodeType, Object value) {
-    double val;
-    if (value instanceof Double) {
-      val = (Double) value;
-    } else {
-      throw new UnsupportedOperationException("Can not cast Un-number to Float");
-    }
-    boolean writeFlag = (encodeType != EncodeType.PROTO);
-    RealCodec.writeDoubleFully(cdo, val, writeFlag);
+  protected void encodeValue(CodecDataOutput cdo, Object value) {
+    double val = Converter.convertToDouble(value);
+    RealCodec.writeDoubleFully(cdo, val);
+  }
+
+  @Override
+  protected void encodeProto(CodecDataOutput cdo, Object value) {
+    double val = Converter.convertToDouble(value);
+    RealCodec.writeDouble(cdo, val);
   }
 
   @Override

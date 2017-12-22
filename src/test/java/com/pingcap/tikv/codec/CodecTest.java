@@ -63,8 +63,8 @@ public class CodecTest {
   @Test
   public void readNWriteLongTest() throws Exception {
     CodecDataOutput cdo = new CodecDataOutput();
-    IntegerCodec.writeLongFull(cdo, 9999L, true, true);
-    IntegerCodec.writeLongFull(cdo, -2333L, false, true);
+    IntegerCodec.writeLongFull(cdo, 9999L, true);
+    IntegerCodec.writeLongFull(cdo, -2333L, false);
     assertArrayEquals(
         new byte[] {
             (byte) 0x3,
@@ -102,8 +102,8 @@ public class CodecTest {
   @Test
   public void readNWriteUnsignedLongTest() throws Exception {
     CodecDataOutput cdo = new CodecDataOutput();
-    IntegerCodec.writeULongFull(cdo, 0xffffffffffffffffL, true, true);
-    IntegerCodec.writeULongFull(cdo, Long.MIN_VALUE, false, true);
+    IntegerCodec.writeULongFull(cdo, 0xffffffffffffffffL, true);
+    IntegerCodec.writeULongFull(cdo, Long.MIN_VALUE, false);
     assertArrayEquals(
         new byte[] {
             (byte) 0x4,

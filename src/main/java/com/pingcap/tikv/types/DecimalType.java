@@ -38,7 +38,6 @@ public class DecimalType extends DataType {
     super(holder);
   }
 
-
   /**
    * {@inheritDoc}
    */
@@ -50,19 +49,22 @@ public class DecimalType extends DataType {
     return DecimalCodec.readDecimal(cdi);
   }
 
-  /**
-   * {@inheritDoc}
-   */
   @Override
-  protected void encodeNotNull(CodecDataOutput cdo, EncodeType encodeType, Object value) {
-    BigDecimal val;
-    if (value instanceof BigDecimal) {
-      val = (BigDecimal) value;
-    } else {
-      throw new UnsupportedOperationException("can not cast non Number type to Double");
-    }
-    boolean writeFlag = (encodeType != EncodeType.PROTO);
-    DecimalCodec.writeDecimalFully(cdo, val, writeFlag);
+  protected void encodeKey(CodecDataOutput cdo, Object value) {
+    BigDecimal val = Converter.convertToBigDecimal(value);
+    DecimalCodec.writeDecimalFully(cdo, val);
+  }
+
+  @Override
+  protected void encodeValue(CodecDataOutput cdo, Object value) {
+    BigDecimal val = Converter.convertToBigDecimal(value);
+    DecimalCodec.writeDecimalFully(cdo, val);
+  }
+
+  @Override
+  protected void encodeProto(CodecDataOutput cdo, Object value) {
+    BigDecimal val = Converter.convertToBigDecimal(value);
+    DecimalCodec.writeDecimal(cdo, val);
   }
 
   @Override

@@ -16,12 +16,14 @@
 package com.pingcap.tikv.types;
 
 import static com.pingcap.tikv.codec.Codec.isNullFlag;
+import static java.util.Objects.requireNonNull;
 
 import com.google.common.collect.ImmutableList;
 import com.pingcap.tidb.tipb.ExprType;
 import com.pingcap.tikv.codec.Codec;
 import com.pingcap.tikv.codec.CodecDataInput;
 import com.pingcap.tikv.codec.CodecDataOutput;
+import com.pingcap.tikv.exception.TiClientInternalException;
 import com.pingcap.tikv.meta.Collation;
 import com.pingcap.tikv.meta.TiColumnInfo;
 import com.pingcap.tikv.row.Row;
@@ -47,9 +49,6 @@ public abstract class DataType implements Serializable {
   protected static final int NoDefaultValueFlag = 4096; /* Field doesn't have a default value */
   protected static final int OnUpdateNowFlag = 8192; /* Field is set to NOW on UPDATE */
   protected static final int NumFlag = 32768; /* Field is a num (for clients) */
-  protected static final int PartKeyFlag = 16384; /* Intern: Part of some keys */
-  protected static final int GroupFlag = 32768; /* Intern: Group field */
-  protected static final int BinCmpFlag = 131072; /* Intern: Used by sql_yacc */
 
   public enum EncodeType {
     KEY,
@@ -60,15 +59,15 @@ public abstract class DataType implements Serializable {
   public static final int UNSPECIFIED_LEN = -1;
 
   // MySQL type
-  protected MySQLType tp;
+  protected final MySQLType tp;
   // Not Encode/Decode flag, this is used to strict mysql type
   // such as not null, timestamp
-  protected int flag;
-  protected int decimal;
-  private String charset;
-  protected int collation;
-  protected long length;
-  private List<String> elems;
+  protected final int flag;
+  protected final int decimal;
+  private final String charset;
+  protected final int collation;
+  protected final long length;
+  private final List<String> elems;
 
   protected DataType(TiColumnInfo.InternalTypeHolder holder) {
     this.tp = MySQLType.fromTypeCode(holder.getTp());
@@ -86,6 +85,7 @@ public abstract class DataType implements Serializable {
     this.elems = ImmutableList.of();
     this.length = UNSPECIFIED_LEN;
     this.decimal = UNSPECIFIED_LEN;
+    this.charset = "";
     this.collation = Collation.DEF_COLLATION_CODE;
   }
 
@@ -137,20 +137,31 @@ public abstract class DataType implements Serializable {
    * @param value need to be encoded.
    */
   public void encode(CodecDataOutput cdo, EncodeType encodeType, Object value) {
+    requireNonNull(cdo, "cdo is null");
     if (value == null) {
-      encodeNull(cdo);
+      if (encodeType != EncodeType.PROTO) {
+        encodeNull(cdo);
+      }
     } else {
-      encodeNotNull(cdo, encodeType, value);
+      switch (encodeType) {
+        case KEY:
+          encodeKey(cdo, value);
+          return;
+        case VALUE:
+          encodeValue(cdo, value);
+          return;
+        case PROTO:
+          encodeProto(cdo, value);
+          return;
+        default:
+          throw new TiClientInternalException("Unknown encoding type " + encodeType);
+      }
     }
   }
 
-  /**
-   * Encode a value to cdo.
-   *  @param cdo destination of data.
-   * @param encodeType Key or Value.
-   * @param value need to be encoded.
-   */
-  protected abstract void encodeNotNull(CodecDataOutput cdo, EncodeType encodeType, Object value);
+  protected abstract void encodeKey(CodecDataOutput cdo, Object value);
+  protected abstract void encodeValue(CodecDataOutput cdo, Object value);
+  protected abstract void encodeProto(CodecDataOutput cdo, Object value);
 
   public abstract ExprType getProtoExprType();
 
@@ -198,6 +209,10 @@ public abstract class DataType implements Serializable {
     return charset;
   }
 
+  public static boolean isPrimaryKey(int flag) {
+    return (flag & PriKeyFlag) > 0;
+  }
+
   public static boolean hasNotNullFlag(int flag) {
     return (flag & NotNullFlag) > 0;
   }
@@ -215,7 +230,7 @@ public abstract class DataType implements Serializable {
   }
 
   public boolean isBinary() {
-    return (flag & PriKeyFlag) > 0;
+    return (flag & BinaryFlag) > 0;
   }
 
   public boolean isUniqueKey() {
@@ -232,6 +247,22 @@ public abstract class DataType implements Serializable {
 
   public boolean isOnUpdateNow() {
     return (flag & OnUpdateNowFlag) > 0;
+  }
+
+  public boolean isBlob() {
+    return (flag & BlobFlag) > 0;
+  }
+
+  public boolean isEnum() {
+    return (flag & EnumFlag) > 0;
+  }
+
+  public boolean isSet() {
+    return (flag & SetFlag) > 0;
+  }
+
+  public boolean isNum() {
+    return (flag & NumFlag) > 0;
   }
 
   @Override
