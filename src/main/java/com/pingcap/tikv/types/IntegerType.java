@@ -88,7 +88,7 @@ public class IntegerType extends DataType {
     return isUnsigned() ?  ExprType.Uint64 : ExprType.Int64;
   }
 
-  protected boolean isUnsigned() {
+  public boolean isUnsigned() {
     return (flag & UnsignedFlag) > 0;
   }
   /**

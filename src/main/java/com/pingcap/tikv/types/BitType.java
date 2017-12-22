@@ -53,6 +53,11 @@ public class BitType extends IntegerType {
     }
   }
 
+  @Override
+  public boolean isUnsigned() {
+    return true;
+  }
+
   /**
    * {@inheritDoc}
    */
