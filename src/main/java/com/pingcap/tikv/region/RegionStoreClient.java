@@ -62,7 +62,7 @@ import org.apache.log4j.Logger;
 
 // RegionStore itself is not thread-safe
 public class RegionStoreClient extends AbstractGRPCClient<TikvBlockingStub, TikvStub> implements RegionErrorReceiver {
-  enum RequestTypes {
+  public enum RequestTypes {
     REQ_TYPE_SELECT(101),
     REQ_TYPE_INDEX(102),
     REQ_TYPE_DAG(103),
