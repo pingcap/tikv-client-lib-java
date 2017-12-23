@@ -26,7 +26,6 @@ import com.pingcap.tikv.codec.CodecDataInput;
 import com.pingcap.tikv.expression.scalar.GreaterThan;
 import com.pingcap.tikv.meta.TiTableInfo;
 import com.pingcap.tikv.meta.TiTableInfoTest;
-import java.sql.Timestamp;
 import org.junit.Test;
 
 public class TiConstantTest {
@@ -41,10 +40,12 @@ public class TiConstantTest {
     assertEquals(1.12, expected, 0.00001);
   }
 
+  /*
   @Test
   public void testEncodeTimestamp() {
     TiConstant tsDate = TiConstant.create(new Timestamp(1998, 9, 2, 19, 0, 0, 0));
     assertEquals("tp: MysqlTime\nval: \"1\\177\\0050\\000\\000\\000\\000\"\n",
         tsDate.toProto().toString());
   }
+  */
 }
