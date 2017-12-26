@@ -23,6 +23,7 @@ import static java.util.Objects.requireNonNull;
 import com.pingcap.tikv.exception.TiClientInternalException;
 import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.sql.Date;
 import java.sql.Timestamp;
 import org.joda.time.DateTime;
 import org.joda.time.DateTimeZone;
@@ -67,7 +68,6 @@ public class Converter {
   }
 
   private static final DateTimeZone localTimeZone = DateTimeZone.getDefault();
-  private static final DateTimeZone UTC = DateTimeZone.UTC;
   private static final DateTimeFormatter localTimeZoneFormatter =
       DateTimeFormat.forPattern("yyyy-MM-dd HH:mm:ss").withZone(localTimeZone);
 
@@ -95,6 +95,8 @@ public class Converter {
       return new DateTime((long)val);
     } else if (val instanceof Timestamp) {
       return new DateTime(((Timestamp)val).getTime());
+    } else if (val instanceof Date) {
+      return new DateTime(((Date) val).getTime());
     } else {
       throw new UnsupportedOperationException("Can not cast Object to LocalDateTime ");
     }

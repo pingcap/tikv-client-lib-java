@@ -43,26 +43,30 @@ public class TiConstant implements TiExpr {
   private Object value;
   private DataType type;
 
+  public static TiConstant create(Object value, DataType type) {
+    return new TiConstant(value, type);
+  }
+
   public static TiConstant create(Object value) {
-    return new TiConstant(value);
+    return new TiConstant(value, null);
   }
 
-  private TiConstant(Object value) {
+  private TiConstant(Object value, DataType type) {
     this.value = value;
-    this.type = getDefaultType();
+    this.type = type == null ? getDefaultType(value) : type;
   }
 
-  protected boolean isIntegerType() {
+  protected static boolean isIntegerType(Object value) {
     return value instanceof Long
         || value instanceof Integer
         || value instanceof Short
         || value instanceof Byte;
   }
 
-  private DataType getDefaultType() {
+  private static DataType getDefaultType(Object value) {
     if (value == null) {
       throw new TiExpressionException("NULL constant has no type");
-    } else if (isIntegerType()) {
+    } else if (isIntegerType(value)) {
       return IntegerType.BIGINT;
     } else if (value instanceof String) {
       return StringType.VARCHAR;
@@ -81,10 +85,6 @@ public class TiConstant implements TiExpr {
     } else {
       throw new TiExpressionException("Constant type not supported:" + value.getClass().getSimpleName());
     }
-  }
-
-  public void coerce(DataType type) {
-    this.type = type;
   }
 
   public Object getValue() {

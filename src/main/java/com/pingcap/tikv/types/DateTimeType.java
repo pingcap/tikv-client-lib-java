@@ -17,7 +17,10 @@
 
 package com.pingcap.tikv.types;
 
+import com.pingcap.tikv.codec.CodecDataInput;
 import com.pingcap.tikv.meta.TiColumnInfo;
+import java.sql.Timestamp;
+import org.joda.time.DateTime;
 import org.joda.time.DateTimeZone;
 
 /**
@@ -25,14 +28,9 @@ import org.joda.time.DateTimeZone;
  * While most of decoding logic is the same
  * it interpret as local timezone to be able to compute with date/time data
  */
-public class DateTimeType extends TimestampType {
+public class DateTimeType extends AbstractDateTimeType {
   public static final DateTimeType DATETIME = new DateTimeType(MySQLType.TypeDatetime);
   public static final MySQLType[] subTypes = new MySQLType[] { MySQLType.TypeDatetime };
-
-  @Override
-  protected DateTimeZone getTimezone() {
-    return Converter.getLocalTimezone();
-  }
 
   private DateTimeType(MySQLType tp) {
     super(tp);
@@ -42,4 +40,18 @@ public class DateTimeType extends TimestampType {
     super(holder);
   }
 
+  @Override
+  protected DateTimeZone getTimezone() {
+    return Converter.getLocalTimezone();
+  }
+
+  /**
+   * Decode timestamp from packed long value
+   * In TiDB / MySQL, timestamp type is converted to UTC and stored
+   */
+  @Override
+  protected Timestamp decodeNotNull(int flag, CodecDataInput cdi) {
+    DateTime dateTime = decodeDateTime(flag, cdi);
+    return new Timestamp(dateTime.getMillis());
+  }
 }

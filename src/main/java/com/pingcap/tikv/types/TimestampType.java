@@ -17,17 +17,11 @@
 
 package com.pingcap.tikv.types;
 
-import com.pingcap.tidb.tipb.ExprType;
-import com.pingcap.tikv.codec.Codec;
-import com.pingcap.tikv.codec.Codec.DateTimeCodec;
 import com.pingcap.tikv.codec.CodecDataInput;
-import com.pingcap.tikv.codec.CodecDataOutput;
-import com.pingcap.tikv.codec.InvalidCodecFormatException;
 import com.pingcap.tikv.meta.TiColumnInfo;
 import java.sql.Timestamp;
 import org.joda.time.DateTime;
 import org.joda.time.DateTimeZone;
-import org.joda.time.LocalDateTime;
 
 /**
  * Timestamp in TiDB is represented as packed long including year/month and etc.
@@ -44,7 +38,7 @@ import org.joda.time.LocalDateTime;
  * it interpreted as UTC epoch and encode with UTC
  *
  */
-public class TimestampType extends DataType {
+public class TimestampType extends AbstractDateTimeType {
   public static final TimestampType TIMESTAMP = new TimestampType(MySQLType.TypeTimestamp);
   public static final TimestampType TIME = new TimestampType(MySQLType.TypeDuration);
 
@@ -70,57 +64,7 @@ public class TimestampType extends DataType {
    */
   @Override
   protected Timestamp decodeNotNull(int flag, CodecDataInput cdi) {
-    DateTime dateTime;
-    if (flag == Codec.UVARINT_FLAG) {
-      dateTime = DateTimeCodec.readFromUVarInt(cdi, getTimezone());
-    } else if (flag == Codec.UINT_FLAG) {
-      dateTime = DateTimeCodec.readFromUInt(cdi, getTimezone());
-    } else {
-      throw new InvalidCodecFormatException("Invalid Flag type for " + getClass().getSimpleName() + ": " + flag);
-    }
+    DateTime dateTime = decodeDateTime(flag, cdi);
     return new Timestamp(dateTime.getMillis());
   }
-
-  /**
-   * {@inheritDoc}
-   */
-  @Override
-  protected void encodeKey(CodecDataOutput cdo, Object value) {
-    DateTime dt = Converter.convertToDateTime(value);
-    DateTimeCodec.writeDateTimeFully(cdo, dt, getTimezone());
-  }
-
-  /**
-   * {@inheritDoc}
-   */
-  @Override
-  protected void encodeValue(CodecDataOutput cdo, Object value) {
-    encodeKey(cdo, value);
-  }
-
-  /**
-   * {@inheritDoc}
-   */
-  @Override
-  protected void encodeProto(CodecDataOutput cdo, Object value) {
-    DateTime dt = Converter.convertToDateTime(value);
-    DateTimeCodec.writeDateTimeProto(cdo, dt, getTimezone());
-  }
-
-  @Override
-  public ExprType getProtoExprType() {
-    return ExprType.MysqlTime;
-  }
-
-  /**
-   * {@inheritDoc}
-   * @param value a timestamp value in string in format "yyyy-MM-dd HH:mm:ss"
-   * @return a {@link LocalDateTime} Object
-   * TODO: need decode time with time zone info.
-   */
-  @Override
-  public Object getOriginDefaultValueNonNull(String value) {
-    return Converter.convertToDateTime(value);
-  }
-
 }
