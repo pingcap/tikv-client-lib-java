@@ -24,9 +24,8 @@ import com.pingcap.tikv.exception.TiClientInternalException;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.sql.Timestamp;
+import org.joda.time.DateTime;
 import org.joda.time.DateTimeZone;
-import org.joda.time.LocalDate;
-import org.joda.time.LocalDateTime;
 import org.joda.time.format.DateTimeFormat;
 import org.joda.time.format.DateTimeFormatter;
 
@@ -67,35 +66,37 @@ public class Converter {
     throw new TiClientInternalException(String.format("Cannot cast %s to bytes", val.getClass().getSimpleName()));
   }
 
-  private static final DateTimeFormatter dateTimeFormatter = DateTimeFormat.forPattern("yyyy-MM-dd HH:mm:ss");
-  public static LocalDateTime convertToDateTime(Object val) {
-    requireNonNull(val, "val is null");
-    if (val instanceof LocalDateTime) {
-      return (LocalDateTime) val;
-    } else if (val instanceof String) {
-      return dateTimeFormatter.parseLocalDateTime((String)val);
-    } else if (val instanceof Long) {
-      return new LocalDateTime((long)val, DateTimeZone.UTC);
-    } else if (val instanceof Timestamp) {
-      return new LocalDateTime(((Timestamp)val).getTime(), DateTimeZone.UTC);
-    } else {
-      throw new UnsupportedOperationException("Can not cast Object to LocalDateTime ");
-    }
+  private static final DateTimeZone localTimeZone = DateTimeZone.getDefault();
+  private static final DateTimeZone UTC = DateTimeZone.UTC;
+  private static final DateTimeFormatter localTimeZoneFormatter =
+      DateTimeFormat.forPattern("yyyy-MM-dd HH:mm:ss").withZone(localTimeZone);
+
+  public static DateTimeZone getLocalTimezone() {
+    return localTimeZone;
   }
 
-  private static final DateTimeFormatter dateFormatter = DateTimeFormat.forPattern("yyyy-MM-dd");
-  public static LocalDate convertToDate(Object val) {
+  /**
+   * Convert an object to Datetime
+   * If constant is a string, it parses as local timezone
+   * If it is an long, it parsed as UTC epoch
+   * @param val value to be converted to DateTime
+   * @return
+   */
+  public static DateTime convertToDateTime(Object val) {
     requireNonNull(val, "val is null");
-    if (val instanceof LocalDate) {
-      return (LocalDate) val;
-    } else if (val instanceof String) {
+    if (val instanceof String) {
+      // interpret string as in local timezone
       try {
-        return dateFormatter.parseLocalDate((String)val);
+        return DateTime.parse((String) val, localTimeZoneFormatter);
       } catch (Exception e) {
-        throw new TiClientInternalException(String.format("Error parsing string to date", (String)val), e);
+        throw new TiClientInternalException(String.format("Error parsing string to datetime", (String)val), e);
       }
+    } else if (val instanceof Long) {
+      return new DateTime((long)val);
+    } else if (val instanceof Timestamp) {
+      return new DateTime(((Timestamp)val).getTime());
     } else {
-      throw new TiClientInternalException(String.format("Cannot cast %s to Date", val.getClass().getSimpleName()));
+      throw new UnsupportedOperationException("Can not cast Object to LocalDateTime ");
     }
   }
 

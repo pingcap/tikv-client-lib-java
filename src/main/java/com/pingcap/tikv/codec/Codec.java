@@ -21,6 +21,7 @@ import static com.google.common.base.Preconditions.checkArgument;
 import gnu.trove.list.array.TIntArrayList;
 import java.math.BigDecimal;
 import java.util.Arrays;
+import org.joda.time.DateTime;
 import org.joda.time.DateTimeZone;
 import org.joda.time.LocalDate;
 import org.joda.time.LocalDateTime;
@@ -60,7 +61,7 @@ public class Codec {
      * @param comparable If the output should be memory comparable without decoding. In real TiDB use
      *     case, if used in Key encoding, we output memory comparable format otherwise not
      */
-    public static void writeLongFull(CodecDataOutput cdo, long lVal, boolean comparable) {
+    public static void writeLongFully(CodecDataOutput cdo, long lVal, boolean comparable) {
       if (comparable) {
         cdo.writeByte(INT_FLAG);
         writeLong(cdo, lVal);
@@ -78,7 +79,7 @@ public class Codec {
      * @param comparable If the output should be memory comparable without decoding. In real TiDB use
      *     case, if used in Key encoding, we output memory comparable format otherwise not
      */
-    public static void writeULongFull(CodecDataOutput cdo, long lVal, boolean comparable) {
+    public static void writeULongFully(CodecDataOutput cdo, long lVal, boolean comparable) {
       if (comparable) {
         cdo.writeByte(UINT_FLAG);
         writeULong(cdo, lVal);
@@ -436,23 +437,25 @@ public class Codec {
   public static class DateTimeCodec {
 
     /**
-     * Encode a LocalDateTime to a packed long.
+     * Encode a DateTime to a packed long converting to specific timezone
      *
-     * @param time localDateTime that need to be encoded.
+     * @param dateTime dateTime that need to be encoded.
+     * @param tz timezone used for converting to localDateTime
      * @return a packed long.
      */
-    static long toPackedLong(LocalDateTime time) {
-      return toPackedLong(time.getYear(),
-          time.getMonthOfYear(),
-          time.getDayOfMonth(),
-          time.getHourOfDay(),
-          time.getMinuteOfHour(),
-          time.getSecondOfMinute(),
-          time.getMillisOfSecond() * 1000);
+    static long toPackedLong(DateTime dateTime, DateTimeZone tz) {
+      LocalDateTime localDateTime = dateTime.withZone(tz).toLocalDateTime();
+      return toPackedLong(localDateTime.getYear(),
+          localDateTime.getMonthOfYear(),
+          localDateTime.getDayOfMonth(),
+          localDateTime.getHourOfDay(),
+          localDateTime.getMinuteOfHour(),
+          localDateTime.getSecondOfMinute(),
+          localDateTime.getMillisOfSecond() * 1000);
     }
 
-    static long toPackedLong(long utcMillsTs) {
-      LocalDate date = new LocalDate(utcMillsTs, DateTimeZone.UTC);
+    static long toPackedLong(long utcMillsTs, DateTimeZone tz) {
+      LocalDate date = new LocalDate(utcMillsTs, tz);
       return toPackedLong(date);
     }
 
@@ -478,12 +481,17 @@ public class Codec {
     }
 
     /**
-     * Decode a packed long to LocalDateTime.
+     * Read datetime from packed Long which contains all parts of a datetime
+     * namely, year, month, day and hour, min and sec, millisec.
+     * The original representation does not indicate any timezone information
+     * In Timestamp type, it should be interpreted as UTC while in DateType
+     * it is interpreted as local timezone
      *
-     * @param packed a long value
-     * @return a decoded LocalDateTime.
+     * @param packed long value that packs date / time parts
+     * @param tz timezone to interpret datetime parts
+     * @return decoded DateTime using provided timezone
      */
-    static LocalDateTime fromPackedLong(long packed) {
+    static DateTime fromPackedLong(long packed, DateTimeZone tz) {
       // TODO: As for JDBC behavior, it can be configured to "round" or "toNull"
       // for now we didn't pass in session so we do a toNull behavior
       if (packed == 0) {
@@ -501,35 +509,60 @@ public class Codec {
       int minute = (hms >> 6) & ((1 << 6) - 1);
       int hour = hms >> 12;
       int microsec = (int) (packed % (1 << 24));
-      return new LocalDateTime(year, month, day, hour, minute, second, microsec / 1000);
+      return new DateTime(
+          year, month, day, hour,
+          minute, second, microsec / 1000,
+          tz);
     }
 
-    public static void writeDateTimeFully(CodecDataOutput cdo, LocalDateTime dateTime) {
-      long val = DateTimeCodec.toPackedLong(dateTime);
-      IntegerCodec.writeULongFull(cdo, val, true);
+    /**
+     * Encode DateTime as packed long converting into specified timezone
+     * All timezone conversion should be done beforehand
+     * @param cdo encoding output
+     * @param dateTime value to encode
+     * @param tz timezone used to converting local time
+     */
+    public static void writeDateTimeFully(CodecDataOutput cdo, DateTime dateTime, DateTimeZone tz) {
+      long val = DateTimeCodec.toPackedLong(dateTime, tz);
+      IntegerCodec.writeULongFully(cdo, val, true);
     }
 
-    public static void writeDateFully(CodecDataOutput cdo, LocalDate date) {
-      long val = DateTimeCodec.toPackedLong(date);
-      IntegerCodec.writeULongFull(cdo, val, true);
-    }
-
-    public static void writeDateTimeProto(CodecDataOutput cdo, LocalDateTime dateTime) {
-      long val = DateTimeCodec.toPackedLong(dateTime);
+    /**
+     * Encode DateTime as packed long converting into specified timezone
+     * All timezone conversion should be done beforehand
+     * The encoded value has no data type flag
+     * @param cdo encoding output
+     * @param dateTime value to encode
+     * @param tz timezone used to converting local time
+     */
+    public static void writeDateTimeProto(CodecDataOutput cdo, DateTime dateTime, DateTimeZone tz) {
+      long val = DateTimeCodec.toPackedLong(dateTime, tz);
       IntegerCodec.writeULong(cdo, val);
     }
 
-    public static void writeDateProto(CodecDataOutput cdo, LocalDate date) {
-      long val = DateTimeCodec.toPackedLong(date);
-      IntegerCodec.writeULong(cdo, val);
+    /**
+     * Read datetime from packed Long encoded as unsigned var-len integer
+     * converting into specified timezone
+     * @see DateTimeCodec#fromPackedLong(long, DateTimeZone)
+     *
+     * @param cdi codec buffer input
+     * @param tz timezone to interpret datetime parts
+     * @return decoded DateTime using provided timezone
+     */
+    public static DateTime readFromUVarInt(CodecDataInput cdi, DateTimeZone tz) {
+      return DateTimeCodec.fromPackedLong(IntegerCodec.readUVarLong(cdi), tz);
     }
 
-    public static LocalDateTime readFromUVarInt(CodecDataInput cdi) {
-      return DateTimeCodec.fromPackedLong(IntegerCodec.readUVarLong(cdi));
-    }
-
-    public static LocalDateTime readFromUInt(CodecDataInput cdi) {
-      return DateTimeCodec.fromPackedLong(IntegerCodec.readULong(cdi));
+    /**
+     * Read datetime from packed Long as unsigned fixed-len integer
+     * @see DateTimeCodec#fromPackedLong(long, DateTimeZone)
+     *
+     * @param cdi codec buffer input
+     * @param tz timezone to interpret datetime parts
+     * @return decoded DateTime using provided timezone
+     */
+    public static DateTime readFromUInt(CodecDataInput cdi, DateTimeZone tz) {
+      return DateTimeCodec.fromPackedLong(IntegerCodec.readULong(cdi), tz);
     }
   }
 }

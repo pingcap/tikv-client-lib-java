@@ -20,18 +20,18 @@ package com.pingcap.tikv.types;
 import com.pingcap.tikv.meta.TiColumnInfo;
 import org.joda.time.DateTimeZone;
 
+/**
+ * Datetime is a timezone neutral version of timestamp
+ * While most of decoding logic is the same
+ * it interpret as local timezone to be able to compute with date/time data
+ */
 public class DateTimeType extends TimestampType {
   public static final DateTimeType DATETIME = new DateTimeType(MySQLType.TypeDatetime);
   public static final MySQLType[] subTypes = new MySQLType[] { MySQLType.TypeDatetime };
 
-  private static final DateTimeZone DEFAULT_TIMEZONE = DateTimeZone.getDefault();
-
-  /**
-   * {@inheritDoc}
-   */
   @Override
   protected DateTimeZone getTimezone() {
-    return DEFAULT_TIMEZONE;
+    return Converter.getLocalTimezone();
   }
 
   private DateTimeType(MySQLType tp) {

@@ -25,9 +25,25 @@ import com.pingcap.tikv.codec.CodecDataOutput;
 import com.pingcap.tikv.codec.InvalidCodecFormatException;
 import com.pingcap.tikv.meta.TiColumnInfo;
 import java.sql.Timestamp;
+import org.joda.time.DateTime;
 import org.joda.time.DateTimeZone;
 import org.joda.time.LocalDateTime;
 
+/**
+ * Timestamp in TiDB is represented as packed long including year/month and etc.
+ * When stored, it is converted into UTC and when read it should be interpreted as UTC and convert to local
+ * When encoded as coprocessor request
+ * 1. all date time should be converted to UTC
+ * 2. all incoming data should be regarded as local timezone if no timezone indicated
+ *
+ * For example,
+ * Encoding:
+ * If incoming literal is a string '2000-01-01 00:00:00' which has no timezone,
+ * it interpreted as text in local timezone and encoded with UTC;
+ * If incoming literal is a epoch millisec,
+ * it interpreted as UTC epoch and encode with UTC
+ *
+ */
 public class TimestampType extends DataType {
   public static final TimestampType TIMESTAMP = new TimestampType(MySQLType.TypeTimestamp);
   public static final TimestampType TIME = new TimestampType(MySQLType.TypeDuration);
@@ -44,27 +60,25 @@ public class TimestampType extends DataType {
     super(holder);
   }
 
-  /**
-   * {@inheritDoc}
-   */
   protected DateTimeZone getTimezone() {
     return DateTimeZone.UTC;
   }
 
   /**
-   * {@inheritDoc}
+   * Decode timestamp from packed long value
+   * In TiDB / MySQL, timestamp type is converted to UTC and stored
    */
   @Override
-  protected Object decodeNotNull(int flag, CodecDataInput cdi) {
-    LocalDateTime localDateTime;
+  protected Timestamp decodeNotNull(int flag, CodecDataInput cdi) {
+    DateTime dateTime;
     if (flag == Codec.UVARINT_FLAG) {
-      localDateTime = DateTimeCodec.readFromUVarInt(cdi);
+      dateTime = DateTimeCodec.readFromUVarInt(cdi, getTimezone());
     } else if (flag == Codec.UINT_FLAG) {
-      localDateTime = DateTimeCodec.readFromUInt(cdi);
+      dateTime = DateTimeCodec.readFromUInt(cdi, getTimezone());
     } else {
       throw new InvalidCodecFormatException("Invalid Flag type for " + getClass().getSimpleName() + ": " + flag);
     }
-    return new Timestamp(localDateTime.toDateTime(getTimezone()).getMillis());
+    return new Timestamp(dateTime.getMillis());
   }
 
   /**
@@ -72,7 +86,8 @@ public class TimestampType extends DataType {
    */
   @Override
   protected void encodeKey(CodecDataOutput cdo, Object value) {
-    DateTimeCodec.writeDateTimeFully(cdo, Converter.convertToDateTime(value));
+    DateTime dt = Converter.convertToDateTime(value);
+    DateTimeCodec.writeDateTimeFully(cdo, dt, getTimezone());
   }
 
   /**
@@ -80,7 +95,7 @@ public class TimestampType extends DataType {
    */
   @Override
   protected void encodeValue(CodecDataOutput cdo, Object value) {
-    DateTimeCodec.writeDateTimeFully(cdo, Converter.convertToDateTime(value));
+    encodeKey(cdo, value);
   }
 
   /**
@@ -88,7 +103,8 @@ public class TimestampType extends DataType {
    */
   @Override
   protected void encodeProto(CodecDataOutput cdo, Object value) {
-    DateTimeCodec.writeDateTimeProto(cdo, Converter.convertToDateTime(value));
+    DateTime dt = Converter.convertToDateTime(value);
+    DateTimeCodec.writeDateTimeProto(cdo, dt, getTimezone());
   }
 
   @Override

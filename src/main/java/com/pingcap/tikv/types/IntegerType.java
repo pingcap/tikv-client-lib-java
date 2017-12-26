@@ -68,9 +68,9 @@ public class IntegerType extends DataType {
   protected void encodeKey(CodecDataOutput cdo, Object value) {
     long longVal = Converter.convertToLong(value);
     if (isUnsigned()) {
-      IntegerCodec.writeULongFull(cdo, longVal, true);
+      IntegerCodec.writeULongFully(cdo, longVal, true);
     } else {
-      IntegerCodec.writeLongFull(cdo, longVal, true);
+      IntegerCodec.writeLongFully(cdo, longVal, true);
     }
   }
 
@@ -81,9 +81,9 @@ public class IntegerType extends DataType {
   protected void encodeValue(CodecDataOutput cdo, Object value) {
     long longVal = Converter.convertToLong(value);
     if (isUnsigned()) {
-      IntegerCodec.writeULongFull(cdo, longVal, false);
+      IntegerCodec.writeULongFully(cdo, longVal, false);
     } else {
-      IntegerCodec.writeLongFull(cdo, longVal, false);
+      IntegerCodec.writeLongFully(cdo, longVal, false);
     }
   }
 

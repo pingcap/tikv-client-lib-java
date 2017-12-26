@@ -24,8 +24,9 @@ import com.pingcap.tikv.codec.CodecDataInput;
 import com.pingcap.tikv.codec.CodecDataOutput;
 import com.pingcap.tikv.codec.InvalidCodecFormatException;
 import com.pingcap.tikv.meta.TiColumnInfo;
-import org.joda.time.LocalDate;
-import org.joda.time.LocalDateTime;
+import java.sql.Date;
+import org.joda.time.DateTime;
+import org.joda.time.DateTimeZone;
 
 public class DateType extends DataType {
   public static final DateType DATE = new DateType(MySQLType.TypeDate);
@@ -39,23 +40,25 @@ public class DateType extends DataType {
     super(holder);
   }
 
+  private final static DateTimeZone defaultTimeZone = DateTimeZone.getDefault();
+
   /**
    * {@inheritDoc}
    */
   @Override
-  protected LocalDate decodeNotNull(int flag, CodecDataInput cdi) {
-    LocalDateTime localDateTime;
+  protected Date decodeNotNull(int flag, CodecDataInput cdi) {
+    DateTime dateTime;
     if (flag == Codec.UVARINT_FLAG) {
-      localDateTime = DateTimeCodec.readFromUVarInt(cdi);
+      dateTime = DateTimeCodec.readFromUVarInt(cdi, defaultTimeZone);
     } else if (flag == Codec.UINT_FLAG) {
-      localDateTime = DateTimeCodec.readFromUInt(cdi);
+      dateTime = DateTimeCodec.readFromUInt(cdi, defaultTimeZone);
     } else {
       throw new InvalidCodecFormatException("Invalid Flag type for " + getClass().getSimpleName() + ": " + flag);
     }
-    if (localDateTime == null) {
+    if (dateTime == null) {
       return null;
     }
-    return localDateTime.toLocalDate();
+    return new Date(dateTime.getMillis());
   }
 
   /**
@@ -63,8 +66,8 @@ public class DateType extends DataType {
    */
   @Override
   protected void encodeKey(CodecDataOutput cdo, Object value) {
-    LocalDate date = Converter.convertToDate(value);
-    DateTimeCodec.writeDateFully(cdo, date);
+    DateTime dt = Converter.convertToDateTime(value);
+    DateTimeCodec.writeDateTimeFully(cdo, dt, defaultTimeZone);
   }
 
   /**
@@ -72,8 +75,7 @@ public class DateType extends DataType {
    */
   @Override
   protected void encodeValue(CodecDataOutput cdo, Object value) {
-    LocalDate date = Converter.convertToDate(value);
-    DateTimeCodec.writeDateFully(cdo, date);
+    encodeKey(cdo, value);
   }
 
   /**
@@ -81,10 +83,9 @@ public class DateType extends DataType {
    */
   @Override
   protected void encodeProto(CodecDataOutput cdo, Object value) {
-    LocalDate date = Converter.convertToDate(value);
-    DateTimeCodec.writeDateProto(cdo, date);
+    DateTime dt = Converter.convertToDateTime(value);
+    DateTimeCodec.writeDateTimeProto(cdo, dt, defaultTimeZone);
   }
-
   @Override
   public ExprType getProtoExprType() {
     return ExprType.MysqlTime;
@@ -92,6 +93,6 @@ public class DateType extends DataType {
 
   @Override
   public Object getOriginDefaultValueNonNull(String value) {
-    return Converter.convertToDate(value);
+    return Converter.convertToDateTime(value);
   }
 }

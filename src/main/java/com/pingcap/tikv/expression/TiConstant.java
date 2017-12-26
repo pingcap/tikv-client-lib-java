@@ -29,7 +29,6 @@ import com.pingcap.tikv.types.IntegerType;
 import com.pingcap.tikv.types.RealType;
 import com.pingcap.tikv.types.StringType;
 import com.pingcap.tikv.types.TimestampType;
-import java.io.Serializable;
 import java.math.BigDecimal;
 import java.sql.Timestamp;
 import java.util.Objects;
@@ -41,34 +40,6 @@ import org.joda.time.LocalDateTime;
 // Refer to https://github.com/pingcap/tipb/blob/master/go-tipb/expression.pb.go
 // TODO: This might need a refactor to accept an DataType?
 public class TiConstant implements TiExpr {
-  public static class DateWrapper implements Serializable {
-    private Long value;
-
-    public DateWrapper(Long value) {
-      this.value = value;
-    }
-
-    @Override
-    public String toString() {
-      return value == null ? "" : value.toString();
-    }
-
-    @Override
-    public boolean equals(Object obj) {
-      if (obj == this) {
-        return true;
-      } else if (obj instanceof DateWrapper) {
-        return ((DateWrapper) obj).value.equals(value);
-      }
-      return false;
-    }
-
-    @Override
-    public int hashCode() {
-      return (int) (7 * (31 * value));
-    }
-  }
-
   private Object value;
   private DataType type;
 

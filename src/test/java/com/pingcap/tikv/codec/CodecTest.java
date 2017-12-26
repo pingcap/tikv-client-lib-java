@@ -32,8 +32,8 @@ import com.pingcap.tikv.codec.Codec.DecimalCodec;
 import com.pingcap.tikv.codec.Codec.IntegerCodec;
 import com.pingcap.tikv.codec.Codec.RealCodec;
 import java.math.BigDecimal;
-import org.joda.time.LocalDate;
-import org.joda.time.LocalDateTime;
+import org.joda.time.DateTime;
+import org.joda.time.DateTimeZone;
 import org.joda.time.format.DateTimeFormat;
 import org.joda.time.format.DateTimeFormatter;
 import org.junit.Test;
@@ -61,8 +61,8 @@ public class CodecTest {
   @Test
   public void readNWriteLongTest() throws Exception {
     CodecDataOutput cdo = new CodecDataOutput();
-    IntegerCodec.writeLongFull(cdo, 9999L, true);
-    IntegerCodec.writeLongFull(cdo, -2333L, false);
+    IntegerCodec.writeLongFully(cdo, 9999L, true);
+    IntegerCodec.writeLongFully(cdo, -2333L, false);
     assertArrayEquals(
         new byte[] {
             (byte) 0x3,
@@ -100,8 +100,8 @@ public class CodecTest {
   @Test
   public void readNWriteUnsignedLongTest() throws Exception {
     CodecDataOutput cdo = new CodecDataOutput();
-    IntegerCodec.writeULongFull(cdo, 0xffffffffffffffffL, true);
-    IntegerCodec.writeULongFull(cdo, Long.MIN_VALUE, false);
+    IntegerCodec.writeULongFully(cdo, 0xffffffffffffffffL, true);
+    IntegerCodec.writeULongFully(cdo, Long.MIN_VALUE, false);
     assertArrayEquals(
         new byte[] {
             (byte) 0x4,
@@ -239,36 +239,39 @@ public class CodecTest {
 
   @Test
   public void fromPackedLongAndToPackedLongTest() {
+    DateTimeZone utc = DateTimeZone.UTC;
+    DateTimeZone otherTz = DateTimeZone.forOffsetHours(-8);
+    DateTime time = new DateTime(1999, 12, 12, 1, 1, 1, 999);
+    // Encode as UTC (loss timezone) and read it back as UTC
+    DateTime time1 = DateTimeCodec.fromPackedLong(DateTimeCodec.toPackedLong(time, utc), utc);
+    assertEquals(time.getMillis(), time1.getMillis());
 
-    LocalDateTime time = new LocalDateTime(1999, 12, 12, 1, 1, 1, 999);
-    LocalDateTime time1 = DateTimeCodec.fromPackedLong(DateTimeCodec.toPackedLong(time));
-    assertEquals(time, time1);
-
-    DateTimeFormatter formatter = DateTimeFormat.forPattern("yyyy-MM-dd HH:mm:ss:SSSSSSS");
-    LocalDateTime time2 = LocalDateTime.parse("2010-10-10 10:11:11:0000000", formatter);
-    LocalDateTime time3 = DateTimeCodec.fromPackedLong(DateTimeCodec.toPackedLong(time2));
-    assertEquals(time2, time3);
+    // Parse String as -8 timezone, encode and read it back
+    DateTimeFormatter formatter = DateTimeFormat.forPattern("yyyy-MM-dd HH:mm:ss:SSSSSSS").withZone(otherTz);
+    DateTime time2 = DateTime.parse("2010-10-10 10:11:11:0000000", formatter);
+    DateTime time3 = DateTimeCodec.fromPackedLong(DateTimeCodec.toPackedLong(time2, otherTz), otherTz);
+    assertEquals(time2.getMillis(), time3.getMillis());
 
     // when packedLong is 0, then null is returned
-    LocalDateTime time4 = DateTimeCodec.fromPackedLong(0);
+    DateTime time4 = DateTimeCodec.fromPackedLong(0, otherTz);
     assertNull(time4);
 
-    LocalDateTime time5 = LocalDateTime.parse("9999-12-31 23:59:59:0000000", formatter);
-    LocalDateTime time6 = DateTimeCodec.fromPackedLong(DateTimeCodec.toPackedLong(time5));
-    assertEquals(time5, time6);
+    DateTime time5 = DateTime.parse("9999-12-31 23:59:59:0000000", formatter);
+    DateTime time6 = DateTimeCodec.fromPackedLong(DateTimeCodec.toPackedLong(time5, otherTz), otherTz);
+    assertEquals(time5.getMillis(), time6.getMillis());
 
-    LocalDateTime time7 = LocalDateTime.parse("1000-01-01 00:00:00:0000000", formatter);
-    LocalDateTime time8 = DateTimeCodec.fromPackedLong(DateTimeCodec.toPackedLong(time7));
-    assertEquals(time7, time8);
+    DateTime time7 = DateTime.parse("1000-01-01 00:00:00:0000000", formatter);
+    DateTime time8 = DateTimeCodec.fromPackedLong(DateTimeCodec.toPackedLong(time7, otherTz), otherTz);
+    assertEquals(time7.getMillis(), time8.getMillis());
 
-    LocalDateTime time9 = LocalDateTime.parse("2017-01-05 23:59:59:5756010", formatter);
-    LocalDateTime time10 = DateTimeCodec.fromPackedLong(DateTimeCodec.toPackedLong(time9));
-    assertEquals(time9, time10);
+    DateTime time9 = DateTime.parse("2017-01-05 23:59:59:5756010", formatter);
+    DateTime time10 = DateTimeCodec.fromPackedLong(DateTimeCodec.toPackedLong(time9, otherTz), otherTz);
+    assertEquals(time9.getMillis(), time10.getMillis());
 
     DateTimeFormatter formatter1 = DateTimeFormat.forPattern("yyyy-MM-dd");
-    LocalDate date1 = LocalDate.parse("2099-10-30", formatter1);
-    long time11 = DateTimeCodec.toPackedLong(date1);
-    LocalDateTime time12 = DateTimeCodec.fromPackedLong(time11);
-    assertEquals(time12.toLocalDate(), date1);
+    DateTime date1 = DateTime.parse("2099-10-30", formatter1);
+    long time11 = DateTimeCodec.toPackedLong(date1, otherTz);
+    DateTime time12 = DateTimeCodec.fromPackedLong(time11, otherTz);
+    assertEquals(time12.getMillis(), date1.getMillis());
   }
 }

@@ -53,13 +53,13 @@ public class RangeSplitterTest {
     ByteString eKey = ByteString.EMPTY;
     if (s != null) {
       CodecDataOutput cdo = new CodecDataOutput();
-      IntegerCodec.writeLongFull(cdo, s, true);
+      IntegerCodec.writeLongFully(cdo, s, true);
       sKey = cdo.toByteString();
     }
 
     if (e != null) {
       CodecDataOutput cdo = new CodecDataOutput();
-      IntegerCodec.writeLongFull(cdo, e, true);
+      IntegerCodec.writeLongFully(cdo, e, true);
       eKey = cdo.toByteString();
     }
 
