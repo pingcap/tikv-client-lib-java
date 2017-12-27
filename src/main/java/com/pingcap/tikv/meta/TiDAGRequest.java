@@ -79,13 +79,17 @@ public class TiDAGRequest implements Serializable {
   private TiTableInfo tableInfo;
   private TiIndexInfo indexInfo;
   private final List<TiColumnRef> fields = new ArrayList<>();
-  private final List<TiExpr> where = new ArrayList<>();
+  private final List<TiExpr> filter = new ArrayList<>();
   private final List<TiByItem> groupByItems = new ArrayList<>();
   private final List<TiByItem> orderByItems = new ArrayList<>();
   // System like Spark has different type promotion rules
   // we need a cast to target when given
   private final List<Pair<TiExpr, DataType>> aggregates = new ArrayList<>();
   private final List<Coprocessor.KeyRange> keyRanges = new ArrayList<>();
+  // If index scanning of this request is not possible in some scenario, we downgrade it to a table scan and use
+  // downGradeRanges instead of index scan ranges stored in keyRanges along with downgradeFilters to perform a
+  // table scan.
+  private List<TiExpr> downgradeFilters = new ArrayList<>();
 
   private int limit;
   private int timeZoneOffset;
@@ -98,7 +102,7 @@ public class TiDAGRequest implements Serializable {
 
   public void resolve() {
     getFields().forEach(expr -> expr.resolve(tableInfo));
-    getWhere().forEach(expr -> expr.resolve(tableInfo));
+    getFilter().forEach(expr -> expr.resolve(tableInfo));
     getGroupByItems().forEach(item -> item.getExpr().resolve(tableInfo));
     getOrderByItems().forEach(item -> item.getExpr().resolve(tableInfo));
     getAggregates().forEach(expr -> expr.resolve(tableInfo));
@@ -214,15 +218,15 @@ public class TiDAGRequest implements Serializable {
     // DO NOT EDIT EXPRESSION CONSTRUCTION ORDER
     // Or make sure the construction order is below:
     // TableScan/IndexScan > Selection > Aggregation > TopN/Limit
-    TiExpr whereExpr = mergeCNFExpressions(
-        getWhere().stream().peek(this::setColumnOffsets).collect(Collectors.toList())
+    TiExpr filterExpr = mergeCNFExpressions(
+        getFilter().stream().peek(this::setColumnOffsets).collect(Collectors.toList())
     );
 
-    if (whereExpr != null) {
+    if (filterExpr != null) {
       executorBuilder.setTp(ExecType.TypeSelection);
       dagRequestBuilder.addExecutors(
           executorBuilder.setSelection(
-              Selection.newBuilder().addConditions(whereExpr.toProto())
+              Selection.newBuilder().addConditions(filterExpr.toProto())
           )
       );
       executorBuilder.clear();
@@ -308,7 +312,7 @@ public class TiDAGRequest implements Serializable {
 
   /**
    * Check if a DAG request is valid.
-   * <p>
+   *
    * Note:
    * When constructing a DAG request, a executor with an ExecType of higher priority
    * should always be placed before those lower ones.
@@ -361,6 +365,10 @@ public class TiDAGRequest implements Serializable {
 
   TiIndexInfo getIndexInfo() {
     return indexInfo;
+  }
+
+  public void clearIndexInfo() {
+    indexInfo = null;
   }
 
   public int getLimit() {
@@ -528,17 +536,22 @@ public class TiDAGRequest implements Serializable {
     return this;
   }
 
-  public void resetRanges(List<Coprocessor.KeyRange> ranges) {
-    keyRanges.clear();
-    keyRanges.addAll(ranges);
+  public void resetFilters(List<TiExpr> filters) {
+    filter.clear();
+    filter.addAll(filters);
   }
 
   public List<Coprocessor.KeyRange> getRanges() {
     return keyRanges;
   }
 
-  public TiDAGRequest addWhere(TiExpr where) {
-    this.where.add(requireNonNull(where, "where expr is null"));
+  public TiDAGRequest addFilter(TiExpr filter) {
+    this.filter.add(requireNonNull(filter, "filter expr is null"));
+    return this;
+  }
+
+  public TiDAGRequest addDowngradeFilter(TiExpr filter) {
+    this.downgradeFilters.add(requireNonNull(filter, "downgrade filter is null"));
     return this;
   }
 
@@ -562,8 +575,12 @@ public class TiDAGRequest implements Serializable {
     return !getGroupByItems().isEmpty();
   }
 
-  public List<TiExpr> getWhere() {
-    return where;
+  public List<TiExpr> getFilter() {
+    return filter;
+  }
+
+  public List<TiExpr> getDowngradeFilters() {
+    return downgradeFilters;
   }
 
   public List<TiColumnInfo> getColInfoList() {
@@ -635,9 +652,9 @@ public class TiDAGRequest implements Serializable {
       sb.append(Joiner.on(", ").skipNulls().join(getFields()));
     }
 
-    if (getWhere().size() != 0) {
+    if (getFilter().size() != 0) {
       sb.append(", Filter: ");
-      sb.append(Joiner.on(", ").skipNulls().join(getWhere()));
+      sb.append(Joiner.on(", ").skipNulls().join(getFilter()));
     }
 
     if (getAggregates().size() != 0) {
@@ -659,6 +676,7 @@ public class TiDAGRequest implements Serializable {
       sb.append(", Limit: ");
       sb.append("[").append(limit).append("]");
     }
+
     return sb.toString();
   }
 
